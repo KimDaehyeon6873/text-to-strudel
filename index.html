@@ -116,6 +116,8 @@
   .btn-play { background: #e0e0e0; color: #08080f; }
   .btn-play:hover { background: #fff; }
   .btn-play:disabled { background: #333; color: #666; cursor: wait; }
+  .btn-run { background: #1a3a1a; color: #5c5; border: 1px solid #2a4a2a; }
+  .btn-run:hover { background: #1a4a1a; color: #7e7; border-color: #3a5a3a; }
   .btn-regen { background: #1a1a24; color: #999; border: 1px solid #333; }
   .btn-regen:hover { border-color: #555; color: #ccc; }
   .btn-regen:disabled { color: #444; cursor: wait; }
@@ -245,6 +247,7 @@
   <div class="controls">
     <button class="btn btn-play" id="playBtn">Generate &amp; Play</button>
     <button class="btn btn-regen" id="regenBtn" title="Same input, different result">Regenerate</button>
+    <button class="btn btn-run" id="runBtn" title="Play current code (Ctrl+Enter)">Play</button>
     <button class="btn btn-stop" id="stopBtn">Stop</button>
   </div>
   <div class="refine-row" id="refineRow" style="display:none">

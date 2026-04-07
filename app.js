@@ -1168,19 +1168,23 @@ async function generateWithGemini(text, genre, apiKey) {
   return validateAndFix(stripFences(data.candidates[0].content.parts[0].text));
 }
 
-// ---- Post-generation Validation (GM pad name normalization only) ----
-// LLMs hallucinate numbered pad names from MIDI GM standard (Pad 1, Pad 2...).
-// Strudel uses unnumbered names. This is the ONLY reliable auto-fix.
+// ---- Post-generation Validation ----
+// Fix verified LLM hallucinations that cause runtime errors.
 function validateAndFix(code) {
-  return code
-    .replace(/gm_pad_1_new_age/g, 'gm_pad_new_age')
-    .replace(/gm_pad_2_warm/g, 'gm_pad_warm')
-    .replace(/gm_pad_3[_a-z]*/g, 'gm_pad_poly')
-    .replace(/gm_pad_4[_a-z]*/g, 'gm_pad_choir')
-    .replace(/gm_pad_5[_a-z]*/g, 'gm_pad_bowed')
-    .replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic')
-    .replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo')
-    .replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
+  // setbpm does NOT exist in Strudel — convert to setcpm(bpm/4)
+  code = code.replace(/setbpm\s*\(\s*(\d+)\s*\)/g, 'setcpm($1/4)');
+  // setBpm variant
+  code = code.replace(/setBpm\s*\(\s*(\d+)\s*\)/g, 'setcpm($1/4)');
+  // GM pad numbered names → unnumbered (MIDI GM standard vs Strudel naming)
+  code = code.replace(/gm_pad_1[_a-z]*/g, 'gm_pad_new_age');
+  code = code.replace(/gm_pad_2[_a-z]*/g, 'gm_pad_warm');
+  code = code.replace(/gm_pad_3[_a-z]*/g, 'gm_pad_poly');
+  code = code.replace(/gm_pad_4[_a-z]*/g, 'gm_pad_choir');
+  code = code.replace(/gm_pad_5[_a-z]*/g, 'gm_pad_bowed');
+  code = code.replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic');
+  code = code.replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo');
+  code = code.replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
+  return code;
 }
 
 function stripFences(code) {
@@ -1351,6 +1355,15 @@ document.getElementById('playBtn').addEventListener('click', function() {
 document.getElementById('regenBtn').addEventListener('click', function() {
   seedCounter++; // Regenerate = increment seed
   doGenerate();
+});
+
+document.getElementById('runBtn').addEventListener('click', function() {
+  var ed = getEditor();
+  if (ed) {
+    try { ed.evaluate(true); } catch(e) {}
+    document.getElementById('status').className = 'status playing';
+    document.getElementById('status').textContent = 'Playing';
+  }
 });
 
 document.getElementById('stopBtn').addEventListener('click', stopPlayback);
