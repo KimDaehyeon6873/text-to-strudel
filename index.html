@@ -347,7 +347,7 @@
   }
   strudel-editor {
     display: block;
-    min-height: 200px;
+    min-height: 0;
     max-height: 540px;
     overflow-y: auto;
   }
@@ -413,7 +413,9 @@
     <button class="refine-btn" data-dir="drier">dry</button>
     <button class="refine-btn" data-dir="louder">louder</button>
     <button class="refine-btn" data-dir="quieter">quieter</button>
-    <span class="refine-label" style="margin-left:.4rem">Mood</span>
+  </div>
+  <div class="refine-row" id="moodRow" style="display:none">
+    <span class="refine-label">Mood</span>
     <button class="refine-btn mood" data-dir="make it darker and moodier">dark</button>
     <button class="refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
     <button class="refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
@@ -427,7 +429,7 @@
       <span class="editor-label">editor</span>
       <span class="editor-hint">ctrl+enter play / ctrl+. stop</span>
     </div>
-    <strudel-editor id="strudelEditor"><!-- --></strudel-editor>
+    <strudel-editor id="strudelEditor"></strudel-editor>
   </div>
 </div>
 <script src="https://unpkg.com/@strudel/repl@latest"></script>

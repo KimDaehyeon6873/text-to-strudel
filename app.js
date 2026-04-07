@@ -1214,6 +1214,8 @@ function getEditor() {
 }
 
 function setCodeAndPlay(code) {
+  // always run validation as last safety net
+  code = validateAndFix(code);
   var statusEl = document.getElementById('status');
   var btn = document.getElementById('playBtn');
   btn.disabled = true;
@@ -1333,6 +1335,7 @@ async function doGenerate() {
   var statusEl = document.getElementById('status');
   document.getElementById('editorWrap').classList.add('visible');
   document.getElementById('refineRow').style.display = 'flex';
+  document.getElementById('moodRow').style.display = 'flex';
 
   if (apiKey) {
     // ---- Claude/Gemini creative mode ----
