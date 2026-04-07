@@ -13,8 +13,8 @@
     --border: #1a1a25;
     --border-hover: #2a2a3a;
     --text: #c8c8d0;
-    --text-dim: #555560;
-    --text-muted: #333340;
+    --text-dim: #7a7a88;
+    --text-muted: #606070;
     --accent: #e8a040;
     --accent-dim: rgba(232,160,64,.08);
     --green: #40c870;
@@ -183,15 +183,21 @@
   .genre-btn[data-genre="world"]     { --g-color: #40e080; }
   .genre-btn[data-genre="random"]    { --g-color: #a0a0a0; }
   .genre-btn[data-genre="fusion"]    { --g-color: var(--accent); }
-  @keyframes rainbow { 0%{filter:hue-rotate(0deg)} 100%{filter:hue-rotate(360deg)} }
+  @keyframes rainbowSpin { 0%{--angle:0deg} 100%{--angle:360deg} }
+  @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
   .genre-btn[data-genre="fusion"].active {
-    background: linear-gradient(90deg, rgba(255,60,60,.12), rgba(255,200,40,.12), rgba(60,220,60,.12), rgba(60,140,255,.12), rgba(180,60,255,.12)) !important;
-    border-image: linear-gradient(90deg, #ff3c3c, #ffc828, #3cdc3c, #3c8cff, #b43cff, #ff3c3c) 1 !important;
+    border-color: transparent !important;
+    background:
+      linear-gradient(var(--bg), var(--bg)) padding-box,
+      conic-gradient(from var(--angle), #ff3c3c, #ffc828, #3cdc3c, #3c8cff, #b43cff, #ff3c3c) border-box !important;
     color: #fff !important;
-    animation: rainbow 4s linear infinite;
+    animation: rainbowSpin 3s linear infinite;
   }
   .genre-btn[data-genre="fusion"]:not(.active):hover {
-    border-image: linear-gradient(90deg, rgba(255,60,60,.4), rgba(255,200,40,.4), rgba(60,220,60,.4), rgba(60,140,255,.4), rgba(180,60,255,.4)) 1;
+    border-color: transparent;
+    background:
+      linear-gradient(var(--bg), var(--bg)) padding-box,
+      conic-gradient(from 0deg, rgba(255,60,60,.35), rgba(255,200,40,.35), rgba(60,220,60,.35), rgba(60,140,255,.35), rgba(180,60,255,.35), rgba(255,60,60,.35)) border-box;
   }
   .genre-sep {
     color: var(--text-muted);
