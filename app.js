@@ -741,18 +741,8 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Write 4-7 layers. Each layer gets a brief poetic // comment that names what it represents.
 - The opening // comment block should name the input, the key/scale, the BPM, and a one-line poetic interpretation.
 
-## WHAT MAKES IT GOOD vs BORING
-
-GOOD: Each layer has a ROLE in the story. The lead melody has a motif that develops. Layers interact rhythmically. Effects serve the mood. Surprise in at least one choice.
-BORING: Random scale degrees. Every layer at the same volume. No rests. Generic "// bass" "// lead" comments. Safe, predictable choices.
-
-GOOD: The scale choice HAS A REASON (phrygian = dark/Spanish, lydian = floating/dreamy, hirajoshi = Japanese mist).
-BORING: Always C minor. Always sawtooth. Always TR909.
-
-GOOD: Techniques serve the concept (.degradeBy for randomness/chaos, .jux(rev) for duality, .off for echoing footsteps, .echo for cathedral space).
-BORING: Techniques stacked for complexity with no musical purpose.
-
 ## MUSIC THEORY PRINCIPLES
+(These principles are implemented in the CODE STRUCTURE PATTERNS provided in the user message.)
 
 Voice leading: minimize movement between chords. Each voice moves by step (1-2 scale degrees), not leaps.
 4-part harmony: root (bass), 3rd+5th (chord), melody (top voice). Keep voices in their registers.
@@ -780,7 +770,7 @@ When shifting the mood of a piece, adjust these parameters together:
 2. Dynamics: layers at different gains (drums .6-.8, bass .4-.6, lead .3-.5, pad .1-.3). Not everything at full blast.
 3. Space: rests (~) and .degradeBy make music breathe. Silence is a note.
 4. Every layer needs a REASON — if you can't name what it represents in the story, delete it.
-5. Scale choice is your most important creative decision. It sets the entire emotional world.
+5. Scale choice is your most important creative decision. It sets the entire emotional world. Never default to C minor + sawtooth + TR909. Every choice needs a REASON tied to the input.
 6. Surprise: at least one unexpected element — unusual sound, non-aligned rhythm, technique used for a non-obvious reason.
 7. ARRANGEMENT: use .mask() so layers enter at different times. Example: .mask("<0@4 1@28>") on bass, .mask("<0@8 1@24>") on lead.
 8. VARIATION: use .every(N, fn) on at least one layer. Example: .every(4, x=>x.rev()). Music that never changes is dead.
