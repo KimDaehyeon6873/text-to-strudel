@@ -1379,13 +1379,11 @@ var fusionGenres = [];
 var lastInput = '';
 
 var genreBtns = document.querySelectorAll('.genre-btn');
-var fusionBtn = document.querySelector('[data-genre="fusion"]');
+var fusionCheck = document.getElementById('fusionCheck');
 
 function updateGenreUI() {
   genreBtns.forEach(function(b) {
-    if (b.dataset.genre === 'fusion') return; // fusion button managed separately
     if (fusionMode) {
-      // multi-select: show fusion-pick for selected genres
       b.classList.remove('active');
       if (fusionGenres.indexOf(b.dataset.genre) !== -1) {
         b.classList.add('fusion-pick');
@@ -1393,39 +1391,40 @@ function updateGenreUI() {
         b.classList.remove('fusion-pick');
       }
     } else {
-      // single-select
       b.classList.remove('fusion-pick');
-      if (b.dataset.genre === selectedGenre) b.classList.add('active');
-      else b.classList.remove('active');
+      b.classList.toggle('active', b.dataset.genre === selectedGenre);
     }
   });
-  fusionBtn.classList.toggle('active', fusionMode);
 }
 
+// Fusion checkbox toggle
+fusionCheck.addEventListener('change', function() {
+  fusionMode = fusionCheck.checked;
+  if (fusionMode) {
+    fusionGenres = [];
+  } else {
+    selectedGenre = fusionGenres[0] || selectedGenre || 'edm';
+    fusionGenres = [];
+  }
+  seedCounter = 0;
+  updateGenreUI();
+});
+
+// Genre buttons
 genreBtns.forEach(function(btn) {
   btn.addEventListener('click', function() {
     var genre = btn.dataset.genre;
 
-    if (genre === 'fusion') {
-      // toggle fusion mode
-      fusionMode = !fusionMode;
-      if (fusionMode) {
-        fusionGenres = [];
-      } else {
-        selectedGenre = fusionGenres[0] || 'edm';
-        fusionGenres = [];
-      }
-    } else if (genre === 'random') {
+    if (genre === 'random') {
       fusionMode = false;
+      fusionCheck.checked = false;
       fusionGenres = [];
       selectedGenre = 'random';
     } else if (fusionMode) {
-      // multi-select: toggle genre in fusion list
       var idx = fusionGenres.indexOf(genre);
       if (idx !== -1) fusionGenres.splice(idx, 1);
       else fusionGenres.push(genre);
     } else {
-      // single-select
       selectedGenre = genre;
     }
 

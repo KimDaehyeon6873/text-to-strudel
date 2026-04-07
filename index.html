@@ -162,17 +162,49 @@
   .genre-btn[data-genre="lofi"]      { --gc: #d07050; }
   .genre-btn[data-genre="world"]     { --gc: #40d070; }
   .genre-btn[data-genre="random"]    { --gc: #909090; }
-  .genre-btn[data-genre="fusion"]    { --gc: var(--amber); }
-  @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-  @keyframes spin { to { --angle: 360deg; } }
-  .genre-btn[data-genre="fusion"].active {
-    border-color: transparent !important;
-    background:
-      linear-gradient(var(--bg), var(--bg)) padding-box,
-      conic-gradient(from var(--angle), #d04040, #d0a040, #40d070, #4070d0, #a040d0, #d04040) border-box !important;
-    animation: spin 3s linear infinite;
-  }
+  .genre-btn[data-genre="random"]    { --gc: #909090; }
   .genre-sep { color: var(--text-3); font-size: .55rem; padding: 0 .1rem; user-select: none; }
+  .fusion-toggle {
+    display: flex; align-items: center; gap: .45rem;
+    margin: .5rem 0 0; cursor: pointer; user-select: none;
+  }
+  .fusion-toggle input {
+    appearance: none; -webkit-appearance: none;
+    width: 28px; height: 14px;
+    background: var(--border);
+    border-radius: 100px;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .fusion-toggle input::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 10px; height: 10px;
+    background: var(--text-3);
+    border-radius: 50%;
+    transition: all .2s;
+  }
+  .fusion-toggle input:checked {
+    background: var(--amber);
+  }
+  .fusion-toggle input:checked::after {
+    left: 16px;
+    background: var(--bg);
+  }
+  .fusion-label {
+    font-family: var(--mono); font-size: .64rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-3);
+    transition: color .15s;
+  }
+  .fusion-toggle input:checked ~ .fusion-label { color: var(--amber); }
+  .fusion-hint {
+    font-size: .6rem; color: var(--text-3); opacity: 0;
+    transition: opacity .2s;
+  }
+  .fusion-toggle input:checked ~ .fusion-hint { opacity: 1; }
 
   /* ---- PRIMARY ACTION ---- */
   .action-row {
@@ -341,10 +373,13 @@
     <button class="genre-btn" data-genre="ambient">Ambient</button>
     <button class="genre-btn" data-genre="lofi">Lo-fi</button>
     <button class="genre-btn" data-genre="world">World</button>
-    <span class="genre-sep">/</span>
     <button class="genre-btn" data-genre="random">Random</button>
-    <button class="genre-btn" data-genre="fusion">Fusion</button>
   </div>
+  <label class="fusion-toggle" id="fusionToggle">
+    <input type="checkbox" id="fusionCheck">
+    <span class="fusion-label">Fusion</span>
+    <span class="fusion-hint">select multiple genres to combine</span>
+  </label>
 
   <div class="action-row">
     <button class="btn-generate" id="playBtn">Generate &amp; Play</button>
