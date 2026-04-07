@@ -83,6 +83,11 @@
   }
   details.api summary:hover { color: var(--text-2); }
   details.api[open] summary { color: var(--amber); }
+  details.api.verified summary { color: var(--green); }
+  details.api.verified summary::after { content: ' \2713'; }
+  details.api.no-key summary { color: var(--text-3); }
+  details.api.invalid summary { color: var(--red); }
+  details.api.invalid summary::after { content: ' \2717'; }
   .api-row { display: flex; gap: .5rem; margin-top: .5rem; }
   .api-row select, .api-row input {
     background: var(--surface); border: 1px solid var(--border); color: var(--text);

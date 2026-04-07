@@ -791,13 +791,15 @@ When shifting the mood of a piece, adjust these parameters together:
 13. line(a,b,n) and ramp() DO NOT EXIST. For linear sweep use saw.range(a,b).slow(n).
 14. .stutter() DOES NOT EXIST. Use .ply(n) to repeat each event n times.`;
 
-function getApiKey() {
-  return localStorage.getItem('tts_api_key') || '';
+function getApiKey(provider) {
+  var p = provider || getProvider();
+  return localStorage.getItem('tts_api_key_' + p) || '';
 }
 
-function saveApiKey(key) {
-  if (key) localStorage.setItem('tts_api_key', key);
-  else localStorage.removeItem('tts_api_key');
+function saveApiKey(key, provider) {
+  var p = provider || getProvider();
+  if (key) localStorage.setItem('tts_api_key_' + p, key);
+  else localStorage.removeItem('tts_api_key_' + p);
 }
 
 // ---- Full Strudel Component Reference ----
@@ -1513,35 +1515,52 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
   var provSelect = document.getElementById('apiProvider');
   var hint = document.getElementById('apiHint');
 
-  // restore saved state
-  var savedKey = getApiKey();
-  var savedProv = getProvider();
-  provSelect.value = savedProv;
-  if (savedKey) {
-    keyInput.value = savedKey;
-    hint.textContent = (savedProv === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
-    hint.className = 'api-hint saved';
+  var apiDetails = document.getElementById('apiSettings');
+
+  function setApiState(state) {
+    apiDetails.classList.remove('verified', 'invalid', 'no-key');
+    apiDetails.classList.add(state);
   }
 
-  // update placeholder on provider change
+  function refreshProviderUI() {
+    var prov = provSelect.value;
+    keyInput.placeholder = prov === 'gemini' ? 'AIza...' : 'sk-ant-...';
+    var key = getApiKey(prov);
+    keyInput.value = key;
+    if (key) {
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' key saved.';
+      hint.className = 'api-hint saved';
+      setApiState('verified');
+    } else {
+      hint.textContent = 'No key for ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + '. Algorithmic mode.';
+      hint.className = 'api-hint';
+      setApiState('no-key');
+    }
+  }
+
+  // restore saved state
+  provSelect.value = getProvider();
+  refreshProviderUI();
+
+  // swap key display when provider changes
   provSelect.addEventListener('change', function() {
-    keyInput.placeholder = provSelect.value === 'gemini' ? 'AIza...' : 'sk-ant-...';
+    saveProvider(provSelect.value);
+    refreshProviderUI();
   });
-  provSelect.dispatchEvent(new Event('change'));
 
   document.getElementById('apiSave').addEventListener('click', async function() {
     var key = keyInput.value.trim();
     var prov = provSelect.value;
 
     if (!key) {
-      saveApiKey('');
+      saveApiKey('', prov);
       saveProvider(prov);
       hint.textContent = 'Cleared. Using algorithmic mode.';
       hint.className = 'api-hint';
+      setApiState('no-key');
       return;
     }
 
-    // validate key with a minimal API call
     hint.textContent = 'Verifying ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' key...';
     hint.className = 'api-hint';
 
@@ -1569,16 +1588,17 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
         });
         var data = await resp.json();
         if (data.error && data.error.type === 'authentication_error') throw new Error('Invalid API key');
-        // any other response (including successful or rate-limited) means the key is valid
       }
 
-      saveApiKey(key);
+      saveApiKey(key, prov);
       saveProvider(prov);
       hint.textContent = 'Verified. ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
+      setApiState('verified');
     } catch (e) {
       hint.textContent = 'Invalid key: ' + e.message;
       hint.className = 'api-hint error';
+      setApiState('invalid');
     }
   });
 })();
