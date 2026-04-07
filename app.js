@@ -785,7 +785,9 @@ When shifting the mood of a piece, adjust these parameters together:
 7. ARRANGEMENT: use .mask() so layers enter at different times. Example: .mask("<0@4 1@28>") on bass, .mask("<0@8 1@24>") on lead.
 8. VARIATION: use .every(N, fn) on at least one layer. Example: .every(4, x=>x.rev()). Music that never changes is dead.
 9. TEXTURE: .degradeBy(sine.range(0, 0.3).slow(16)) on pads/chords for organic breathing.
-10. MOVEMENT: .lpf(sine.range(lo, hi).slow(N)) on drums or bass for build/release.`;
+10. MOVEMENT: .lpf(sine.range(lo, hi).slow(N)) on drums or bass for build/release.
+11. MINI-NOTATION SYNTAX: () is ONLY for euclidean rhythms x(k,n). For grouping use []. WRONG: .struct("x(~ x x ~)"). RIGHT: .struct("[~ x x ~]"). WRONG: "<0 2 4 6>7". RIGHT: "<0 2 4 6>".add(7).
+12. Use setcpm(BPM/4) for tempo. setbpm DOES NOT EXIST.`;
 
 function getApiKey() {
   return localStorage.getItem('tts_api_key') || '';
@@ -1191,6 +1193,12 @@ function validateAndFix(code) {
   code = code.replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic');
   code = code.replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo');
   code = code.replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
+  // Fix mini-notation: x(~ x x ~) → x is not euclidean, use [~ x x ~]
+  // () in mini-notation is ONLY for euclidean: x(k,n) or x(k,n,offset)
+  // LLMs often use () for grouping — replace non-euclidean () with []
+  code = code.replace(/"([^"]*)"/g, function(match, inner) {
+    return '"' + inner.replace(/\(([^)]*[~a-gA-G][^)]*)\)/g, '[$1]') + '"';
+  });
   return code;
 }
 
