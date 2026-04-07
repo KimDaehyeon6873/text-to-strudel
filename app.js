@@ -484,25 +484,53 @@ function buildRandomGenre(rng) {
   };
 }
 
-function buildFusionGenre(rng) {
-  var idx1 = Math.floor(rng() * BASE_GENRE_NAMES.length);
-  var idx2 = (idx1 + 1 + Math.floor(rng() * (BASE_GENRE_NAMES.length - 1))) % BASE_GENRE_NAMES.length;
-  var n1 = BASE_GENRE_NAMES[idx1], n2 = BASE_GENRE_NAMES[idx2];
-  var g1 = GENRES[n1], g2 = GENRES[n2];
-  var s1 = g1.scales || (g1.subgenres ? pickFrom(rng, g1.subgenres).scales : ['minor']);
-  var s2 = g2.scales || (g2.subgenres ? pickFrom(rng, g2.subgenres).scales : ['minor']);
-  var snd1 = g1.sounds || (g1.subgenres ? pickFrom(rng, g1.subgenres).sounds : {});
-  var snd2 = g2.sounds || (g2.subgenres ? pickFrom(rng, g2.subgenres).sounds : {});
+function buildFusionGenre(rng, genreNames) {
+  // Accept array of genre names (2+) and blend them
+  if (!genreNames || genreNames.length < 2) {
+    // fallback: pick 2 random genres
+    var i1 = Math.floor(rng() * BASE_GENRE_NAMES.length);
+    var i2 = (i1 + 1 + Math.floor(rng() * (BASE_GENRE_NAMES.length - 1))) % BASE_GENRE_NAMES.length;
+    genreNames = [BASE_GENRE_NAMES[i1], BASE_GENRE_NAMES[i2]];
+  }
+  var gs = genreNames.map(function(n) { return GENRES[n]; }).filter(Boolean);
+  if (gs.length < 2) gs.push(GENRES.edm); // safety
+
+  // blend: collect all scales, average tempos, pick sounds round-robin
+  var allScales = [];
+  var allKeys = [];
+  var allProgs = [];
+  var tempoLo = 0, tempoHi = 0;
+  var drums = null, bank = null;
+
+  gs.forEach(function(g) {
+    var sc = g.scales || (g.subgenres ? pickFrom(rng, g.subgenres).scales : []);
+    allScales = allScales.concat(sc);
+    allKeys = allKeys.concat(g.keys || []);
+    allProgs = allProgs.concat(g.progressions || []);
+    tempoLo += g.tempoRange[0];
+    tempoHi += g.tempoRange[1];
+    if (!drums && g.drums) drums = g.drums;
+    if (!bank && g.bank) bank = g.bank;
+  });
+
+  // pick sounds from different genres for each role
+  function getSounds(g) { return g.sounds || (g.subgenres ? pickFrom(rng, g.subgenres).sounds : {}); }
+  var sndPool = gs.map(getSounds);
+  var lead = sndPool[0].lead || 'sawtooth';
+  var bass = sndPool[Math.min(1, sndPool.length - 1)].bass || 'sine';
+  var chord = sndPool[Math.min(2, sndPool.length - 1)].chord || 'sawtooth';
+  var arp = sndPool[sndPool.length - 1].arp || 'triangle';
+
   return {
-    label: 'Fusion (' + g1.label + ' x ' + g2.label + ')',
-    tempoRange: [Math.round((g1.tempoRange[0] + g2.tempoRange[0]) / 2), Math.round((g1.tempoRange[1] + g2.tempoRange[1]) / 2)],
-    scales: s1.concat(s2),
-    keys: g1.keys || g2.keys || ['C', 'D', 'E', 'F', 'G', 'A'],
-    octaves: rng() > 0.5 ? g1.octaves : g2.octaves,
-    sounds: { lead: snd1.lead || snd2.lead || 'sawtooth', bass: snd2.bass || snd1.bass || 'sine', chord: snd1.chord || snd2.chord || 'sawtooth', arp: snd2.arp || snd1.arp },
-    bank: g1.bank || g2.bank || 'RolandTR808',
-    drums: (g1.drums || g2.drums),
-    progressions: (g1.progressions || []).concat(g2.progressions || []),
+    label: 'Fusion (' + genreNames.map(function(n) { return (GENRES[n] || {}).label || n; }).join(' x ') + ')',
+    tempoRange: [Math.round(tempoLo / gs.length), Math.round(tempoHi / gs.length)],
+    scales: allScales,
+    keys: allKeys.length ? allKeys : ['C', 'D', 'E', 'F', 'G', 'A'],
+    octaves: pickFrom(rng, gs).octaves,
+    sounds: { lead: lead, bass: bass, chord: chord, arp: arp },
+    bank: Array.isArray(bank) ? bank : (bank ? [bank] : ['RolandTR808']),
+    drums: drums,
+    progressions: allProgs,
     layers: ['drums', 'bass', 'lead', 'chords', 'arp'],
   };
 }
@@ -515,8 +543,13 @@ function generateCode(text, genreName) {
 
   if (genreName === 'random') {
     g = buildRandomGenre(rng);
+  } else if (genreName.indexOf('fusion:') === 0) {
+    var fusionParts = genreName.replace('fusion:', '').split('+');
+    g = buildFusionGenre(rng, fusionParts);
+    resolvedGenreName = 'fusion';
   } else if (genreName === 'fusion') {
     g = buildFusionGenre(rng);
+    resolvedGenreName = 'fusion';
   } else {
     g = GENRES[genreName];
   }
@@ -1036,7 +1069,15 @@ function buildUserMessage(text, genre) {
   parts.push('"' + text + '"');
 
   // 2. Genre context — a starting point, not a cage
-  if (GENRE_CONTEXT[genre]) {
+  if (genre.indexOf('fusion:') === 0) {
+    // multi-genre fusion: list each genre's context
+    var fusionParts = genre.replace('fusion:', '').split('+');
+    parts.push('\nFusion of ' + fusionParts.length + ' genres: ' + fusionParts.join(' + ') + '.');
+    parts.push('Find the bridge between them. The tension and contrast IS the music.');
+    fusionParts.forEach(function(g) {
+      if (GENRE_CONTEXT[g]) parts.push('\n[' + g.toUpperCase() + '] ' + GENRE_CONTEXT[g]);
+    });
+  } else if (GENRE_CONTEXT[genre]) {
     parts.push('\n' + GENRE_CONTEXT[genre]);
   }
 
@@ -1190,16 +1231,71 @@ function stopPlayback() {
 
 // ---- UI Wiring ----
 var selectedGenre = 'edm';
+var fusionMode = false;
+var fusionGenres = [];
 var lastInput = '';
 
-document.querySelectorAll('.genre-btn').forEach(function(btn) {
+var genreBtns = document.querySelectorAll('.genre-btn');
+var fusionBtn = document.querySelector('[data-genre="fusion"]');
+
+function updateGenreUI() {
+  genreBtns.forEach(function(b) {
+    if (b.dataset.genre === 'fusion') return; // fusion button managed separately
+    if (fusionMode) {
+      // multi-select: show fusion-pick for selected genres
+      b.classList.remove('active');
+      if (fusionGenres.indexOf(b.dataset.genre) !== -1) {
+        b.classList.add('fusion-pick');
+      } else {
+        b.classList.remove('fusion-pick');
+      }
+    } else {
+      // single-select
+      b.classList.remove('fusion-pick');
+      if (b.dataset.genre === selectedGenre) b.classList.add('active');
+      else b.classList.remove('active');
+    }
+  });
+  fusionBtn.classList.toggle('active', fusionMode);
+}
+
+genreBtns.forEach(function(btn) {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.genre-btn').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    selectedGenre = btn.dataset.genre;
-    seedCounter = 0; // new genre = reset seed
+    var genre = btn.dataset.genre;
+
+    if (genre === 'fusion') {
+      // toggle fusion mode
+      fusionMode = !fusionMode;
+      if (fusionMode) {
+        fusionGenres = [];
+      } else {
+        selectedGenre = fusionGenres[0] || 'edm';
+        fusionGenres = [];
+      }
+    } else if (genre === 'random') {
+      fusionMode = false;
+      fusionGenres = [];
+      selectedGenre = 'random';
+    } else if (fusionMode) {
+      // multi-select: toggle genre in fusion list
+      var idx = fusionGenres.indexOf(genre);
+      if (idx !== -1) fusionGenres.splice(idx, 1);
+      else fusionGenres.push(genre);
+    } else {
+      // single-select
+      selectedGenre = genre;
+    }
+
+    seedCounter = 0;
+    updateGenreUI();
   });
 });
+
+function getEffectiveGenre() {
+  if (fusionMode && fusionGenres.length >= 2) return 'fusion:' + fusionGenres.join('+');
+  if (fusionMode && fusionGenres.length === 1) return fusionGenres[0];
+  return selectedGenre;
+}
 
 // shared generate function
 async function doGenerate() {
@@ -1213,13 +1309,14 @@ async function doGenerate() {
   // reset seed when input text changes
   if (text !== lastInput) { seedCounter = 0; lastInput = text; }
 
+  var genre = getEffectiveGenre();
   var apiKey = getApiKey();
   var statusEl = document.getElementById('status');
   document.getElementById('editorWrap').classList.add('visible');
-    document.getElementById('refineRow').style.display = 'flex';
+  document.getElementById('refineRow').style.display = 'flex';
 
   if (apiKey) {
-    // ---- Claude creative mode ----
+    // ---- Claude/Gemini creative mode ----
     document.getElementById('playBtn').disabled = true;
     document.getElementById('regenBtn').disabled = true;
     statusEl.className = 'status';
@@ -1227,12 +1324,12 @@ async function doGenerate() {
     var temp = prov === 'gemini' ? Math.min(1.5, 0.9 + seedCounter * 0.08) : Math.min(1.2, 0.9 + seedCounter * 0.05);
     statusEl.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' is composing... (seed ' + seedCounter + ', temp ' + temp.toFixed(2) + ')';
     try {
-      var code = await generateWithAI(text, selectedGenre, apiKey);
+      var code = await generateWithAI(text, genre, apiKey);
       setCodeAndPlay(code);
     } catch (e) {
       statusEl.className = 'status error';
       statusEl.textContent = 'API error: ' + e.message + ' — falling back to algorithm';
-      var fallback = generateCode(text, selectedGenre);
+      var fallback = generateCode(text, genre);
       setCodeAndPlay(fallback);
     } finally {
       document.getElementById('playBtn').disabled = false;
@@ -1241,7 +1338,7 @@ async function doGenerate() {
   } else {
     // ---- Algorithmic mode ----
     statusEl.textContent = 'Algorithmic mode (seed ' + seedCounter + ')';
-    var code = generateCode(text, selectedGenre);
+    var code = generateCode(text, genre);
     setCodeAndPlay(code);
   }
 }

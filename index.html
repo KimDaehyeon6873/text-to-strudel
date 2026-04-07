@@ -73,7 +73,8 @@
   .genre-btn[data-genre="world"] { --accent: #00ff88; }
   .genre-btn[data-genre="random"] { --accent: #fff; }
   .genre-btn[data-genre="fusion"] { --accent: linear-gradient(90deg,#ff00ff,#ffd700); border-image: linear-gradient(90deg,#ff00ff,#ffd700) 1; }
-  .genre-btn[data-genre="fusion"].active { border-image: linear-gradient(90deg,#ff00ff,#ffd700) 1; background: linear-gradient(90deg, rgba(255,0,255,.08), rgba(255,215,0,.08)); }
+  .genre-btn[data-genre="fusion"].active { border-image: linear-gradient(90deg,#ff00ff,#ffd700) 1; background: linear-gradient(90deg, rgba(255,0,255,.12), rgba(255,215,0,.12)); color: #fff; }
+  .genre-btn.fusion-pick { border-color: var(--accent) !important; color: #fff !important; background: color-mix(in srgb, var(--accent) 18%, #111118) !important; }
   .genre-sep { color: #333; font-size: .75rem; display: flex; align-items: center; padding: 0 .25rem; }
   .api-settings { margin-bottom: 1.2rem; }
   .api-settings summary {
