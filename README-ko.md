@@ -26,8 +26,8 @@
 ### 1. 파일 다운로드
 
 ```
-text-to-strudel.html
-text-to-strudel.js
+index.html
+app.js
 ```
 
 두 파일을 같은 디렉토리에 배치합니다.
@@ -35,7 +35,7 @@ text-to-strudel.js
 ### 2. 브라우저에서 열기
 
 ```bash
-open text-to-strudel.html
+open index.html
 ```
 
 서버 설정, `npm install`, 빌드 과정이 필요 없습니다. HTML 파일을 브라우저에서 직접 열면 바로 사용할 수 있습니다.
@@ -83,11 +83,11 @@ Anthropic 또는 Google AI API 키를 설정하면 활성화됩니다.
 
 ```
 text-to-strudel/
-  text-to-strudel.html   (277줄) — UI, 레이아웃, 스타일
-  text-to-strudel.js     (1400+줄) — 전체 로직
+  index.html   (277줄) — UI, 레이아웃, 스타일
+  app.js     (1400+줄) — 전체 로직
 ```
 
-### text-to-strudel.html
+### index.html
 
 - 텍스트 입력 영역
 - 장르 선택 드롭다운
@@ -96,11 +96,11 @@ text-to-strudel/
 - Strudel REPL 에디터 영역
 - API 키 설정 UI
 
-### text-to-strudel.js
+### app.js
 
 - **텍스트 분석 엔진** — 에너지, 밝기, 무게, 공간, 복잡도 산출
 - **장르별 코드 생성기** — 9개 장르 각각의 패턴 매핑 로직
-- **29개 코드 구조 패턴** — 8개 카테고리 (Major, Minor, Dominant, Diminished, Augmented, Suspended, Modal, Extended)
+- **29개 코드 구조 패턴** — 8개 카테고리 (Organization, Melody & Harmony, Rhythm & Time, Timbre & Texture, Sample Manipulation, Spatial & Dynamics, Transitions & Dynamics, Arrangement)
 - **모티프 기반 멜로디 생성** — 콜-리스폰스 구조, 앵커 포인트, 워킹 베이스
 - **Strudel 메서드 활용** — `.mask()` 배치, `.every()` 변주, `.legato()`, `.delay()` 등
 - **GM pad 이름 정규화** — General MIDI 패드 이름 자동 보정
@@ -121,13 +121,13 @@ text-to-strudel/
 
 | 장르 | 특징 | BPM 범위 |
 |------|------|----------|
-| **EDM** | 4-on-the-floor 킥, 신스 리드, 사이드체인, 빌드업/드롭 | 120-150 |
-| **Jazz** | 스윙 리듬, 7th/9th/13th 코드, 워킹 베이스, 브러시 드럼 | 80-140 |
-| **Classical** | 대위법적 구조, 스트링 앙상블, 다이나믹 변화 | 60-130 |
-| **Blues** | 12마디 진행, 셔플 리듬, 블루 노트, 콜-리스폰스 | 70-120 |
-| **Ambient** | 긴 패드, 넓은 리버브, 느린 변화, 텍스처 레이어링 | 60-90 |
-| **Lo-fi** | 디튠드 피아노, 비닐 크랙클, 사이드체인 컴프, 릴랙스 비트 | 70-90 |
-| **World** | 민속 스케일, 퍼커션 앙상블, 폴리리듬, 드론 | 80-130 |
+| **EDM** | 4-on-the-floor 킥, saw 리드 + 필터 스윕, 오프비트 스탭, 사이드체인 | 124-140 |
+| **Jazz** | 스윙, 도리안/비밥, Rhodes/어쿠스틱 베이스, 유클리드 컴핑 | 84-148 |
+| **Classical** | 피아노/스트링/플루트, 긴 프레이즈, 다이나믹스, 룸 리버브 | 62-116 |
+| **Blues** | 블루스 스케일, 셔플 리듬, 오버드라이브 기타, 콜-리스폰스 | 72-108 |
+| **Ambient** | sine/triangle 패드, 긴 attack/release, 대형 리버브, 스파스 | 50-76 |
+| **Lo-fi** | Rhodes EP, 머플드 드럼 (.lpf), degradeBy 테이프 드롭아웃 | 68-86 |
+| **World** | 플라멩코/일본/인도/동유럽/아랍 서브장르, 전통 악기+스케일 | 78-126 |
 | **Random** | 모든 장르 요소의 무작위 조합 | 가변 |
 | **Fusion** | 두 개 이상 장르의 크로스오버, 복합 박자 | 가변 |
 

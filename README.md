@@ -41,7 +41,7 @@ Two modes of operation: a fully deterministic algorithmic pipeline that needs no
 
 ## Quick Start
 
-1. Open `text-to-strudel.html` in any modern browser (or serve via any static HTTP server).
+1. Open `index.html` in any modern browser (or serve via any static HTTP server).
 2. Type anything in the text input -- a word, a phrase, a memory, a feeling.
 3. Select a genre (EDM is the default).
 4. Click **Generate & Play**. Music starts automatically.
@@ -171,7 +171,7 @@ In AI mode, Refine and Mood buttons send the current code back to the LLM with a
 
 The project consists of two files:
 
-### `text-to-strudel.html` (277 lines)
+### `index.html` (277 lines)
 
 UI shell and styles. Dark theme (#08080f background). Contains:
 - Text input area
@@ -181,9 +181,9 @@ UI shell and styles. Dark theme (#08080f background). Contains:
 - Refine and Mood button rows (hidden until first generation)
 - `<strudel-editor>` web component wrapper
 - Status display with animated playing indicator
-- Script tags loading `@strudel/repl` from CDN and `text-to-strudel.js`
+- Script tags loading `@strudel/repl` from CDN and `app.js`
 
-### `text-to-strudel.js` (1411 lines)
+### `app.js` (1411 lines)
 
 All application logic:
 
