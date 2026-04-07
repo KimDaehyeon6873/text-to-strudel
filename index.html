@@ -5,39 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Red+Hat+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #06060b;
-    --surface: #0d0d14;
-    --border: #1a1a25;
-    --border-hover: #2a2a3a;
-    --text: #c8c8d0;
-    --text-dim: #7a7a88;
-    --text-muted: #606070;
-    --accent: #e8a040;
-    --accent-dim: rgba(232,160,64,.08);
-    --green: #40c870;
-    --red: #e05050;
-    --mono: 'Space Mono', 'Consolas', monospace;
-    --sans: 'DM Sans', -apple-system, sans-serif;
-    --radius: 6px;
-    --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    --bg: #0a0a0e;
+    --surface: #101016;
+    --raised: #16161e;
+    --border: #1e1e2a;
+    --border-active: #2e2e40;
+    --text: #d0d0d8;
+    --text-2: #8888a0;
+    --text-3: #50506a;
+    --amber: #e8a040;
+    --amber-dim: rgba(232, 160, 64, .06);
+    --green: #38c068;
+    --red: #d84848;
+    --body: 'Outfit', sans-serif;
+    --mono: 'Red Hat Mono', monospace;
+    --r: 5px;
+    --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: var(--sans);
+    font-family: var(--body);
+    font-weight: 300;
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding: 2.5rem 1.25rem 4rem;
-    position: relative;
+    padding: 3rem 1.25rem 4rem;
   }
-  body::before {
+  body::after {
     content: '';
     position: fixed;
     inset: 0;
@@ -45,305 +44,257 @@
     pointer-events: none;
     z-index: 9999;
   }
-
-  .container { max-width: 760px; width: 100%; }
+  .app { max-width: 740px; width: 100%; }
 
   /* ---- HEADER ---- */
-  header { margin-bottom: 2.5rem; }
-  h1 {
+  .brand {
     font-family: var(--mono);
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: .04em;
-    color: var(--text);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    margin-bottom: .35rem;
   }
   .tagline {
-    font-family: var(--sans);
-    font-size: .82rem;
+    font-size: 1.6rem;
     font-weight: 300;
-    font-style: italic;
-    color: var(--text-dim);
-    margin-top: .35rem;
-    padding-left: 0;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 2.5rem;
+  }
+  .tagline em {
+    font-style: normal;
+    color: var(--amber);
   }
 
-  /* ---- API SETTINGS ---- */
-  .api-settings { margin-bottom: 1.5rem; }
-  .api-settings summary {
-    cursor: pointer;
+  /* ---- API ---- */
+  details.api { margin-bottom: 1.5rem; }
+  details.api summary {
     font-family: var(--mono);
-    font-size: .7rem;
-    color: var(--text-muted);
-    letter-spacing: .06em;
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .1em;
     text-transform: uppercase;
-    padding: .3rem 0;
+    color: var(--text-3);
+    cursor: pointer;
     user-select: none;
     transition: color .15s;
   }
-  .api-settings summary:hover { color: var(--text-dim); }
-  .api-settings[open] summary { color: var(--accent); }
+  details.api summary:hover { color: var(--text-2); }
+  details.api[open] summary { color: var(--amber); }
   .api-row { display: flex; gap: .5rem; margin-top: .5rem; }
   .api-row select, .api-row input {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-size: .8rem;
-    padding: .4rem .6rem;
-    border-radius: var(--radius);
-    outline: none;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-size: .78rem; padding: .4rem .55rem; border-radius: var(--r); outline: none;
     transition: border-color .15s;
   }
-  .api-row select { font-family: var(--sans); }
-  .api-row input { flex: 1; font-family: var(--mono); font-size: .75rem; }
-  .api-row select:focus, .api-row input:focus { border-color: var(--accent); }
-  .btn-small {
-    background: var(--surface);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-    padding: .35rem .7rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-family: var(--mono);
-    font-size: .7rem;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+  .api-row select { font-family: var(--body); }
+  .api-row input { flex: 1; font-family: var(--mono); font-size: .72rem; }
+  .api-row select:focus, .api-row input:focus { border-color: var(--amber); }
+  .api-save {
+    font-family: var(--mono); font-size: .62rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+    padding: .35rem .65rem; border-radius: var(--r); cursor: pointer;
     transition: all .15s;
   }
-  .btn-small:hover { color: var(--text); border-color: var(--border-hover); }
-  .api-hint {
-    font-size: .68rem;
-    color: var(--text-muted);
-    margin-top: .35rem;
-    font-style: italic;
-  }
-  .api-hint.saved { color: var(--green); font-style: normal; }
-  .api-hint.error { color: var(--red); font-style: normal; }
+  .api-save:hover { border-color: var(--border-active); color: var(--text); }
+  .api-hint { font-size: .66rem; color: var(--text-3); margin-top: .3rem; }
+  .api-hint.saved { color: var(--green); }
+  .api-hint.error { color: var(--red); }
 
   /* ---- INPUT ---- */
-  textarea {
+  .prompt-input {
     width: 100%;
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
-    font-family: var(--sans);
-    font-size: 1.05rem;
+    font-family: var(--body);
+    font-size: 1rem;
     font-weight: 300;
-    padding: 1rem 1.1rem;
-    border-radius: var(--radius);
+    padding: .9rem 1rem;
+    border-radius: var(--r);
     resize: vertical;
-    min-height: 72px;
+    min-height: 64px;
     outline: none;
-    transition: border-color .2s, box-shadow .2s;
     line-height: 1.5;
+    transition: border-color .2s, box-shadow .2s;
   }
-  textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent), 0 0 20px rgba(232,160,64,.06);
+  .prompt-input:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 1px var(--amber), 0 4px 24px rgba(232,160,64,.04);
   }
-  textarea::placeholder { color: var(--text-muted); font-style: italic; }
+  .prompt-input::placeholder { color: var(--text-3); }
 
-  /* ---- GENRE BUTTONS ---- */
-  .genre-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    margin: 1.2rem 0;
-    align-items: center;
+  /* ---- GENRES ---- */
+  .genres {
+    display: flex; flex-wrap: wrap; gap: .35rem;
+    margin: 1.2rem 0; align-items: center;
   }
   .genre-btn {
+    font-family: var(--mono); font-size: .66rem; font-weight: 400;
+    letter-spacing: .02em;
     background: transparent;
     border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: .35rem .85rem;
+    color: var(--text-3);
+    padding: .3rem .75rem;
     border-radius: 100px;
     cursor: pointer;
-    font-family: var(--mono);
-    font-size: .7rem;
-    letter-spacing: .03em;
-    transition: all .15s;
-    position: relative;
+    transition: all .12s;
   }
-  .genre-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .genre-btn:hover { border-color: var(--border-active); color: var(--text-2); }
   .genre-btn.active {
     color: #fff;
-    border-color: var(--g-color, var(--accent));
-    background: color-mix(in srgb, var(--g-color, var(--accent)) 10%, transparent);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--g-color, var(--accent)) 15%, transparent);
+    border-color: var(--gc, var(--amber));
+    background: color-mix(in srgb, var(--gc, var(--amber)) 10%, transparent);
   }
   .genre-btn.fusion-pick {
     color: #fff !important;
-    border-color: var(--g-color, var(--accent)) !important;
-    background: color-mix(in srgb, var(--g-color, var(--accent)) 14%, transparent) !important;
+    border-color: var(--gc) !important;
+    background: color-mix(in srgb, var(--gc) 12%, transparent) !important;
   }
-  .genre-btn[data-genre="edm"]       { --g-color: #e040e0; }
-  .genre-btn[data-genre="jazz"]      { --g-color: #e0c040; }
-  .genre-btn[data-genre="classical"] { --g-color: #9090b0; }
-  .genre-btn[data-genre="blues"]     { --g-color: #4080e0; }
-  .genre-btn[data-genre="ambient"]   { --g-color: #40c8e0; }
-  .genre-btn[data-genre="lofi"]      { --g-color: #e08060; }
-  .genre-btn[data-genre="world"]     { --g-color: #40e080; }
-  .genre-btn[data-genre="random"]    { --g-color: #a0a0a0; }
-  .genre-btn[data-genre="fusion"]    { --g-color: var(--accent); }
-  @keyframes rainbowSpin { 0%{--angle:0deg} 100%{--angle:360deg} }
+  .genre-btn[data-genre="edm"]       { --gc: #d040d0; }
+  .genre-btn[data-genre="jazz"]      { --gc: #d0b040; }
+  .genre-btn[data-genre="classical"] { --gc: #8888aa; }
+  .genre-btn[data-genre="blues"]     { --gc: #4070d0; }
+  .genre-btn[data-genre="ambient"]   { --gc: #40b8d0; }
+  .genre-btn[data-genre="lofi"]      { --gc: #d07050; }
+  .genre-btn[data-genre="world"]     { --gc: #40d070; }
+  .genre-btn[data-genre="random"]    { --gc: #909090; }
+  .genre-btn[data-genre="fusion"]    { --gc: var(--amber); }
   @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  @keyframes spin { to { --angle: 360deg; } }
   .genre-btn[data-genre="fusion"].active {
     border-color: transparent !important;
     background:
       linear-gradient(var(--bg), var(--bg)) padding-box,
-      conic-gradient(from var(--angle), #ff3c3c, #ffc828, #3cdc3c, #3c8cff, #b43cff, #ff3c3c) border-box !important;
-    color: #fff !important;
-    animation: rainbowSpin 3s linear infinite;
+      conic-gradient(from var(--angle), #d04040, #d0a040, #40d070, #4070d0, #a040d0, #d04040) border-box !important;
+    animation: spin 3s linear infinite;
   }
-  .genre-btn[data-genre="fusion"]:not(.active):hover {
-    border-color: transparent;
-    background:
-      linear-gradient(var(--bg), var(--bg)) padding-box,
-      conic-gradient(from 0deg, rgba(255,60,60,.35), rgba(255,200,40,.35), rgba(60,220,60,.35), rgba(60,140,255,.35), rgba(180,60,255,.35), rgba(255,60,60,.35)) border-box;
-  }
-  .genre-sep {
-    color: var(--text-muted);
-    font-size: .6rem;
-    padding: 0 .15rem;
-    user-select: none;
-  }
+  .genre-sep { color: var(--text-3); font-size: .55rem; padding: 0 .1rem; user-select: none; }
 
-  /* ---- CONTROLS ---- */
-  .controls {
-    display: flex;
-    gap: .5rem;
-    margin: 1rem 0;
-    flex-wrap: wrap;
-  }
-  .btn {
-    padding: .55rem 1.3rem;
-    border-radius: var(--radius);
-    border: 1px solid transparent;
-    font-family: var(--mono);
-    font-size: .78rem;
-    font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all .15s;
+  /* ---- PRIMARY ACTION ---- */
+  .action-row {
+    margin: 1.2rem 0 .6rem;
   }
   .btn-generate {
-    background: var(--accent);
-    color: var(--bg);
-    border-color: var(--accent);
-  }
-  .btn-generate:hover { filter: brightness(1.15); box-shadow: 0 0 16px rgba(232,160,64,.2); }
-  .btn-generate:disabled { opacity: .4; cursor: wait; filter: none; box-shadow: none; }
-  .btn-regen {
-    background: transparent;
-    color: var(--text-dim);
-    border-color: var(--border);
-  }
-  .btn-regen:hover { color: var(--text); border-color: var(--border-hover); }
-  .btn-regen:disabled { opacity: .3; cursor: wait; }
-  .btn-run {
-    background: transparent;
-    color: var(--green);
-    border-color: color-mix(in srgb, var(--green) 30%, transparent);
-  }
-  .btn-run:hover { background: color-mix(in srgb, var(--green) 8%, transparent); border-color: var(--green); }
-  .btn-stop {
-    background: transparent;
-    color: var(--red);
-    border-color: color-mix(in srgb, var(--red) 30%, transparent);
-  }
-  .btn-stop:hover { background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
-
-  /* ---- REFINE / MOOD ---- */
-  .refine-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .3rem;
-    margin: .5rem 0;
-    align-items: center;
-  }
-  .refine-label {
+    width: 100%;
     font-family: var(--mono);
-    font-size: .6rem;
-    color: var(--text-muted);
-    letter-spacing: .06em;
+    font-size: .82rem;
+    font-weight: 600;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    margin-right: .2rem;
-  }
-  .refine-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: .2rem .55rem;
-    border-radius: 100px;
+    background: var(--amber);
+    color: var(--bg);
+    border: none;
+    padding: .7rem;
+    border-radius: var(--r);
     cursor: pointer;
-    font-family: var(--mono);
-    font-size: .62rem;
-    letter-spacing: .02em;
     transition: all .15s;
   }
-  .refine-btn:hover { border-color: var(--border-hover); color: var(--text); }
-  .refine-btn.mood { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 25%, transparent); }
-  .refine-btn.mood:hover { border-color: var(--accent); background: var(--accent-dim); }
-  .refine-btn:disabled { opacity: .3; cursor: wait; }
+  .btn-generate:hover { filter: brightness(1.1); box-shadow: 0 0 20px rgba(232,160,64,.15); }
+  .btn-generate:disabled { opacity: .35; cursor: wait; filter: none; box-shadow: none; }
+
+  /* ---- TRANSPORT ---- */
+  .transport {
+    display: flex; align-items: center; gap: .4rem;
+    margin-bottom: .5rem;
+  }
+  .t-btn {
+    font-family: var(--mono); font-size: .64rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    padding: .3rem .7rem;
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .t-btn:hover { border-color: var(--border-active); color: var(--text-2); }
+  .t-btn.t-play  { color: var(--green); border-color: color-mix(in srgb, var(--green) 25%, transparent); }
+  .t-btn.t-play:hover { background: color-mix(in srgb, var(--green) 6%, transparent); border-color: var(--green); }
+  .t-btn.t-stop  { color: var(--red);   border-color: color-mix(in srgb, var(--red)   25%, transparent); }
+  .t-btn.t-stop:hover { background: color-mix(in srgb, var(--red) 6%, transparent); border-color: var(--red); }
+  .t-btn.t-regen { border-style: dashed; }
+  .t-btn.t-regen:hover { border-style: solid; }
+  .t-btn:disabled { opacity: .3; cursor: wait; }
+  .transport-spacer { flex: 1; }
+
+  /* ---- REFINE / MOOD ---- */
+  .tweak-row {
+    display: flex; flex-wrap: wrap; gap: .3rem;
+    align-items: center; margin-bottom: .3rem;
+  }
+  .tweak-label {
+    font-family: var(--mono); font-size: .58rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-3); margin-right: .15rem; min-width: 3.5rem;
+  }
+  .tweak-btn {
+    font-family: var(--mono); font-size: .6rem; font-weight: 400;
+    letter-spacing: .02em;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    padding: .2rem .5rem;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .tweak-btn:hover { border-color: var(--border-active); color: var(--text-2); }
+  .tweak-btn.mood { color: color-mix(in srgb, var(--amber) 70%, var(--text-3)); border-color: color-mix(in srgb, var(--amber) 18%, var(--border)); }
+  .tweak-btn.mood:hover { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, var(--border)); }
+  .tweak-btn:disabled { opacity: .3; cursor: wait; }
 
   /* ---- STATUS ---- */
   .status {
-    font-family: var(--mono);
-    font-size: .72rem;
-    color: var(--text-muted);
-    margin: .6rem 0;
-    min-height: 1.2em;
+    font-family: var(--mono); font-size: .66rem; font-weight: 400;
+    color: var(--text-3);
+    margin: .5rem 0;
+    min-height: 1em;
     letter-spacing: .02em;
   }
   .status.playing { color: var(--green); }
   .status.error { color: var(--red); }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes dot { 0%,100%{opacity:1} 50%{opacity:.25} }
   .status.playing::before {
     content: '';
     display: inline-block;
     width: 5px; height: 5px;
     background: var(--green);
     border-radius: 50%;
-    margin-right: 6px;
+    margin-right: 5px;
     box-shadow: 0 0 6px var(--green);
-    animation: blink 1.4s ease-in-out infinite;
+    animation: dot 1.2s ease-in-out infinite;
   }
 
   /* ---- EDITOR ---- */
   .editor-wrap {
-    margin-top: 1rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--r);
     overflow: hidden;
     display: none;
-    animation: fadeSlideIn .3s ease-out;
+    animation: reveal .25s ease-out;
   }
   .editor-wrap.visible { display: block; }
-  @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-  .editor-header {
-    display: flex;
-    align-items: center;
-    padding: .45rem .9rem;
+  .editor-bar {
+    display: flex; align-items: center;
+    padding: .35rem .8rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: .58rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-3);
   }
-  .editor-label {
-    font-family: var(--mono);
-    font-size: .62rem;
-    color: var(--text-muted);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-  .editor-hint {
+  .editor-bar-hint {
     margin-left: auto;
-    font-family: var(--mono);
-    font-size: .58rem;
-    color: var(--text-muted);
-    letter-spacing: .02em;
-    opacity: .6;
+    font-weight: 400; letter-spacing: .03em;
+    opacity: .5;
   }
   strudel-editor {
     display: block;
@@ -355,20 +306,19 @@
   /* ---- RESPONSIVE ---- */
   @media (max-width: 600px) {
     body { padding: 1.5rem .75rem 3rem; }
-    h1 { font-size: 1.2rem; }
-    .btn { padding: .5rem 1rem; font-size: .72rem; }
-    .genre-btn { padding: .3rem .65rem; font-size: .65rem; }
+    .tagline { font-size: 1.2rem; }
+    .btn-generate { font-size: .75rem; }
+    .genre-btn { font-size: .6rem; padding: .25rem .6rem; }
   }
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>text-to-strudel</h1>
-    <p class="tagline">Type anything. Pick a genre. Listen.</p>
-  </header>
+<div class="app">
 
-  <details class="api-settings" id="apiSettings">
+  <div class="brand">text-to-strudel</div>
+  <h1 class="tagline">Type anything. Get <em>music</em>.</h1>
+
+  <details class="api" id="apiSettings">
     <summary>api settings</summary>
     <div class="api-row">
       <select id="apiProvider">
@@ -376,14 +326,14 @@
         <option value="gemini">Gemini</option>
       </select>
       <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
-      <button class="btn-small" id="apiSave">Save</button>
+      <button class="api-save" id="apiSave">Save</button>
     </div>
     <div class="api-hint" id="apiHint">No key = algorithmic mode. With key = AI creative mode.</div>
   </details>
 
-  <textarea id="input" placeholder="A word, a phrase, a feeling, a memory..." rows="3"></textarea>
+  <textarea class="prompt-input" id="input" placeholder="A word, a phrase, a feeling..." rows="2"></textarea>
 
-  <div class="genre-row" id="genres">
+  <div class="genres" id="genres">
     <button class="genre-btn active" data-genre="edm">EDM</button>
     <button class="genre-btn" data-genre="jazz">Jazz</button>
     <button class="genre-btn" data-genre="classical">Classical</button>
@@ -396,41 +346,46 @@
     <button class="genre-btn" data-genre="fusion">Fusion</button>
   </div>
 
-  <div class="controls">
-    <button class="btn btn-generate" id="playBtn">Generate</button>
-    <button class="btn btn-regen" id="regenBtn" title="Same input, different result">Regen</button>
-    <button class="btn btn-run" id="runBtn" title="Play current code">Play</button>
-    <button class="btn btn-stop" id="stopBtn">Stop</button>
+  <div class="action-row">
+    <button class="btn-generate" id="playBtn">Generate &amp; Play</button>
   </div>
 
-  <div class="refine-row" id="refineRow" style="display:none">
-    <span class="refine-label">Refine</span>
-    <button class="refine-btn" data-dir="faster">faster</button>
-    <button class="refine-btn" data-dir="slower">slower</button>
-    <button class="refine-btn" data-dir="brighter">brighter</button>
-    <button class="refine-btn" data-dir="darker">darker</button>
-    <button class="refine-btn" data-dir="more reverb">spacious</button>
-    <button class="refine-btn" data-dir="drier">dry</button>
-    <button class="refine-btn" data-dir="louder">louder</button>
-    <button class="refine-btn" data-dir="quieter">quieter</button>
+  <div class="transport">
+    <button class="t-btn t-play" id="runBtn">Play</button>
+    <button class="t-btn t-stop" id="stopBtn">Stop</button>
+    <span class="transport-spacer"></span>
+    <button class="t-btn t-regen" id="regenBtn" title="Same input, new interpretation">Regen</button>
   </div>
-  <div class="refine-row" id="moodRow" style="display:none">
-    <span class="refine-label">Mood</span>
-    <button class="refine-btn mood" data-dir="make it darker and moodier">dark</button>
-    <button class="refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
-    <button class="refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
-    <button class="refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
+
+  <div class="tweak-row" id="refineRow" style="display:none">
+    <span class="tweak-label">Refine</span>
+    <button class="tweak-btn refine-btn" data-dir="faster">faster</button>
+    <button class="tweak-btn refine-btn" data-dir="slower">slower</button>
+    <button class="tweak-btn refine-btn" data-dir="brighter">brighter</button>
+    <button class="tweak-btn refine-btn" data-dir="darker">darker</button>
+    <button class="tweak-btn refine-btn" data-dir="more reverb">spacious</button>
+    <button class="tweak-btn refine-btn" data-dir="drier">dry</button>
+    <button class="tweak-btn refine-btn" data-dir="louder">louder</button>
+    <button class="tweak-btn refine-btn" data-dir="quieter">quieter</button>
+  </div>
+  <div class="tweak-row" id="moodRow" style="display:none">
+    <span class="tweak-label">Mood</span>
+    <button class="tweak-btn refine-btn mood" data-dir="make it darker and moodier">dark</button>
+    <button class="tweak-btn refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
+    <button class="tweak-btn refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
+    <button class="tweak-btn refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
   </div>
 
   <div class="status" id="status"></div>
 
   <div class="editor-wrap" id="editorWrap">
-    <div class="editor-header">
-      <span class="editor-label">editor</span>
-      <span class="editor-hint">ctrl+enter play / ctrl+. stop</span>
+    <div class="editor-bar">
+      <span>editor</span>
+      <span class="editor-bar-hint">ctrl+enter play / ctrl+. stop</span>
     </div>
     <strudel-editor id="strudelEditor"></strudel-editor>
   </div>
+
 </div>
 <script src="https://unpkg.com/@strudel/repl@latest"></script>
 <script src="app.js"></script>
