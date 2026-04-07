@@ -1171,10 +1171,17 @@ async function generateWithGemini(text, genre, apiKey) {
 // ---- Post-generation Validation ----
 // Fix verified LLM hallucinations that cause runtime errors.
 function validateAndFix(code) {
-  // setbpm does NOT exist in Strudel — convert to setcpm(bpm/4)
-  code = code.replace(/setbpm\s*\(\s*(\d+)\s*\)/g, 'setcpm($1/4)');
-  // setBpm variant
-  code = code.replace(/setBpm\s*\(\s*(\d+)\s*\)/g, 'setcpm($1/4)');
+  // setbpm/setBpm/setBPM do NOT exist in Strudel — convert to setcpm
+  // Case: setbpm(120) → setcpm(120/4)
+  // Case: setbpm(120/4) → setcpm(120/4) (already has /4)
+  // Case: setbpm(120.5) → setcpm(120.5/4)
+  code = code.replace(/set[Bb][Pp][Mm]\s*\(\s*([^)]+)\)/g, function(m, inner) {
+    inner = inner.trim();
+    // if already has /4, just replace function name
+    if (inner.indexOf('/4') !== -1) return 'setcpm(' + inner + ')';
+    // otherwise add /4
+    return 'setcpm(' + inner + '/4)';
+  });
   // GM pad numbered names → unnumbered (MIDI GM standard vs Strudel naming)
   code = code.replace(/gm_pad_1[_a-z]*/g, 'gm_pad_new_age');
   code = code.replace(/gm_pad_2[_a-z]*/g, 'gm_pad_warm');
