@@ -149,11 +149,7 @@
     border-color: var(--gc, var(--amber));
     background: color-mix(in srgb, var(--gc, var(--amber)) 10%, transparent);
   }
-  .genre-btn.fusion-pick {
-    color: #fff !important;
-    border-color: var(--gc) !important;
-    background: color-mix(in srgb, var(--gc) 12%, transparent) !important;
-  }
+  /* fusion-pick styled via rainbow below */
   .genre-btn[data-genre="edm"]       { --gc: #d040d0; }
   .genre-btn[data-genre="jazz"]      { --gc: #d0b040; }
   .genre-btn[data-genre="classical"] { --gc: #8888aa; }
@@ -201,10 +197,22 @@
   }
   .fusion-toggle input:checked ~ .fusion-label { color: var(--amber); }
   .fusion-hint {
-    font-size: .6rem; color: var(--text-3); opacity: 0;
+    font-size: .6rem; color: var(--text-2); opacity: 0;
     transition: opacity .2s;
   }
   .fusion-toggle input:checked ~ .fusion-hint { opacity: 1; }
+
+  /* Fusion-pick: rainbow border on selected genres when fusion is active */
+  @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  @keyframes spin { to { --angle: 360deg; } }
+  .genre-btn.fusion-pick {
+    border-color: transparent !important;
+    color: #fff !important;
+    background:
+      linear-gradient(var(--bg), var(--bg)) padding-box,
+      conic-gradient(from var(--angle), #d04040, #d0a040, #40d070, #4070d0, #a040d0, #d04040) border-box !important;
+    animation: spin 3s linear infinite;
+  }
 
   /* ---- PRIMARY ACTION ---- */
   .action-row {
