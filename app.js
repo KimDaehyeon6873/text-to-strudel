@@ -1172,42 +1172,65 @@ async function generateWithGemini(text, genre, apiKey) {
   return validateAndFix(stripFences(data.candidates[0].content.parts[0].text));
 }
 
-// ---- Post-generation Validation ----
-// Fix verified LLM hallucinations that cause runtime errors.
-function validateAndFix(code) {
-  // setbpm/setBpm/setBPM do NOT exist in Strudel — convert to setcpm
-  // Case: setbpm(120) → setcpm(120/4)
-  // Case: setbpm(120/4) → setcpm(120/4) (already has /4)
-  // Case: setbpm(120.5) → setcpm(120.5/4)
-  code = code.replace(/set[Bb][Pp][Mm]\s*\(\s*([^)]+)\)/g, function(m, inner) {
-    inner = inner.trim();
-    // if already has /4, just replace function name
-    if (inner.indexOf('/4') !== -1) return 'setcpm(' + inner + ')';
-    // otherwise add /4
-    return 'setcpm(' + inner + '/4)';
-  });
-  // GM pad numbered names → unnumbered (MIDI GM standard vs Strudel naming)
-  code = code.replace(/gm_pad_1[_a-z]*/g, 'gm_pad_new_age');
-  code = code.replace(/gm_pad_2[_a-z]*/g, 'gm_pad_warm');
-  code = code.replace(/gm_pad_3[_a-z]*/g, 'gm_pad_poly');
-  code = code.replace(/gm_pad_4[_a-z]*/g, 'gm_pad_choir');
-  code = code.replace(/gm_pad_5[_a-z]*/g, 'gm_pad_bowed');
-  code = code.replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic');
-  code = code.replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo');
-  code = code.replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
-  // .stutter() does NOT exist — convert to .ply()
-  code = code.replace(/\.stutter\s*\(/g, '.ply(');
-  // line() does NOT exist — convert to saw.range().slow()
-  code = code.replace(/\bline\s*\(\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, 'saw.range($1,$2).slow($3)');
-  // ramp() same issue
-  code = code.replace(/\bramp\s*\(\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, 'saw.range($1,$2).slow($3)');
-  // Fix mini-notation: x(~ x x ~) → x is not euclidean, use [~ x x ~]
-  // () in mini-notation is ONLY for euclidean: x(k,n) or x(k,n,offset)
-  // LLMs often use () for grouping — replace non-euclidean () with []
-  code = code.replace(/"([^"]*)"/g, function(match, inner) {
-    return '"' + inner.replace(/\(([^)]*[~a-gA-G][^)]*)\)/g, '[$1]') + '"';
-  });
-  return code;
+// ---- Pre-evaluation normalization (silent, non-functional fixes only) ----
+function normalize(code) {
+  // GM pad numbered names → unnumbered (cosmetic, won't cause errors but won't load)
+  return code
+    .replace(/gm_pad_1[_a-z]*/g, 'gm_pad_new_age')
+    .replace(/gm_pad_2[_a-z]*/g, 'gm_pad_warm')
+    .replace(/gm_pad_3[_a-z]*/g, 'gm_pad_poly')
+    .replace(/gm_pad_4[_a-z]*/g, 'gm_pad_choir')
+    .replace(/gm_pad_5[_a-z]*/g, 'gm_pad_bowed')
+    .replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic')
+    .replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo')
+    .replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
+}
+
+// ---- Dynamic error recovery: parse error → fix → retry ----
+function tryFixFromError(code, errorMsg) {
+  // "X is not defined" → known substitutions or remove the call
+  var notDefined = errorMsg.match(/(\w+) is not defined/);
+  if (notDefined) {
+    var name = notDefined[1];
+    // known substitutions
+    if (/^set[Bb][Pp][Mm]$/.test(name)) {
+      return code.replace(/set[Bb][Pp][Mm]\s*\(\s*([^)]+)\)/g, function(m, inner) {
+        return 'setcpm(' + (inner.trim().indexOf('/4') !== -1 ? inner.trim() : inner.trim() + '/4') + ')';
+      });
+    }
+    if (name === 'line' || name === 'ramp') {
+      return code.replace(new RegExp('\\b' + name + '\\s*\\(\\s*([^,]+),\\s*([^,]+),\\s*([^)]+)\\)', 'g'), 'saw.range($1,$2).slow($3)');
+    }
+    // generic: comment out lines containing the undefined name
+    return code.split('\n').map(function(l) {
+      // don't comment out lines that are already comments
+      if (l.trim().indexOf('//') === 0) return l;
+      if (l.indexOf(name) !== -1) return '// [auto-disabled: ' + name + ' not defined] ' + l;
+      return l;
+    }).join('\n');
+  }
+
+  // "X is not a function" → known substitutions or remove the .X() call
+  var notFunc = errorMsg.match(/(\w+) is not a function/);
+  if (notFunc) {
+    var fn = notFunc[1];
+    var subs = { stutter: 'ply', fadeIn: 'gain', fadeOut: 'gain', after: 'late' };
+    if (subs[fn]) {
+      return code.replace(new RegExp('\\.' + fn + '\\s*\\(', 'g'), '.' + subs[fn] + '(');
+    }
+    // unknown function: strip the .fn(...) call entirely
+    return code.replace(new RegExp('\\.' + fn + '\\s*\\([^)]*\\)', 'g'), '');
+  }
+
+  // "parse error at line N" → try () → [] fix in mini-notation
+  var parseErr = errorMsg.match(/parse error/i);
+  if (parseErr) {
+    return code.replace(/"([^"]*)"/g, function(match, inner) {
+      return '"' + inner.replace(/\(([^)]*[~a-gA-G][^)]*)\)/g, '[$1]') + '"';
+    });
+  }
+
+  return null; // no fix found
 }
 
 function stripFences(code) {
@@ -1221,34 +1244,130 @@ function getEditor() {
   return editorEl && editorEl.editor ? editorEl.editor : null;
 }
 
+var MAX_FIX_ATTEMPTS = 3;
+
 function setCodeAndPlay(code) {
-  // always run validation as last safety net
-  code = validateAndFix(code);
+  code = normalize(code);
   var statusEl = document.getElementById('status');
   var btn = document.getElementById('playBtn');
   btn.disabled = true;
   statusEl.className = 'status';
   statusEl.textContent = 'Loading editor...';
+  var fixAttempt = 0;
 
-  function attempt() {
+  function waitForEditor(cb) {
     var ed = getEditor();
-    if (!ed) { setTimeout(attempt, 200); return; }
-    try {
-      ed.setCode(code);
-      statusEl.textContent = 'Evaluating...';
-      setTimeout(function() {
-        ed.evaluate(true);
-        statusEl.className = 'status playing';
-        statusEl.textContent = 'Playing — edit the code above, then Ctrl+Enter';
-        btn.disabled = false;
-      }, 150);
-    } catch (e) {
-      statusEl.className = 'status error';
-      statusEl.textContent = 'Error: ' + e.message;
-      btn.disabled = false;
-    }
+    if (ed) return cb(ed);
+    setTimeout(function() { waitForEditor(cb); }, 200);
   }
-  attempt();
+
+  function evalAndRecover(ed, currentCode) {
+    ed.setCode(currentCode);
+    statusEl.textContent = fixAttempt > 0
+      ? 'Fix attempt ' + fixAttempt + '/' + MAX_FIX_ATTEMPTS + '...'
+      : 'Evaluating...';
+
+    setTimeout(function() {
+      try {
+        ed.evaluate(true);
+      } catch(e) { /* editor handles internally */ }
+
+      // check for errors after evaluation
+      setTimeout(function() {
+        var error = null;
+        try {
+          var repl = ed.repl || (editorEl && editorEl.repl);
+          if (repl && repl.state && repl.state.evalError) {
+            error = repl.state.evalError;
+          }
+        } catch(e) {}
+
+        // also check for errors via the editor's visual state
+        if (!error) {
+          var errorEl = editorEl.querySelector && editorEl.querySelector('.error-message, [class*="error"]');
+          if (errorEl && errorEl.textContent) error = errorEl.textContent;
+        }
+
+        if (error && fixAttempt < MAX_FIX_ATTEMPTS) {
+          fixAttempt++;
+          var errMsg = typeof error === 'string' ? error : (error.message || String(error));
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Error: ' + errMsg.substring(0, 80) + ' — fixing...';
+
+          // Try LLM fix if API key available
+          var apiKey = getApiKey();
+          if (apiKey) {
+            fixWithLLM(currentCode, errMsg, apiKey).then(function(fixedCode) {
+              if (fixedCode && fixedCode !== currentCode) {
+                evalAndRecover(ed, normalize(fixedCode));
+              } else {
+                // LLM couldn't fix — try algorithmic
+                var algoFix = tryFixFromError(currentCode, errMsg);
+                if (algoFix && algoFix !== currentCode) {
+                  evalAndRecover(ed, algoFix);
+                } else {
+                  showPlaying(statusEl, btn);
+                }
+              }
+            }).catch(function() {
+              var algoFix = tryFixFromError(currentCode, errMsg);
+              if (algoFix && algoFix !== currentCode) {
+                evalAndRecover(ed, algoFix);
+              } else {
+                showPlaying(statusEl, btn);
+              }
+            });
+            return;
+          }
+
+          // No API key — algorithmic fix only
+          var algoFix = tryFixFromError(currentCode, errMsg);
+          if (algoFix && algoFix !== currentCode) {
+            evalAndRecover(ed, algoFix);
+            return;
+          }
+        }
+
+        showPlaying(statusEl, btn);
+      }, 300);
+    }, 150);
+  }
+
+  function showPlaying(statusEl, btn) {
+    if (fixAttempt > 0) {
+      statusEl.className = 'status playing';
+      statusEl.textContent = 'Playing (auto-fixed ' + fixAttempt + 'x)';
+    } else {
+      statusEl.className = 'status playing';
+      statusEl.textContent = 'Playing';
+    }
+    btn.disabled = false;
+  }
+
+  waitForEditor(function(ed) { evalAndRecover(ed, code); });
+}
+
+// ---- LLM error fix: send code + error → get fixed code ----
+async function fixWithLLM(code, errorMsg, apiKey) {
+  var prompt = 'This Strudel code has an error:\n\n' + code + '\n\nError: ' + errorMsg + '\n\nFix ONLY the error. Return the complete fixed code. No explanation.';
+  var provider = getProvider();
+
+  if (provider === 'gemini') {
+    var resp = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.' }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
+    var data = await resp.json();
+    if (data.error || !data.candidates) return null;
+    return stripFences(data.candidates[0].content.parts[0].text);
+  } else {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.', messages: [{ role: 'user', content: prompt }] }) });
+    var data = await resp.json();
+    if (data.error || !data.content) return null;
+    return stripFences(data.content[0].text);
+  }
 }
 
 function stopPlayback() {
