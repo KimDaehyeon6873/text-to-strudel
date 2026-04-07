@@ -1522,17 +1522,25 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
     apiDetails.classList.add(state);
   }
 
+  // verified status stored per provider: tts_verified_claude, tts_verified_gemini
+  function isVerified(prov) { return localStorage.getItem('tts_verified_' + prov) === '1'; }
+  function setVerified(prov, v) { localStorage.setItem('tts_verified_' + prov, v ? '1' : '0'); }
+
   function refreshProviderUI() {
     var prov = provSelect.value;
     keyInput.placeholder = prov === 'gemini' ? 'AIza...' : 'sk-ant-...';
     var key = getApiKey(prov);
     keyInput.value = key;
-    if (key) {
-      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' key saved.';
+    if (key && isVerified(prov)) {
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
       setApiState('verified');
+    } else if (key) {
+      hint.textContent = 'Key saved but not verified. Press Save to verify.';
+      hint.className = 'api-hint';
+      setApiState('no-key');
     } else {
-      hint.textContent = 'No key for ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + '. Algorithmic mode.';
+      hint.textContent = 'No key. Algorithmic mode.';
       hint.className = 'api-hint';
       setApiState('no-key');
     }
@@ -1548,57 +1556,64 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
     refreshProviderUI();
   });
 
-  document.getElementById('apiSave').addEventListener('click', async function() {
+  // save + verify
+  async function doSaveKey() {
     var key = keyInput.value.trim();
     var prov = provSelect.value;
 
     if (!key) {
       saveApiKey('', prov);
+      setVerified(prov, false);
       saveProvider(prov);
-      hint.textContent = 'Cleared. Using algorithmic mode.';
+      hint.textContent = 'Cleared. Algorithmic mode.';
       hint.className = 'api-hint';
       setApiState('no-key');
       return;
     }
 
-    hint.textContent = 'Verifying ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' key...';
+    hint.textContent = 'Verifying...';
     hint.className = 'api-hint';
 
     try {
       if (prov === 'gemini') {
-        var resp = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models?key=' + key
-        );
+        var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
         var data = await resp.json();
         if (data.error) throw new Error(data.error.message);
       } else {
         var resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 1,
-            messages: [{ role: 'user', content: 'hi' }],
-          }),
+          headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
         });
         var data = await resp.json();
         if (data.error && data.error.type === 'authentication_error') throw new Error('Invalid API key');
       }
 
       saveApiKey(key, prov);
+      setVerified(prov, true);
       saveProvider(prov);
-      hint.textContent = 'Verified. ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' verified.';
       hint.className = 'api-hint saved';
       setApiState('verified');
     } catch (e) {
-      hint.textContent = 'Invalid key: ' + e.message;
+      setVerified(prov, false);
+      hint.textContent = 'Invalid: ' + e.message;
       hint.className = 'api-hint error';
       setApiState('invalid');
+    }
+  }
+
+  document.getElementById('apiSave').addEventListener('click', doSaveKey);
+
+  // Enter in key input triggers save
+  keyInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSaveKey(); }
+  });
+
+  // Click outside closes details
+  document.addEventListener('click', function(e) {
+    if (apiDetails.open && !apiDetails.contains(e.target)) {
+      apiDetails.open = false;
     }
   });
 })();
