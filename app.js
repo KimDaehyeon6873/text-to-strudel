@@ -788,7 +788,8 @@ When shifting the mood of a piece, adjust these parameters together:
 10. MOVEMENT: .lpf(sine.range(lo, hi).slow(N)) on drums or bass for build/release.
 11. MINI-NOTATION SYNTAX: () is ONLY for euclidean rhythms x(k,n). For grouping use []. WRONG: .struct("x(~ x x ~)"). RIGHT: .struct("[~ x x ~]"). WRONG: "<0 2 4 6>7". RIGHT: "<0 2 4 6>".add(7).
 12. Use setcpm(BPM/4) for tempo. setbpm DOES NOT EXIST.
-13. line(a,b,n) and ramp() DO NOT EXIST. For linear sweep use saw.range(a,b).slow(n).`;
+13. line(a,b,n) and ramp() DO NOT EXIST. For linear sweep use saw.range(a,b).slow(n).
+14. .stutter() DOES NOT EXIST. Use .ply(n) to repeat each event n times.`;
 
 function getApiKey() {
   return localStorage.getItem('tts_api_key') || '';
@@ -1194,6 +1195,8 @@ function validateAndFix(code) {
   code = code.replace(/gm_pad_6[_a-z]*/g, 'gm_pad_metallic');
   code = code.replace(/gm_pad_7[_a-z]*/g, 'gm_pad_halo');
   code = code.replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
+  // .stutter() does NOT exist — convert to .ply()
+  code = code.replace(/\.stutter\s*\(/g, '.ply(');
   // line() does NOT exist — convert to saw.range().slow()
   code = code.replace(/\bline\s*\(\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g, 'saw.range($1,$2).slow($3)');
   // ramp() same issue
