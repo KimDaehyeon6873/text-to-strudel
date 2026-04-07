@@ -1334,13 +1334,8 @@ function setCodeAndPlay(code) {
   }
 
   function showPlaying(statusEl, btn) {
-    if (fixAttempt > 0) {
-      statusEl.className = 'status playing';
-      statusEl.textContent = 'Playing (auto-fixed ' + fixAttempt + 'x)';
-    } else {
-      statusEl.className = 'status playing';
-      statusEl.textContent = 'Playing';
-    }
+    statusEl.className = 'status playing';
+    statusEl.textContent = fixAttempt > 0 ? 'Playing (fixed ' + fixAttempt + 'x)' : 'Playing';
     btn.disabled = false;
   }
 
