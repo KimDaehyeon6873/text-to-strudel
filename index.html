@@ -4,222 +4,367 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>text-to-strudel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #06060b;
+    --surface: #0d0d14;
+    --border: #1a1a25;
+    --border-hover: #2a2a3a;
+    --text: #c8c8d0;
+    --text-dim: #555560;
+    --text-muted: #333340;
+    --accent: #e8a040;
+    --accent-dim: rgba(232,160,64,.08);
+    --green: #40c870;
+    --red: #e05050;
+    --mono: 'Space Mono', 'Consolas', monospace;
+    --sans: 'DM Sans', -apple-system, sans-serif;
+    --radius: 6px;
+    --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
-    background: #08080f;
-    color: #e0e0e0;
-    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding: 2rem 1rem;
+    padding: 2.5rem 1.25rem 4rem;
+    position: relative;
   }
-  .container { max-width: 740px; width: 100%; }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--grain);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .container { max-width: 760px; width: 100%; }
+
+  /* ---- HEADER ---- */
+  header { margin-bottom: 2.5rem; }
   h1 {
-    font-size: 2rem;
-    font-weight: 300;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    margin-bottom: .25rem;
-  }
-  .subtitle {
-    color: #666;
-    font-size: .85rem;
-    margin-bottom: 2rem;
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 700;
     letter-spacing: .04em;
-  }
-  textarea {
-    width: 100%;
-    background: #111118;
-    border: 1px solid #222;
-    color: #e0e0e0;
-    font-family: inherit;
-    font-size: 1.1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    resize: vertical;
-    min-height: 80px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  textarea:focus { border-color: #444; }
-  textarea::placeholder { color: #444; }
-  .genres {
+    color: var(--text);
     display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-    margin: 1.2rem 0;
+    align-items: center;
+    gap: .6rem;
   }
-  .genre-btn {
-    background: #111118;
-    border: 1px solid #222;
-    color: #999;
-    padding: .5rem 1.1rem;
-    border-radius: 6px;
+  h1::before {
+    content: '';
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent), 0 0 4px var(--accent);
+    flex-shrink: 0;
+  }
+  .tagline {
+    font-family: var(--sans);
+    font-size: .82rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text-dim);
+    margin-top: .35rem;
+    padding-left: 1.6rem;
+  }
+
+  /* ---- API SETTINGS ---- */
+  .api-settings { margin-bottom: 1.5rem; }
+  .api-settings summary {
     cursor: pointer;
-    font-size: .85rem;
-    letter-spacing: .03em;
+    font-family: var(--mono);
+    font-size: .7rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .3rem 0;
+    user-select: none;
+    transition: color .15s;
+  }
+  .api-settings summary:hover { color: var(--text-dim); }
+  .api-settings[open] summary { color: var(--accent); }
+  .api-row { display: flex; gap: .5rem; margin-top: .5rem; }
+  .api-row select, .api-row input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: .8rem;
+    padding: .4rem .6rem;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .api-row select { font-family: var(--sans); }
+  .api-row input { flex: 1; font-family: var(--mono); font-size: .75rem; }
+  .api-row select:focus, .api-row input:focus { border-color: var(--accent); }
+  .btn-small {
+    background: var(--surface);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: .35rem .7rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
     transition: all .15s;
   }
-  .genre-btn:hover { border-color: #444; color: #ccc; }
-  .genre-btn.active { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #111118); }
-  .genre-btn[data-genre="edm"] { --accent: #ff00ff; }
-  .genre-btn[data-genre="jazz"] { --accent: #ffd700; }
-  .genre-btn[data-genre="classical"] { --accent: #b0b0cc; }
-  .genre-btn[data-genre="blues"] { --accent: #4488ff; }
-  .genre-btn[data-genre="ambient"] { --accent: #00e5ff; }
-  .genre-btn[data-genre="lofi"] { --accent: #ff8866; }
-  .genre-btn[data-genre="world"] { --accent: #00ff88; }
-  .genre-btn[data-genre="random"] { --accent: #fff; }
-  .genre-btn[data-genre="fusion"] { --accent: linear-gradient(90deg,#ff00ff,#ffd700); border-image: linear-gradient(90deg,#ff00ff,#ffd700) 1; }
-  .genre-btn[data-genre="fusion"].active { border-image: linear-gradient(90deg,#ff00ff,#ffd700) 1; background: linear-gradient(90deg, rgba(255,0,255,.12), rgba(255,215,0,.12)); color: #fff; }
-  .genre-btn.fusion-pick { border-color: var(--accent) !important; color: #fff !important; background: color-mix(in srgb, var(--accent) 18%, #111118) !important; }
-  .genre-sep { color: #333; font-size: .75rem; display: flex; align-items: center; padding: 0 .25rem; }
-  .api-settings { margin-bottom: 1.2rem; }
-  .api-settings summary {
-    cursor: pointer; color: #555; font-size: .8rem; letter-spacing: .03em;
-    padding: .4rem 0; user-select: none;
+  .btn-small:hover { color: var(--text); border-color: var(--border-hover); }
+  .api-hint {
+    font-size: .68rem;
+    color: var(--text-muted);
+    margin-top: .35rem;
+    font-style: italic;
   }
-  .api-settings summary:hover { color: #888; }
-  .api-settings[open] summary { color: #999; }
-  .api-row { display: flex; gap: .5rem; margin-top: .5rem; }
-  .api-row select {
-    background: #111118; border: 1px solid #222; color: #e0e0e0;
-    font-size: .85rem; padding: .45rem .5rem; border-radius: 6px; outline: none;
+  .api-hint.saved { color: var(--green); font-style: normal; }
+
+  /* ---- INPUT ---- */
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 1.05rem;
+    font-weight: 300;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius);
+    resize: vertical;
+    min-height: 72px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    line-height: 1.5;
   }
-  .api-row select:focus { border-color: #444; }
-  .api-row input {
-    flex: 1; background: #111118; border: 1px solid #222; color: #e0e0e0;
-    font-family: monospace; font-size: .85rem; padding: .45rem .7rem;
-    border-radius: 6px; outline: none;
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 20px rgba(232,160,64,.06);
   }
-  .api-row input:focus { border-color: #444; }
-  .btn-small {
-    background: #1a1a24; color: #999; border: 1px solid #333; padding: .4rem .8rem;
-    border-radius: 6px; cursor: pointer; font-size: .8rem;
+  textarea::placeholder { color: var(--text-muted); font-style: italic; }
+
+  /* ---- GENRE BUTTONS ---- */
+  .genre-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin: 1.2rem 0;
+    align-items: center;
   }
-  .btn-small:hover { color: #ccc; border-color: #555; }
-  .api-hint { font-size: .7rem; color: #444; margin-top: .4rem; }
-  .api-hint.saved { color: #5c5; }
-  .controls { display: flex; gap: .75rem; margin: 1.2rem 0; }
-  .btn {
-    padding: .65rem 1.6rem;
-    border-radius: 6px;
-    border: none;
-    font-size: .9rem;
+  .genre-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: .35rem .85rem;
+    border-radius: 100px;
     cursor: pointer;
-    font-weight: 500;
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .03em;
+    transition: all .15s;
+    position: relative;
+  }
+  .genre-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .genre-btn.active {
+    color: #fff;
+    border-color: var(--g-color, var(--accent));
+    background: color-mix(in srgb, var(--g-color, var(--accent)) 10%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--g-color, var(--accent)) 15%, transparent);
+  }
+  .genre-btn.fusion-pick {
+    color: #fff !important;
+    border-color: var(--g-color, var(--accent)) !important;
+    background: color-mix(in srgb, var(--g-color, var(--accent)) 14%, transparent) !important;
+  }
+  .genre-btn[data-genre="edm"]       { --g-color: #e040e0; }
+  .genre-btn[data-genre="jazz"]      { --g-color: #e0c040; }
+  .genre-btn[data-genre="classical"] { --g-color: #9090b0; }
+  .genre-btn[data-genre="blues"]     { --g-color: #4080e0; }
+  .genre-btn[data-genre="ambient"]   { --g-color: #40c8e0; }
+  .genre-btn[data-genre="lofi"]      { --g-color: #e08060; }
+  .genre-btn[data-genre="world"]     { --g-color: #40e080; }
+  .genre-btn[data-genre="random"]    { --g-color: #a0a0a0; }
+  .genre-btn[data-genre="fusion"]    { --g-color: var(--accent); }
+  .genre-sep {
+    color: var(--text-muted);
+    font-size: .6rem;
+    padding: 0 .15rem;
+    user-select: none;
+  }
+
+  /* ---- CONTROLS ---- */
+  .controls {
+    display: flex;
+    gap: .5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: .55rem 1.3rem;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font-family: var(--mono);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-generate {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .btn-generate:hover { filter: brightness(1.15); box-shadow: 0 0 16px rgba(232,160,64,.2); }
+  .btn-generate:disabled { opacity: .4; cursor: wait; filter: none; box-shadow: none; }
+  .btn-regen {
+    background: transparent;
+    color: var(--text-dim);
+    border-color: var(--border);
+  }
+  .btn-regen:hover { color: var(--text); border-color: var(--border-hover); }
+  .btn-regen:disabled { opacity: .3; cursor: wait; }
+  .btn-run {
+    background: transparent;
+    color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 30%, transparent);
+  }
+  .btn-run:hover { background: color-mix(in srgb, var(--green) 8%, transparent); border-color: var(--green); }
+  .btn-stop {
+    background: transparent;
+    color: var(--red);
+    border-color: color-mix(in srgb, var(--red) 30%, transparent);
+  }
+  .btn-stop:hover { background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
+
+  /* ---- REFINE / MOOD ---- */
+  .refine-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin: .5rem 0;
+    align-items: center;
+  }
+  .refine-label {
+    font-family: var(--mono);
+    font-size: .6rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-right: .2rem;
+  }
+  .refine-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: .2rem .55rem;
+    border-radius: 100px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: .62rem;
     letter-spacing: .02em;
     transition: all .15s;
   }
-  .btn-play { background: #e0e0e0; color: #08080f; }
-  .btn-play:hover { background: #fff; }
-  .btn-play:disabled { background: #333; color: #666; cursor: wait; }
-  .btn-run { background: #1a3a1a; color: #5c5; border: 1px solid #2a4a2a; }
-  .btn-run:hover { background: #1a4a1a; color: #7e7; border-color: #3a5a3a; }
-  .btn-regen { background: #1a1a24; color: #999; border: 1px solid #333; }
-  .btn-regen:hover { border-color: #555; color: #ccc; }
-  .btn-regen:disabled { color: #444; cursor: wait; }
-  .btn-stop { background: #1a1a24; color: #e0e0e0; border: 1px solid #333; }
-  .btn-stop:hover { border-color: #555; }
-  .seed-display { font-size: .7rem; color: #333; margin-left: .5rem; font-family: monospace; }
-  .btn-copy {
-    margin-left: auto;
-    background: transparent;
-    color: #666;
-    border: 1px solid #222;
-    font-size: .8rem;
-    padding: .4rem .8rem;
+  .refine-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .refine-btn.mood { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .refine-btn.mood:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .refine-btn:disabled { opacity: .3; cursor: wait; }
+
+  /* ---- STATUS ---- */
+  .status {
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin: .6rem 0;
+    min-height: 1.2em;
+    letter-spacing: .02em;
   }
-  .btn-copy:hover { color: #aaa; border-color: #444; }
+  .status.playing { color: var(--green); }
+  .status.error { color: var(--red); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .status.playing::before {
+    content: '';
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 6px var(--green);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  /* ---- EDITOR ---- */
   .editor-wrap {
-    margin-top: 1.5rem;
-    border: 1px solid #1a1a24;
-    border-radius: 8px;
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     overflow: hidden;
     display: none;
+    animation: fadeSlideIn .3s ease-out;
   }
   .editor-wrap.visible { display: block; }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .editor-header {
     display: flex;
     align-items: center;
-    padding: .5rem 1rem;
-    background: #111118;
-    border-bottom: 1px solid #1a1a24;
+    padding: .45rem .9rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
   }
   .editor-label {
-    font-size: .75rem;
-    color: #555;
-    letter-spacing: .05em;
+    font-family: var(--mono);
+    font-size: .62rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
     text-transform: uppercase;
   }
   .editor-hint {
     margin-left: auto;
-    font-size: .7rem;
-    color: #444;
+    font-family: var(--mono);
+    font-size: .58rem;
+    color: var(--text-muted);
     letter-spacing: .02em;
+    opacity: .6;
   }
   strudel-editor {
     display: block;
-    min-height: 180px;
-    max-height: 520px;
+    min-height: 200px;
+    max-height: 540px;
     overflow-y: auto;
   }
-  .status {
-    font-size: .8rem;
-    color: #444;
-    margin-top: .5rem;
-    min-height: 1.2em;
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 600px) {
+    body { padding: 1.5rem .75rem 3rem; }
+    h1 { font-size: 1.2rem; }
+    .btn { padding: .5rem 1rem; font-size: .72rem; }
+    .genre-btn { padding: .3rem .65rem; font-size: .65rem; }
   }
-  .status.playing { color: #5c5; }
-  .status.error { color: #e55; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .status.playing::before {
-    content: '';
-    display: inline-block;
-    width: 6px; height: 6px;
-    background: #5c5;
-    border-radius: 50%;
-    margin-right: 6px;
-    animation: pulse 1.2s ease-in-out infinite;
-  }
-  .refine-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
-    margin: .6rem 0;
-    align-items: center;
-  }
-  .refine-label {
-    font-size: .7rem;
-    color: #555;
-    letter-spacing: .03em;
-    text-transform: uppercase;
-  }
-  .refine-btn {
-    background: #111118;
-    border: 1px solid #1a1a24;
-    color: #666;
-    padding: .25rem .6rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: .72rem;
-    transition: all .15s;
-  }
-  .refine-btn:hover { border-color: #444; color: #ccc; }
-  .refine-btn.mood { color: #886; border-color: #332; }
-  .refine-btn.mood:hover { color: #cc9; border-color: #554; }
-  .refine-btn:disabled { color: #333; cursor: wait; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>text-to-strudel</h1>
-  <p class="subtitle">Type anything. Pick a genre. Listen.</p>
+  <header>
+    <h1>text-to-strudel</h1>
+    <p class="tagline">Type anything. Pick a genre. Listen.</p>
+  </header>
 
   <details class="api-settings" id="apiSettings">
-    <summary>API Settings</summary>
+    <summary>api settings</summary>
     <div class="api-row">
       <select id="apiProvider">
         <option value="claude">Claude</option>
@@ -232,7 +377,8 @@
   </details>
 
   <textarea id="input" placeholder="A word, a phrase, a feeling, a memory..." rows="3"></textarea>
-  <div class="genres" id="genres">
+
+  <div class="genre-row" id="genres">
     <button class="genre-btn active" data-genre="edm">EDM</button>
     <button class="genre-btn" data-genre="jazz">Jazz</button>
     <button class="genre-btn" data-genre="classical">Classical</button>
@@ -240,18 +386,20 @@
     <button class="genre-btn" data-genre="ambient">Ambient</button>
     <button class="genre-btn" data-genre="lofi">Lo-fi</button>
     <button class="genre-btn" data-genre="world">World</button>
-    <span class="genre-sep">|</span>
+    <span class="genre-sep">/</span>
     <button class="genre-btn" data-genre="random">Random</button>
     <button class="genre-btn" data-genre="fusion">Fusion</button>
   </div>
+
   <div class="controls">
-    <button class="btn btn-play" id="playBtn">Generate &amp; Play</button>
-    <button class="btn btn-regen" id="regenBtn" title="Same input, different result">Regenerate</button>
-    <button class="btn btn-run" id="runBtn" title="Play current code (Ctrl+Enter)">Play</button>
+    <button class="btn btn-generate" id="playBtn">Generate</button>
+    <button class="btn btn-regen" id="regenBtn" title="Same input, different result">Regen</button>
+    <button class="btn btn-run" id="runBtn" title="Play current code">Play</button>
     <button class="btn btn-stop" id="stopBtn">Stop</button>
   </div>
+
   <div class="refine-row" id="refineRow" style="display:none">
-    <span class="refine-label">Refine:</span>
+    <span class="refine-label">Refine</span>
     <button class="refine-btn" data-dir="faster">faster</button>
     <button class="refine-btn" data-dir="slower">slower</button>
     <button class="refine-btn" data-dir="brighter">brighter</button>
@@ -260,17 +408,19 @@
     <button class="refine-btn" data-dir="drier">dry</button>
     <button class="refine-btn" data-dir="louder">louder</button>
     <button class="refine-btn" data-dir="quieter">quieter</button>
-    <span class="refine-label" style="margin-left:.5rem">Mood:</span>
+    <span class="refine-label" style="margin-left:.4rem">Mood</span>
     <button class="refine-btn mood" data-dir="make it darker and moodier">dark</button>
     <button class="refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
     <button class="refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
     <button class="refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
   </div>
+
   <div class="status" id="status"></div>
+
   <div class="editor-wrap" id="editorWrap">
     <div class="editor-header">
-      <span class="editor-label">Edit &amp; Play</span>
-      <span class="editor-hint">Ctrl+Enter play &nbsp; Ctrl+. stop</span>
+      <span class="editor-label">editor</span>
+      <span class="editor-hint">ctrl+enter play / ctrl+. stop</span>
     </div>
     <strudel-editor id="strudelEditor"><!-- --></strudel-editor>
   </div>
