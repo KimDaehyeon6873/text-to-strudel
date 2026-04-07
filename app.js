@@ -1390,17 +1390,56 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
   });
   provSelect.dispatchEvent(new Event('change'));
 
-  document.getElementById('apiSave').addEventListener('click', function() {
+  document.getElementById('apiSave').addEventListener('click', async function() {
     var key = keyInput.value.trim();
     var prov = provSelect.value;
-    saveApiKey(key);
-    saveProvider(prov);
-    if (key) {
-      hint.textContent = 'Saved. ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
-      hint.className = 'api-hint saved';
-    } else {
+
+    if (!key) {
+      saveApiKey('');
+      saveProvider(prov);
       hint.textContent = 'Cleared. Using algorithmic mode.';
       hint.className = 'api-hint';
+      return;
+    }
+
+    // validate key with a minimal API call
+    hint.textContent = 'Verifying ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' key...';
+    hint.className = 'api-hint';
+
+    try {
+      if (prov === 'gemini') {
+        var resp = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models?key=' + key
+        );
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+      } else {
+        var resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'hi' }],
+          }),
+        });
+        var data = await resp.json();
+        if (data.error && data.error.type === 'authentication_error') throw new Error('Invalid API key');
+        // any other response (including successful or rate-limited) means the key is valid
+      }
+
+      saveApiKey(key);
+      saveProvider(prov);
+      hint.textContent = 'Verified. ' + (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
+      hint.className = 'api-hint saved';
+    } catch (e) {
+      hint.textContent = 'Invalid key: ' + e.message;
+      hint.className = 'api-hint error';
     }
   });
 })();
