@@ -789,7 +789,10 @@ When shifting the mood of a piece, adjust these parameters together:
 11. MINI-NOTATION SYNTAX: () is ONLY for euclidean rhythms x(k,n). For grouping use []. WRONG: .struct("x(~ x x ~)"). RIGHT: .struct("[~ x x ~]"). WRONG: "<0 2 4 6>7". RIGHT: "<0 2 4 6>".add(7).
 12. Use setcpm(BPM/4) for tempo. setbpm DOES NOT EXIST.
 13. line(a,b,n) and ramp() DO NOT EXIST. For linear sweep use saw.range(a,b).slow(n).
-14. .stutter() DOES NOT EXIST. Use .ply(n) to repeat each event n times.`;
+14. .stutter() DOES NOT EXIST. Use .ply(n) to repeat each event n times.
+15. FUNCTION CALLS NEED PARENTHESES: .sometimes(x=>x.rev()) NOT .sometimes(x=>x.rev). Same for .fast(), .slow(), .ply() etc inside callbacks.
+16. BASS DENSITY: In EDM/blues/jazz, bass should play multiple notes per cycle. WRONG: n("<0 3 5 7>") = 1 note per cycle = too slow. RIGHT: n("<[0 0 3 0] [5 5 7 5]>") or n("0 3 5 7") = 4 notes per cycle.
+17. TRIADS not power chords: [0,2,4] = root+3rd+5th (triad). [0,4,7] = root+5th+octave (power chord, empty). Use [root, root+2, root+4] for scale-degree triads.`;
 
 function getApiKey(provider) {
   var p = provider || getProvider();
