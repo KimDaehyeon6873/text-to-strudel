@@ -1,0 +1,423 @@
+[2026-04-07T08:46:19.898Z] [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[2026-04-07T08:46:29.510Z] [log] %c🌀 @strudel/core loaded 🌀 background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.516Z] [log] %c[superdough] AudioWorklets loaded background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.516Z] [log] %c[superdough] ready background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.671Z] [log] %c[eval] code updated background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.671Z] [log] %c[cyclist] start background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.673Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.675Z] [log] %c[sampler] load sound "CasioRZ1_bd:0:0".. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.677Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.677Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.679Z] [log] %c[sampler] load sound "CasioRZ1_hh:0:0".. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.679Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.896Z] [log] %c[sampler] load sound "CasioRZ1_hh:0:0"... done! loaded 17.0 KiB in 217ms background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.897Z] [log] %c[sampler] loading sound "CasioRZ1_hh:0" took too long background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.898Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.910Z] [log] %c[sampler] load sound "CasioRZ1_bd:0:0"... done! loaded 28.1 KiB in 235ms background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.910Z] [log] %c[sampler] loading sound "CasioRZ1_bd:0" took too long background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.915Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.983Z] [log] %c[sampler] load sound "CasioRZ1_cp:0:0".. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:46.991Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:47.240Z] [log] %c[sampler] load sound "CasioRZ1_cp:0:0"... done! loaded 35.1 KiB in 257ms background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:47.240Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:47.683Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:47.684Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:48.385Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:48.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:49.391Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:49.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:49.582Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:50.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:50.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:51.194Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:51.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:51.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:52.083Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:52.083Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:53.087Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:53.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:53.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:53.885Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:53.890Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:54.894Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:55.082Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:55.086Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:55.782Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:55.783Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:56.786Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:56.882Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:56.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:57.582Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:57.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:58.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:58.782Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:58.786Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:59.482Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:46:59.482Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:00.487Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:00.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:00.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:01.282Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:01.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:02.294Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:02.484Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:02.486Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:03.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:03.182Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:04.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:04.282Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:04.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:04.982Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:04.986Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:05.994Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:06.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:06.182Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:06.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:06.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:07.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:07.982Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:07.984Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:08.682Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:08.686Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:09.694Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:09.882Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:09.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:10.581Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:10.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:11.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:11.682Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:11.686Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:12.381Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:12.381Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:13.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:13.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:13.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:14.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:14.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:15.194Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:15.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:15.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:16.082Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:16.082Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:17.087Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:17.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:17.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:17.883Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:17.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:18.890Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:18.983Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:18.984Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:19.782Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:19.782Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:20.782Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:20.882Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:20.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:21.582Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:21.583Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:22.590Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:22.783Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:22.790Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:23.482Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:23.482Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:24.486Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:24.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:24.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:25.281Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:25.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:26.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:26.481Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:26.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:27.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:27.182Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:28.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:28.282Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:28.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:28.982Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:28.986Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:29.994Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:30.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:30.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:30.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:30.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:31.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:31.981Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:31.985Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:32.681Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:32.686Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:33.686Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:33.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:33.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:34.581Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:34.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:35.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:35.681Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:35.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:36.381Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:36.381Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:37.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:37.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:37.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:38.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:38.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:39.194Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:39.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:39.385Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:40.085Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:40.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:41.086Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:41.181Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:41.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:41.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:41.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:42.887Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:43.083Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:43.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:43.782Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:43.782Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:44.784Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:44.884Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:44.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:45.582Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:45.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:46.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:46.782Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:46.786Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:47.482Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:47.482Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:48.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:48.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:48.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:49.282Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:49.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:50.294Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:50.481Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:50.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:51.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:51.182Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:52.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:52.282Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:52.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:52.982Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:52.982Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:53.986Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:54.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:54.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:54.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:54.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:55.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:55.982Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:55.986Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:56.683Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:56.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:57.686Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:57.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:57.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:58.581Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:58.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:59.582Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:59.681Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:47:59.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:00.381Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:00.382Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:01.386Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:01.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:01.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:02.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:02.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:03.187Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:03.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:03.385Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:04.082Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:04.082Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:05.082Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:05.183Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:05.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:05.881Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:05.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:06.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:07.082Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:07.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:07.781Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:07.781Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:08.786Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:08.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:08.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:09.582Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:09.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:10.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:10.782Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:10.785Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:11.481Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:11.481Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:12.486Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:12.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:12.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:13.282Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:13.282Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:14.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:14.482Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:14.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:15.082Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:15.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:16.086Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:16.281Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:16.286Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:16.982Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:16.985Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:17.994Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:18.181Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:18.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:18.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:18.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:19.886Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:19.981Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:19.985Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:20.005Z] [log] %c[eval] error: setbpm is not defined background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:20.005Z] [error] ReferenceError: setbpm is not defined
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:34)
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:55)
+    at safeEval (https://unpkg.com/@strudel/repl@latest:2:530)
+    at evaluate (https://unpkg.com/@strudel/repl@latest:2:647)
+    at Object.evaluate (https://unpkg.com/@strudel/repl@latest:79:5937)
+    at async StrudelMirror.evaluate (https://unpkg.com/@strudel/repl@latest:252:8655)
+[2026-04-07T08:48:20.006Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:20.681Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:20.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:21.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:21.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:21.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:22.580Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:22.580Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:23.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:23.682Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:23.684Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:24.283Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:24.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:25.294Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:25.582Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:25.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:26.181Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:26.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:27.194Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:27.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:27.385Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:28.081Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:28.081Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:29.086Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:29.181Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:29.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:29.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:29.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:30.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:31.082Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:31.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:31.781Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:31.781Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:32.781Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:32.837Z] [log] %c[eval] error: setbpm is not defined background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:32.837Z] [error] ReferenceError: setbpm is not defined
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:34)
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:55)
+    at safeEval (https://unpkg.com/@strudel/repl@latest:2:530)
+    at evaluate (https://unpkg.com/@strudel/repl@latest:2:647)
+    at Object.evaluate (https://unpkg.com/@strudel/repl@latest:79:5937)
+    at async StrudelMirror.evaluate (https://unpkg.com/@strudel/repl@latest:252:8655)
+[2026-04-07T08:48:32.844Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:32.882Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:32.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:33.581Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:33.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:34.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:34.782Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:34.785Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:35.382Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:35.384Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:36.385Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:36.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:36.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:37.281Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:37.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:38.294Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:38.482Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:38.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:39.181Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:39.181Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:40.186Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:40.281Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:40.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:40.981Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:40.985Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:41.986Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:42.182Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:42.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:42.882Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:42.882Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:43.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:43.981Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:43.985Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:44.682Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:44.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:45.694Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:45.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:45.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:46.580Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:46.580Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:47.581Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:47.681Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:47.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:47.988Z] [log] %c[eval] error: setbpm is not defined background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:47.988Z] [error] ReferenceError: setbpm is not defined
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:34)
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:55)
+    at safeEval (https://unpkg.com/@strudel/repl@latest:2:530)
+    at evaluate (https://unpkg.com/@strudel/repl@latest:2:647)
+    at Object.evaluate (https://unpkg.com/@strudel/repl@latest:79:5937)
+    at async StrudelMirror.evaluate (https://unpkg.com/@strudel/repl@latest:252:8655)
+[2026-04-07T08:48:48.081Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:48.381Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:48.381Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:49.381Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:49.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:49.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:50.182Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:50.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:51.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:51.382Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:51.385Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:52.080Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:52.081Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:53.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:53.181Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:53.185Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:53.881Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:53.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:54.894Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:55.081Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:55.085Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:55.681Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:55.685Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:56.694Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:56.881Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:56.885Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:57.584Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:57.586Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:58.594Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:58.782Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:58.785Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:59.482Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:48:59.482Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:00.485Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:00.581Z] [log] %c[getTrigger] error: sound CasioRZ1_oh not found! Is it loaded? background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:00.585Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:01.282Z] [log] %c[getTrigger] error: expected hap.value to be an object, but got "function(...z){if(b===2&&z.length!==1)z=[sequence(...z)];else if(b!==z.length+1)throw new Error(`.${o}() expects ${b-1} inputs but got ${z.length}.`);return z=z.map(reify),R(...z,this)}". Hint: append .note() or .s() to the end background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:01.285Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:01.729Z] [log] %c[eval] error: setbpm is not defined background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:01.729Z] [error] ReferenceError: setbpm is not defined
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:34)
+    at eval (eval at safeEval (https://unpkg.com/@strudel/repl@latest:2:519), <anonymous>:3:55)
+    at safeEval (https://unpkg.com/@strudel/repl@latest:2:530)
+    at evaluate (https://unpkg.com/@strudel/repl@latest:2:647)
+    at Object.evaluate (https://unpkg.com/@strudel/repl@latest:79:5937)
+    at async StrudelMirror.evaluate (https://unpkg.com/@strudel/repl@latest:252:8655)
+[2026-04-07T08:49:01.735Z] [log] %c[warn]: Can't do arithmetic on control pattern. background-color: black;color:white;border-radius:15px
+[2026-04-07T08:49:02.280Z] [log] %c[eval] code updated background-color: black;color:white;border-radius:15px

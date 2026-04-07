@@ -1329,9 +1329,25 @@ function setCodeAndPlay(code) {
   }
 
   function showPlaying(statusEl, btn) {
-    statusEl.className = 'status playing';
-    statusEl.textContent = fixAttempt > 0 ? 'Playing (fixed ' + fixAttempt + 'x)' : 'Playing';
-    btn.disabled = false;
+    // Final error check — if still broken after all fix attempts, show error
+    setTimeout(function() {
+      var ed = getEditor();
+      var finalErr = null;
+      try {
+        if (ed && ed.repl && ed.repl.state) {
+          finalErr = ed.repl.state.evalError || ed.repl.state.error;
+        }
+      } catch(e) {}
+      if (finalErr) {
+        var msg = typeof finalErr === 'string' ? finalErr : (finalErr.message || String(finalErr));
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Error: ' + msg.substring(0, 100);
+      } else {
+        statusEl.className = 'status playing';
+        statusEl.textContent = fixAttempt > 0 ? 'Playing (fixed ' + fixAttempt + 'x)' : 'Playing';
+      }
+      btn.disabled = false;
+    }, 200);
   }
 
   waitForEditor(function(ed) { evalAndRecover(ed, code); });
