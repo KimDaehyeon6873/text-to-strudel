@@ -788,12 +788,12 @@ When shifting the mood of a piece, adjust these parameters together:
 10. MOVEMENT: .lpf(sine.range(lo, hi).slow(N)) on drums or bass for build/release.`;
 
 function getApiKey() {
-  return localStorage.getItem('strudel_muse_api_key') || '';
+  return localStorage.getItem('tts_api_key') || '';
 }
 
 function saveApiKey(key) {
-  if (key) localStorage.setItem('strudel_muse_api_key', key);
-  else localStorage.removeItem('strudel_muse_api_key');
+  if (key) localStorage.setItem('tts_api_key', key);
+  else localStorage.removeItem('tts_api_key');
 }
 
 // ---- Full Strudel Component Reference ----
@@ -1092,11 +1092,11 @@ function buildUserMessage(text, genre) {
 
 // ---- Provider Abstraction ----
 function getProvider() {
-  return localStorage.getItem('strudel_muse_provider') || 'claude';
+  return localStorage.getItem('tts_provider') || 'claude';
 }
 
 function saveProvider(p) {
-  localStorage.setItem('strudel_muse_provider', p);
+  localStorage.setItem('tts_provider', p);
 }
 
 function buildVariationPrompt(text, genre) {

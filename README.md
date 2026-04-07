@@ -235,7 +235,7 @@ The tool uses `gemini-3.1-flash-lite-preview` via the Generative Language REST A
 
 Without an API key, the tool runs in fully algorithmic mode. No network requests are made. The output is deterministic and runs entirely in the browser.
 
-API keys are stored in `localStorage` under `strudel_muse_api_key` and `strudel_muse_provider`. They never leave your browser except in direct API calls to the selected provider.
+API keys are stored in `localStorage` under `tts_api_key` and `tts_provider`. They never leave your browser except in direct API calls to the selected provider.
 
 ## Refine and Mood Controls
 
