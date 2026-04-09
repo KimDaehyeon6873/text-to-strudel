@@ -301,9 +301,9 @@
     border-radius: var(--r); cursor: pointer;
     transition: all .08s;
   }
-  .ch-minus { border-right: none; border-radius: var(--r) 0 0 var(--r); }
-  .ch-plus { border-radius: 0 var(--r) var(--r) 0; }
-  .ch-minus:hover, .ch-plus:hover { background: var(--g-glow); color: var(--g); border-color: var(--g-mute); }
+  .ch-minus { margin-right: -1px; border-radius: var(--r) 0 0 var(--r); z-index: 0; }
+  .ch-plus { border-radius: 0 var(--r) var(--r) 0; z-index: 0; }
+  .ch-minus:hover, .ch-plus:hover { background: var(--g-glow); color: var(--g); border-color: var(--g-mute); z-index: 1; }
   .ch-toggle { border-radius: var(--r); margin-right: .15rem; }
   .ch-toggle:hover { color: var(--txt); border-color: var(--border-hi); }
   .mixer-divider { border-top: 1px solid var(--border); margin: .3rem 0; }

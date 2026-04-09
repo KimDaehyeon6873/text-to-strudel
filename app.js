@@ -1762,6 +1762,29 @@ function algoRefine(code, direction) {
 }
 
 // ---- Refine & Mood Buttons ----
+// ---- Long-press repeat for ± buttons ----
+function setupRepeat(btn) {
+  var timer = null;
+  var interval = null;
+  function trigger() { btn.click(); }
+  btn.addEventListener('mousedown', function() {
+    timer = setTimeout(function() {
+      interval = setInterval(trigger, 150);
+    }, 400);
+  });
+  function stop() { clearTimeout(timer); clearInterval(interval); timer = null; interval = null; }
+  btn.addEventListener('mouseup', stop);
+  btn.addEventListener('mouseleave', stop);
+  // touch support
+  btn.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    timer = setTimeout(function() { interval = setInterval(trigger, 150); }, 400);
+  });
+  btn.addEventListener('touchend', stop);
+  btn.addEventListener('touchcancel', stop);
+}
+document.querySelectorAll('.ch-minus, .ch-plus, .ch-toggle').forEach(setupRepeat);
+
 document.querySelectorAll('.refine-btn').forEach(function(btn) {
   btn.addEventListener('click', async function() {
     var direction = btn.dataset.dir;
