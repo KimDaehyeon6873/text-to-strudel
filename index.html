@@ -319,6 +319,10 @@
   .ch-tag:hover { color: var(--g); border-color: var(--g-mute); }
   .ch-mood { color: var(--g-dim); border-color: var(--g-mute); }
   .ch-mood:hover { color: var(--g); border-color: var(--g-dim); background: var(--g-glow); }
+  .ch-tag.active { color: var(--g) !important; border-color: var(--g-dim) !important; background: var(--g-glow) !important; }
+  /* ± click feedback */
+  .flash-ok { background: var(--g-glow2) !important; border-color: var(--g-dim) !important; color: var(--g) !important; transition: none !important; }
+  .flash-fail { background: rgba(192,48,48,.1) !important; border-color: #401010 !important; color: #804040 !important; transition: none !important; }
 
   /* ---- EDIT ---- */
   .edit-row { display: flex; align-items: center; gap: .2rem; }
@@ -421,6 +425,14 @@
   .cm-editor .ͼ16 { color: #406040 !important; }
   /* Hide line numbers */
   .cm-editor .cm-gutters { display: none !important; }
+  /* Override Strudel flash (white box → green) and highlight colors */
+  .cm-editor [style*="rgba(255,255,255"] {
+    background-color: rgba(0,224,96,.15) !important;
+    filter: none !important;
+  }
+  .cm-editor [style*="#00CA28"] {
+    background-color: rgba(0,224,96,.2) !important;
+  }
   /* Mini-notation highlight background */
   .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
 

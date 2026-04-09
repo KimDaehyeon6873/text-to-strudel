@@ -1771,26 +1771,36 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
     if (!currentCode.trim()) return;
 
     var apiKey = getApiKey();
+    // Tone buttons: highlight active
+    if (direction.indexOf('scale:') === 0) {
+      document.querySelectorAll('.ch-tag').forEach(function(t) { t.classList.remove('active'); });
+      btn.classList.add('active');
+    }
+
     if (!apiKey) {
       // algorithmic refine: modify existing values
+      var result;
       if (direction.indexOf('make it') === 0) {
-        // mood: compound transformation
-        var moodCode = currentCode;
+        result = currentCode;
         if (direction.indexOf('dark') !== -1 || direction.indexOf('moodi') !== -1) {
-          moodCode = algoRefine(algoRefine(algoRefine(moodCode, 'slower'), 'darker'), 'more reverb');
+          result = algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb');
         } else if (direction.indexOf('euphoric') !== -1 || direction.indexOf('uplift') !== -1) {
-          moodCode = algoRefine(algoRefine(algoRefine(moodCode, 'faster'), 'brighter'), 'louder');
+          result = algoRefine(algoRefine(algoRefine(result, 'faster'), 'brighter'), 'louder');
         } else if (direction.indexOf('dreamy') !== -1 || direction.indexOf('float') !== -1) {
-          moodCode = algoRefine(algoRefine(algoRefine(moodCode, 'slower'), 'darker'), 'more reverb');
-          moodCode = algoRefine(moodCode, 'more reverb');
+          result = algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb');
+          result = algoRefine(result, 'more reverb');
         } else if (direction.indexOf('aggressive') !== -1 || direction.indexOf('intense') !== -1) {
-          moodCode = algoRefine(algoRefine(algoRefine(moodCode, 'faster'), 'brighter'), 'louder');
+          result = algoRefine(algoRefine(algoRefine(result, 'faster'), 'brighter'), 'louder');
         }
-        ed.setCode(moodCode);
-        ed.evaluate(true);
       } else {
-        var refined = algoRefine(currentCode, direction);
-        ed.setCode(refined);
+        result = algoRefine(currentCode, direction);
+      }
+      // Flash feedback: green if changed, red if no-op
+      var changed = result !== currentCode;
+      btn.classList.add(changed ? 'flash-ok' : 'flash-fail');
+      setTimeout(function() { btn.classList.remove('flash-ok', 'flash-fail'); }, 300);
+      if (changed) {
+        ed.setCode(result);
         ed.evaluate(true);
       }
       return;
