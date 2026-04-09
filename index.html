@@ -83,22 +83,26 @@
 
   /* ---- BRAND ---- */
   .brand-row {
-    display: flex;
-    align-items: baseline;
-    gap: .5rem;
-    padding-bottom: .4rem;
+    padding-bottom: .5rem;
     border-bottom: 1px solid var(--border);
   }
   .brand {
-    font-size: .9rem;
+    font-size: .62rem;
     font-weight: 700;
-    color: var(--g);
-    letter-spacing: .06em;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin-bottom: .15rem;
   }
   .tagline {
-    font-size: .8rem;
+    font-size: 1.3rem;
     font-weight: 400;
-    color: var(--txt-dim);
+    color: var(--txt);
+    line-height: 1.3;
+  }
+  .tagline em {
+    font-style: normal;
+    color: var(--g);
   }
 
   /* ---- API ---- */
@@ -452,8 +456,8 @@
 
   <div class="panel">
     <div class="brand-row">
-      <span class="brand">text-to-strudel</span>
-      <span class="tagline">type anything. get music.</span>
+      <div class="brand">text-to-strudel</div>
+      <div class="tagline">Type anything. Get <em>music</em>.</div>
     </div>
 
     <details class="api" id="apiSettings">
