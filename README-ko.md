@@ -1,5 +1,7 @@
 # text-to-strudel
 
+<img width="1362" height="212" alt="스크린샷 2026-04-09 오후 5 27 47" src="https://github.com/user-attachments/assets/94cafa96-096d-443e-85ec-9a0a35a93f12" />
+
 **아무 텍스트나 입력하면 라이브 코딩 음악이 됩니다. 서버 없이. 설치 없이. 브라우저만 있으면.**
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
