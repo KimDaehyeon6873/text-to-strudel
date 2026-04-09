@@ -425,13 +425,17 @@
   .cm-editor .ͼ16 { color: #406040 !important; }
   /* Hide line numbers */
   .cm-editor .cm-gutters { display: none !important; }
-  /* Override Strudel flash (white box → green) and highlight colors */
+  /* Override Strudel highlight/flash colors to green theme */
+  .cm-editor { --foreground: var(--g) !important; }
   .cm-editor [style*="rgba(255,255,255"] {
-    background-color: rgba(0,224,96,.15) !important;
+    background-color: rgba(0,224,96,.12) !important;
     filter: none !important;
   }
   .cm-editor [style*="#00CA28"] {
-    background-color: rgba(0,224,96,.2) !important;
+    background-color: rgba(0,224,96,.15) !important;
+  }
+  .cm-editor [style*="outline"] {
+    outline-color: var(--g) !important;
   }
   /* Mini-notation highlight background */
   .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
