@@ -1200,9 +1200,8 @@ async function generateWithClaude(text, genre, apiKey) {
 
 async function generateWithGemini(text, genre, apiKey) {
   var userPrompt = buildVariationPrompt(text, genre);
-  var temperature = Math.min(1.5, 0.9 + seedCounter * 0.08);
-
-  // Gemini expects system instruction + user content in a single request
+  // Gemini 3+: temperature < 1.0 causes looping/degraded performance.
+  // Keep at 1.0 (default) for generation, use topP for variation instead.
   var response = await fetch(
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
     {
@@ -1212,7 +1211,8 @@ async function generateWithGemini(text, genre, apiKey) {
         system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] },
         contents: [{ parts: [{ text: userPrompt }] }],
         generationConfig: {
-          temperature: temperature,
+          temperature: 1.0,
+          topP: Math.min(0.99, 0.9 + seedCounter * 0.02),
           maxOutputTokens: 2048,
         },
       }),
@@ -1227,8 +1227,7 @@ async function generateWithGemini(text, genre, apiKey) {
 
 async function generateWithOpenAI(text, genre, apiKey) {
   var userPrompt = buildVariationPrompt(text, genre);
-  var temperature = Math.min(1.2, 0.9 + seedCounter * 0.05);
-
+  // GPT-5.4 nano: temperature only works with reasoning effort "none".
   var response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -1237,7 +1236,8 @@ async function generateWithOpenAI(text, genre, apiKey) {
     },
     body: JSON.stringify({
       model: 'gpt-5.4-nano',
-      temperature: temperature,
+      reasoning: { effort: 'none' },
+      temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
       max_tokens: 2048,
       messages: [
         { role: 'system', content: STRUDEL_SYSTEM_PROMPT },
@@ -1447,14 +1447,14 @@ async function fixWithLLM(code, errorMsg, apiKey) {
     var resp = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
+        body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
     var data = await resp.json();
     if (data.error || !data.candidates) return null;
     return stripFences(data.candidates[0].content.parts[0].text);
   } else if (provider === 'openai') {
     var resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
+      body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
     var data = await resp.json();
     if (data.error || !data.choices) return null;
     return stripFences(data.choices[0].message.content);
@@ -1941,14 +1941,14 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
         var resp = await fetch(
           'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: refinePrompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } }) });
+            body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: refinePrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
         var data = await resp.json();
         if (data.error) throw new Error(data.error.message);
         code = stripFences(data.candidates[0].content.parts[0].text);
       } else if (refineProv === 'openai') {
         var resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
+          body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
         var data = await resp.json();
         if (data.error) throw new Error(data.error.message);
         code = stripFences(data.choices[0].message.content);
@@ -2010,14 +2010,14 @@ async function doEdit() {
       var resp = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
+          body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
       var data = await resp.json();
       if (data.error) throw new Error(data.error.message);
       code = stripFences(data.candidates[0].content.parts[0].text);
     } else if (prov === 'openai') {
       var resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
+        body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
       var data = await resp.json();
       if (data.error) throw new Error(data.error.message);
       code = stripFences(data.choices[0].message.content);

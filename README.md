@@ -2,13 +2,15 @@
 
 **Turn any text into live-coded music. No server. No install. Just a browser.**
 
-`AGPL-3.0` | `Zero dependencies` | `Runs offline (algorithmic mode)` | `~2550 lines total`
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 ---
 
-text-to-strudel is a browser-based tool that converts arbitrary text input into playable, editable music using [Strudel](https://strudel.cc), the JavaScript port of TidalCycles. Type a word, a sentence, a feeling -- pick a genre -- and listen. The generated code appears in a live editor where you can modify it in real time.
+**text-to-strudel** is a browser-based tool that converts arbitrary text input into playable, editable music using [Strudel](https://strudel.cc), the JavaScript port of TidalCycles. Type a word, a sentence, a feeling -- pick a genre -- and listen. The generated code appears in a live editor where you can modify it in real time.
 
-Two modes of operation: a fully deterministic algorithmic pipeline that needs nothing but a browser, and an AI creative mode (Claude Haiku 4.5 or Gemini 3.1 Flash Lite) that interprets your text as feeling and imagery rather than literal transcription.
+> **Two modes of operation:** Choose between a fully deterministic **Algorithmic Mode** that needs nothing but a browser, or an **AI Creative Mode** (Gemini 3.1 Flash Lite, Claude Haiku 4.5, or OpenAI GPT-5.4 Nano) that interprets your text as feeling and imagery rather than literal transcription.
+
+---
 
 ## Table of Contents
 
@@ -25,21 +27,24 @@ Two modes of operation: a fully deterministic algorithmic pipeline that needs no
 - [License](#license)
 - [Credits](#credits)
 
+---
+
 ## Features
 
-- **9 genre modes**: EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5 subgenres), Random, Fusion
-- **Interactive Strudel editor**: edit generated code live, Ctrl+Enter to re-evaluate instantly
-- **Refine buttons**: faster / slower / brighter / darker / spacious / dry / louder / quieter (always algorithmic -- instant, no API cost)
-- **Mood buttons**: dark / euphoric / dreamy / aggressive -- compound parameter shifts in algorithmic mode, creative reinterpretation via LLM in AI mode
-- **Long-press repeat**: hold down any ± mixer button for continuous adjustment
-- **Regenerate**: same input, different result. Algorithmic mode increments a seed counter; AI mode raises temperature (0.90 to 1.20 for Claude, 0.90 to 1.50 for Gemini) and adds a variation hint
-- **Deterministic output**: in algorithmic mode, the same text + genre + seed always produces the same music
-- **Post-generation validation**: auto-fixes GM pad naming hallucinations from LLM output (e.g., `gm_pad_1_new_age` to `gm_pad_new_age`)
-- **No server, no npm, no build step**: open the HTML file and go
-- **6-12 layers per generation**: drums, percussion, bass, lead, countermelody, chords, arp, texture/noise -- split or combine as the music demands
+- **9 genre modes:** EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5 subgenres), Random, Fusion
+- **Interactive Strudel editor:** Edit generated code live, press `Ctrl+Enter` to re-evaluate instantly
+- **Refine buttons:** Instantly adjust tracks -- faster / slower / brighter / darker / spacious / dry / louder / quieter (always algorithmic, instant, no API cost)
+- **Mood buttons:** Shift the vibe -- dark / euphoric / dreamy / aggressive. Compound parameter shifts in algorithmic mode; creative reinterpretation via LLM in AI mode
+- **Long-press repeat:** Hold down any `±` mixer button for continuous adjustment
+- **Regenerate:** Same input, different result. Algorithmic mode increments a seed counter; AI mode raises temperature (up to 1.20 for Claude/OpenAI, 1.50 for Gemini) and adds a variation hint
+- **Deterministic output:** In algorithmic mode, the same `text + genre + seed` always produces the exact same music
+- **Self-healing AI:** Auto-fixes GM pad naming hallucinations from LLM output (e.g., `gm_pad_1_new_age` -> `gm_pad_new_age`)
+- **Zero friction:** No server, no npm, no build step. Open the HTML file and go
+- **6-12 layers per generation:** drums, percussion, bass, lead, countermelody, chords, arp, texture/noise -- split or combine as the music demands
 - **Full Strudel component reference** injected as LLM context: 92 scales, 100+ GM instruments, 58 effects, FM/wavetable/additive synthesis, sample manipulation, 8 drum banks
 - **29 code structure patterns** across 8 categories provided to the LLM as compositional idioms
-- **Genre-specific arrangement lengths** (e.g., EDM: intro 8 -> build 8 -> drop 16 -> break 8)
+
+---
 
 ## Quick Start
 
@@ -52,7 +57,9 @@ Two modes of operation: a fully deterministic algorithmic pipeline that needs no
 7. Click **Regenerate** for a different interpretation of the same input.
 8. Click **Stop** or press **Ctrl+.** to silence everything.
 
-For AI creative mode, click **API Settings** before generating, select Claude or Gemini, enter your API key, and click Save. See [API Setup](#api-setup) for details.
+> Want AI Creative Mode? Click **API Settings** before generating, select Gemini, Claude, or OpenAI, enter your API key, and click Save. See [API Setup](#api-setup) for details.
+
+---
 
 ## How It Works
 
@@ -60,230 +67,158 @@ For AI creative mode, click **API Settings** before generating, select Claude or
 
 The algorithmic pipeline is fully deterministic. Given the same input text, genre, and seed counter, it produces identical output every time.
 
-**Step 1: Text Analysis**
+**1. Text Analysis**
 
-The input text is analyzed for five qualities, each normalized to 0-1:
+The input text is analyzed for five qualities, each normalized to `0-1`:
 
-| Quality      | Derived From                                         |
-|-------------|------------------------------------------------------|
-| **Energy**      | Unique character density, punctuation ratio, uppercase ratio, word count |
-| **Brightness**  | Vowel-to-consonant ratio                             |
-| **Weight**      | Average word length                                  |
-| **Space**       | Whitespace ratio, short phrase bonus                 |
-| **Complexity**  | Unique character ratio relative to total characters  |
+| Quality | Derived From |
+|:---|:---|
+| **Energy** | Unique character density, punctuation ratio, uppercase ratio, word count |
+| **Brightness** | Vowel-to-consonant ratio |
+| **Weight** | Average word length |
+| **Space** | Whitespace ratio, short phrase bonus |
+| **Complexity** | Unique character ratio relative to total characters |
 
-**Step 2: Genre Resolution**
+**2. Genre Resolution**
 
-Each of the 7 base genres (EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World) defines:
+Each of the 7 base genres defines:
 - Tempo range, scale pool, key pool
 - Multiple sound option sets (instruments/waveforms per role)
 - Drum patterns and drum bank options
 - Chord progressions (scale degree arrays)
-- Layer configuration
 - Genre-specific effect functions for lead, bass, and chords
 
 **Random** mode pulls scales from one genre, sounds from another, and drums from a third. **Fusion** mode picks two genres and blends their properties -- averaged tempo ranges, concatenated scale pools, mixed sound assignments.
 
 **World** mode selects from 5 subgenres: Flamenco, Japanese, Indian, Eastern European, and Arabic, each with tradition-specific scales, keys, and instruments.
 
-**Step 3: Code Generation**
+**3. Code Generation & Arrangement**
 
-The generator produces complete Strudel code with:
+The generator produces complete Strudel code featuring motif-based melodies with call-and-response structure, walking bass lines (8 types scaled by energy), 6 voicing types for chords, and genre-specific dynamic drums.
 
-- **Melodies**: Motif-based (3-4 notes) with call-and-response structure. Motifs start on chord tones (0, 2, 4). Responses vary via reversal, inversion, transposition, or fragmentation. Anchor points enforce chord tones every 3rd position. Occasional note elongation (`@2`) for phrasing.
-- **Countermelody**: Second melodic voice offset from lead -- shorter motifs, different timbre (triangle/sine), with delay and degradeBy for texture.
-- **Bass lines**: Walking bass from 8 pattern types selected by energy level -- driving roots at high energy, sparse patterns at low energy, chromatic approaches and syncopation in the middle.
-- **Chords**: 6 voicing types -- triads, wide voicings, sus4, 7ths, power chords, add9.
-- **Arpeggios**: 6 arpeggio patterns with inversions and gaps.
-- **Drums**: Genre-specific patterns with dynamically generated gain patterns (varied hi-hat dynamics, energy-scaled kick/snare levels).
-- **Percussion**: Separate layer from drums -- rim, perc, shaker patterns with optional panning and degradeBy.
-- **Texture**: Filtered noise layer (pink/white/brown) with sine-modulated gain for atmospheric depth.
+It also applies **12 artist-inspired techniques** probabilistically based on text analysis:
 
-**Step 4: Arrangement and Techniques**
+| Technique | Triggered By | Effect |
+|:---|:---|:---|
+| `.off()` | High energy | Time-shifted melodic copy |
+| `.superimpose()` | High brightness | Detuning / unison width |
+| `.jux(rev)` | High space | Stereo width via reversed right channel |
+| `.echoWith()` | High energy | Rhythmic pitched echoes |
+| `.degradeBy()` | Always available | Organic feel through random event removal |
+| Perlin filter | High weight | Organic filter drift via noise function |
+| ...and more | | |
 
-- **Staggered layer entry** via `.mask()`: 65% chance of staggered arrangement where bass enters 2-5 cycles in, lead enters after bass, optional delayed arp entry.
-- **Periodic variation** via `.every(N, fn)`: 50% chance of adding cyclical transformations (reverse, double speed, transposition).
-- **Filter fade-ins** on drums for intro feel.
-- **Breathing degradation** on chords: `degradeBy(sine.range(...).slow(...))` for organic texture.
-- **12 artist-inspired techniques** applied probabilistically based on text analysis:
-
-| Technique        | Triggered By       | Effect                                      |
-|-----------------|--------------------|----------------------------------------------|
-| `.off()`         | High energy         | Time-shifted melodic copy                    |
-| `.superimpose()` | High brightness     | Detuning / unison width                      |
-| `.jux(rev)`      | High space          | Stereo width via reversed right channel      |
-| `.echoWith()`    | High energy         | Rhythmic pitched echoes                      |
-| `.echo()`        | High space          | Spatial echoes                               |
-| Euclidean struct | High energy         | Euclidean rhythm distribution                |
-| `.degradeBy()`   | Always available    | Organic feel through random event removal    |
-| Perlin filter    | High weight         | Organic filter drift via noise function      |
-| `.sometimes()`   | High complexity     | Probabilistic per-cycle variation            |
-| Fake sidechain   | High weight         | Patterned gain for pumping effect            |
-| `.scaleLayer()`  | High complexity     | Parallel harmonic processing                 |
+---
 
 ### AI Creative Mode (with API key)
 
-When an API key is configured, the tool sends the input text to Claude Haiku 4.5 (Anthropic Messages API) or Gemini 3.1 Flash Lite (Google Generative Language API) with a carefully constructed prompt.
+When an API key is configured, the tool sends the input text to **Gemini 3.1 Flash Lite**, **Claude Haiku 4.5**, or **OpenAI GPT-5.4 Nano** with a carefully constructed prompt.
 
-**System Prompt (~1225 tokens)**
+- **System Prompt (~1225 tokens):** Instructs the model to interpret text as feeling, imagery, and narrative. Includes a creative process framework, music theory principles, and 10 critical reminders for Strudel arrangement.
+- **User Message (~3100 tokens):** Contains the input text, genre context, the complete Strudel component reference (92 scales, 100+ GM instruments, 58+ effects), and 29 structural idioms.
+- **Temperature Scaling:** Each Regenerate press increases the temperature to guarantee fresh variations.
 
-The system prompt instructs the model to interpret text as feeling, imagery, and narrative rather than literal letter-to-note mappings. It includes:
-- A creative process framework (what does this feel like, look like, what story lives inside it)
-- A worked example of creative reasoning (not included in output)
-- Output format requirements (valid Strudel code only, `$:` prefix, 6-12 layers, poetic comments)
-- Quality criteria distinguishing good from boring output
-- Music theory principles: voice leading, 4-part harmony, anchor points, tension-release, call-and-response, rhythmic counterpoint, dynamic arc
-- Mood parameter reference (dark, euphoric, melancholic, aggressive, dreamy, peaceful, energetic) with specific numerical adjustments
-- 10 critical reminders covering motifs, dynamics, space, intentionality, scale choice, surprise, arrangement, variation, texture, and movement
-
-**User Message (~3100 tokens)**
-
-The user message contains:
-1. The input text
-2. Genre context -- a starting point description with typical arrangement structures and encouragement to break conventions
-3. The complete Strudel component reference: all synth types, all 58+ effects with parameters, all 92 scales grouped by character, all 100+ GM instruments, 8 drum banks, all pattern modifiers
-4. 29 code structure patterns across 8 categories (organization, melody/harmony, rhythm/time, timbre/texture, sample manipulation, spatial/dynamics, transitions, arrangement)
-
-**Temperature Scaling**
-
-Each Regenerate press increases the temperature:
-- Claude: 0.90 + (seedCounter * 0.05), capped at 1.20
-- Gemini: 0.90 + (seedCounter * 0.08), capped at 1.50
-
-A variation hint is appended to the prompt when seedCounter > 0, asking for a different scale, tempo, mood, or approach.
-
-**Refine via LLM**
-
-In AI mode, only Mood buttons send the current code back to the LLM with a modification instruction (e.g., "modify this code to make it darker and moodier") at temperature 0.7. Refine (±) buttons always use the algorithmic pipeline for instant feedback.
+---
 
 ## Genre Guide
 
-| Genre       | BPM Range | Scales                                               | Typical Sounds                              | Layers                              |
-|------------|-----------|------------------------------------------------------|---------------------------------------------|--------------------------------------|
-| **EDM**        | 124-140   | minor, phrygian, harmonic minor, dorian              | Sawtooth/square leads, sine bass, TR808/909 | drums, perc, bass, lead, countermelody, chords, arp, texture |
-| **Jazz**       | 84-148    | dorian, mixolydian, lydian, bebop, altered            | Rhodes, acoustic bass, vibraphone, sax      | drums, perc, bass, lead, countermelody, chords, texture |
-| **Classical**  | 62-116    | major, minor, harmonic minor, melodic minor, lydian  | Piano, strings, flute, oboe, cello          | bass, lead, countermelody, chords, arp, texture |
-| **Blues**       | 72-108    | minor blues, major blues, mixolydian, dorian         | Overdriven guitar, harmonica, clean guitar  | drums, perc, bass, lead, countermelody, chords, texture |
-| **Ambient**    | 50-76     | lydian, major pentatonic, whole tone, dorian         | Sine/triangle, celesta, blown bottle, pads  | bass, pad, lead, arp, texture |
-| **Lo-fi**      | 68-86     | minor pentatonic, dorian, minor, mixolydian          | Electric piano, vibraphone, music box       | drums, perc, bass, lead, countermelody, chords, texture |
-| **World**      | 78-126    | Tradition-specific (see subgenres)                   | Koto, sitar, nylon guitar, accordion, oboe  | drums, perc, bass, lead, countermelody, chords, texture |
-| **Random**     | Varies    | Mixed from random genre combination                  | Mixed from random genre combination         | drums, perc, bass, lead, countermelody, chords, arp, texture |
-| **Fusion**     | Averaged  | Concatenated from two genres                         | Mixed from two genres                       | drums, perc, bass, lead, countermelody, chords, arp, texture |
+| Genre | BPM Range | Typical Sounds | Layers |
+|:---|:---|:---|:---|
+| **EDM** | 124-140 | Sawtooth/square leads, sine bass, TR808/909 | drums, perc, bass, lead, countermelody, chords, arp, texture |
+| **Jazz** | 84-148 | Rhodes, acoustic bass, vibraphone, sax | drums, perc, bass, lead, countermelody, chords, texture |
+| **Classical** | 62-116 | Piano, strings, flute, oboe, cello | bass, lead, countermelody, chords, arp, texture |
+| **Blues** | 72-108 | Overdriven guitar, harmonica, clean guitar | drums, perc, bass, lead, countermelody, chords, texture |
+| **Ambient** | 50-76 | Sine/triangle, celesta, blown bottle, pads | bass, pad, lead, arp, texture |
+| **Lo-fi** | 68-86 | Electric piano, vibraphone, music box | drums, perc, bass, lead, countermelody, chords, texture |
+| **World** | 78-126 | Koto, sitar, nylon guitar, accordion, oboe | drums, perc, bass, lead, countermelody, chords, texture |
+| **Random** | Varies | Mixed from random genre combination | drums, perc, bass, lead, countermelody, chords, arp, texture |
+| **Fusion** | Averaged | Mixed from two genres | drums, perc, bass, lead, countermelody, chords, arp, texture |
 
-**World Subgenres**: Flamenco (phrygian dominant, nylon guitar), Japanese (hirajoshi/in-sen, koto/shakuhachi), Indian (phrygian dominant, sitar), Eastern European (ukrainian dorian/hungarian minor, accordion/violin), Arabic (double harmonic major/persian, oboe).
+**World Subgenres:** Flamenco (phrygian dominant, nylon guitar), Japanese (hirajoshi/in-sen, koto/shakuhachi), Indian (phrygian dominant, sitar), Eastern European (ukrainian dorian/hungarian minor, accordion/violin), Arabic (double harmonic major/persian, oboe).
+
+---
 
 ## Architecture
 
-The project consists of two files:
+The project is intentionally minimalist, consisting of just two files:
 
-### `index.html` (558 lines)
+- `index.html` (566 lines) -- UI shell and styles. Dark theme (`#08080f`), 2-column layout. Contains the `<strudel-editor>` web component wrapper.
+- `app.js` (2056 lines) -- All application logic, including the seeded PRNG, text analysis, genre definitions, main code generator, and API provider abstraction.
 
-UI shell and styles. Dark theme (#08080f background), 2-column layout (1:2 ratio). Contains:
-- Text input area
-- Genre selector buttons with per-genre accent colors
-- API settings collapsible panel (provider select, key input, save)
-- Generate & Play / Regenerate / Stop controls
-- Mixer panel with ± buttons, tone tags, and mood buttons (hidden until first generation)
-- Inline edit bar with natural language instruction input
-- `<strudel-editor>` web component wrapper
-- Status display with animated playing indicator
-- Script tags loading `@strudel/repl` from CDN and `app.js`
-
-### `app.js` (2001 lines)
-
-All application logic:
-
-| Section                  | Lines (approx.) | Purpose                                                    |
-|-------------------------|------------------|------------------------------------------------------------|
-| Seeded PRNG              | 11-22            | Deterministic random from `text + genre + seedCounter`     |
-| Text analysis            | 24-61            | Energy, brightness, weight, space, complexity extraction   |
-| Genre definitions        | 63-223           | 7 base genres with scales, sounds, drums, progressions, FX |
-| Melody generation        | 225-289          | Motif-based call-response with chord tone anchoring        |
-| Pattern helpers          | 291-376          | Walking bass (8 types), chords (6 voicings), arps (6 patterns), drum gains, evocative comments |
-| Artist techniques        | 378-461          | 12 techniques applied probabilistically by text analysis   |
-| Random/Fusion builders   | 463-537          | Cross-genre hybridization                                  |
-| Main code generator      | 538-757          | Assembles complete Strudel code with arrangement (incl. percussion, countermelody, texture layers) |
-| System prompt            | 759-846          | Creative philosophy, music theory, layer guidance, mood parameters, 10 reminders |
-| Component reference      | 857-955          | Full Strudel API: synths, effects, scales, instruments, drums, modifiers |
-| Genre context            | 956-968          | Per-genre starting points with arrangement structures      |
-| Code patterns            | 970-1121         | 29 structural idioms across 8 categories                   |
-| User message builder     | 1122-1150        | Assembles input + genre context + reference + patterns     |
-| Provider abstraction     | 1151-1228        | Claude/Gemini routing with temperature scaling             |
-| Pre-eval normalization   | 1229-1292        | GM pad hallucination fixes, error recovery, fence stripping |
-| Editor integration       | 1294-1443        | `<strudel-editor>` web component control, error recovery   |
-| UI wiring                | 1445-1695        | Event handlers, genre UI, API key management               |
-| Algorithmic refine       | 1696-1818        | BPM, filter, reverb, gain, scale adjustments               |
-| Refine & Mood buttons    | 1819-1931        | Long-press repeat, ± always algorithm, mood uses LLM      |
-| Natural language edit     | 1930-2001        | Inline edit bar with LLM-powered code modification        |
+---
 
 ## API Setup
-
-### Claude (Anthropic)
-
-1. Get an API key from [console.anthropic.com](https://console.anthropic.com)
-2. In text-to-strudel, click **API Settings**
-3. Select **Claude** from the dropdown
-4. Paste your key (starts with `sk-ant-...`)
-5. Click **Save**
-
-The tool uses `claude-haiku-4-5-20251001` with the `anthropic-dangerous-direct-browser-access` header for direct browser-to-API calls. No proxy server needed.
 
 ### Gemini (Google AI)
 
 1. Get an API key from [aistudio.google.com](https://aistudio.google.com)
-2. In text-to-strudel, click **API Settings**
-3. Select **Gemini** from the dropdown
-4. Paste your key (starts with `AIza...`)
-5. Click **Save**
+2. Click **API Settings** in text-to-strudel
+3. Select **Gemini**, paste your key (`AIza...`), and click **Save**
 
-The tool uses `gemini-3.1-flash-lite-preview` via the Generative Language REST API.
+Uses `gemini-3.1-flash-lite-preview` via the Generative Language REST API. **Free tier is enough.**
+
+### Claude (Anthropic)
+
+1. Get an API key from [console.anthropic.com](https://console.anthropic.com)
+2. Click **API Settings** in text-to-strudel
+3. Select **Claude**, paste your key (`sk-ant-...`), and click **Save**
+
+Uses `claude-haiku-4-5-20251001` via direct browser-to-API calls. No proxy server needed.
+
+### OpenAI
+
+1. Get an API key from [platform.openai.com](https://platform.openai.com)
+2. Click **API Settings** in text-to-strudel
+3. Select **OpenAI**, paste your key (`sk-...`), and click **Save**
+
+Uses `gpt-5.4-nano` via standard REST API endpoints.
 
 ### No API Key
 
 Without an API key, the tool runs in fully algorithmic mode. No network requests are made. The output is deterministic and runs entirely in the browser.
 
-API keys are stored in `localStorage` under `tts_api_key` and `tts_provider`. They never leave your browser except in direct API calls to the selected provider.
+API keys are stored in your browser's `localStorage` and never leave your device except in direct API calls to the selected provider.
+
+---
 
 ## Refine and Mood Controls
 
 These appear after the first generation and operate on the currently loaded code.
 
-### Refine Buttons (always algorithmic -- instant, no API cost)
+### Refine Buttons (always algorithmic)
 
-Refine (±) buttons always run the algorithmic pipeline, even when an API key is configured. This keeps adjustments instant and free.
+Always instant and free. Hold down any button for continuous adjustment.
 
-| Button     | Effect                                            |
-|-----------|---------------------------------------------------|
-| faster     | BPM +8 (max 400)                                 |
-| slower     | BPM -8 (min 40)                                  |
-| brighter   | All `.lpf()` values x1.4 (max 12000)             |
-| darker     | All `.lpf()` values x0.6 (min 100)               |
-| spacious   | All `.room()` values +0.15 (max 1.0)             |
-| dry        | All `.room()` values -0.15 (min 0.0)             |
-| louder     | All `.gain()` values x1.15 (max 1.0)             |
-| quieter    | All `.gain()` values x0.85 (min 0.05)            |
+| Button | Effect |
+|:---|:---|
+| faster / slower | BPM +/-8 (max 400, min 40) |
+| brighter / darker | Low-pass filter x1.4 / x0.6 |
+| spacious / dry | Reverb `.room()` +/-0.15 |
+| louder / quieter | Gain x1.15 / x0.85 |
 
-Hold down any ± button for continuous adjustment (long-press repeat).
+### Mood Buttons (compound)
 
-### Mood Buttons (compound transformations)
+Compound algorithmic adjustments by default. With an API key, mood buttons send the code to the LLM for creative reinterpretation.
 
-Mood buttons use compound algorithmic adjustments by default. When an API key is configured, they send the current code to the LLM for creative reinterpretation instead.
+| Button | Algorithmic Mode | AI Mode |
+|:---|:---|:---|
+| **dark** | slower + darker + more reverb | "make it darker and moodier" |
+| **euphoric** | faster + brighter + louder | "make it euphoric and uplifting" |
+| **dreamy** | slower + darker + double reverb boost | "make it dreamy and floating" |
+| **aggressive** | faster + brighter + louder | "make it aggressive and intense" |
 
-| Button      | Algorithmic Mode                                  | AI Mode                             |
-|------------|---------------------------------------------------|--------------------------------------|
-| dark        | slower + darker + more reverb                     | "make it darker and moodier"         |
-| euphoric    | faster + brighter + louder                        | "make it euphoric and uplifting"     |
-| dreamy      | slower + darker + double reverb boost             | "make it dreamy and floating"        |
-| aggressive  | faster + brighter + louder                        | "make it aggressive and intense"     |
+---
 
 ## Keyboard Shortcuts
 
-| Shortcut       | Action                                           |
-|---------------|---------------------------------------------------|
-| **Enter**         | Generate & Play (from the text input field)      |
-| **Shift+Enter**   | New line in text input                           |
-| **Ctrl+Enter**    | Re-evaluate code in the Strudel editor           |
-| **Ctrl+.**        | Stop playback (in the Strudel editor)            |
+| Shortcut | Action |
+|:---|:---|
+| `Enter` | Generate & Play (from the text input field) |
+| `Shift+Enter` | New line in text input |
+| `Ctrl+Enter` | Re-evaluate code in the Strudel editor |
+| `Ctrl+.` | Stop playback (in the Strudel editor) |
+
+---
 
 ## License
 
@@ -291,10 +226,13 @@ Mood buttons use compound algorithmic adjustments by default. When an API key is
 
 This project is licensed under the GNU Affero General Public License v3.0 due to its dependency on `@strudel/repl`, which is AGPL-3.0 licensed. The `@strudel/repl` library is loaded unmodified via CDN script tag.
 
+---
+
 ## Credits
 
-- **[Strudel](https://strudel.cc)** by Alex McLean and contributors -- the live coding environment that makes this possible. Loaded via `@strudel/repl` from unpkg CDN.
-- **Anthropic Claude API** -- optional AI creative mode via Claude Haiku 4.5.
+- **[Strudel](https://strudel.cc)** by Alex McLean and contributors -- the live coding environment that makes this possible.
 - **Google Gemini API** -- optional AI creative mode via Gemini 3.1 Flash Lite.
+- **Anthropic Claude API** -- optional AI creative mode via Claude Haiku 4.5.
+- **OpenAI API** -- optional AI creative mode via GPT-5.4 Nano.
 
-No third-party code was copied into this project. No artist code is included. All 29 code structure patterns are original structural idioms, not reproductions of existing compositions.
+No third-party code was copied into this project. All 29 code structure patterns are original structural idioms, not reproductions of existing compositions.
