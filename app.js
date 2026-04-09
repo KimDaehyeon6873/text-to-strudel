@@ -1744,6 +1744,12 @@ document.getElementById('input').addEventListener('keydown', function(e) {
 });
 
 // ---- Natural Language Edit ----
+// Edit system prompt — focused on MINIMAL edits, not rewrites
+var EDIT_SYSTEM = 'You are a Strudel live-coding assistant. You receive the current program and a short instruction. Return a minimal modification that keeps the program runnable while applying the intent.\n\nRules:\n- Preserve unrelated code and comments.\n- Prefer minimal edits over full rewrites.\n- Keep formatting consistent with the original code.\n- Only change what the instruction asks for.\n- Return ONLY the updated program. No explanation, no markdown fences, no JSON wrapping.';
+
+// Store previous code for undo
+var previousEditCode = null;
+
 async function doEdit() {
   var editInput = document.getElementById('editInput');
   var instruction = editInput.value.trim();
@@ -1757,9 +1763,9 @@ async function doEdit() {
   var apiKey = getApiKey();
   var statusEl = document.getElementById('status');
   var applyBtn = document.getElementById('editApply');
+  var undoBtn = document.getElementById('editUndo');
 
   if (!apiKey) {
-    // No API key — can't do natural language edit
     statusEl.className = 'status error';
     statusEl.textContent = 'Natural language edit requires an API key.';
     return;
@@ -1770,24 +1776,31 @@ async function doEdit() {
   statusEl.textContent = 'Editing: ' + instruction.substring(0, 50) + '...';
 
   try {
-    var editPrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nInstruction: ' + instruction + '\n\nModify the code according to the instruction. Keep the overall structure. Return the complete modified code only, no explanation.';
+    var editPrompt = 'Current Strudel program:\n\n' + currentCode + '\n\nInstruction:\n' + instruction;
     var code;
     if (getProvider() === 'gemini') {
       var resp = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 2048 } }) });
+          body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
       var data = await resp.json();
       if (data.error) throw new Error(data.error.message);
       code = stripFences(data.candidates[0].content.parts[0].text);
     } else {
       var resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.5, system: STRUDEL_SYSTEM_PROMPT, messages: [{ role: 'user', content: editPrompt }] }) });
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: EDIT_SYSTEM, messages: [{ role: 'user', content: editPrompt }] }) });
       var data = await resp.json();
       if (data.error) throw new Error(data.error.message);
       code = stripFences(data.content[0].text);
     }
+
+    if (!code || !code.trim()) throw new Error('Empty response');
+
+    // Save for undo
+    previousEditCode = currentCode;
+    if (undoBtn) undoBtn.disabled = false;
+
     editInput.value = '';
     setCodeAndPlay(code);
   } catch (e) {
@@ -1798,7 +1811,18 @@ async function doEdit() {
   }
 }
 
+function doUndo() {
+  if (!previousEditCode) return;
+  var ed = getEditor();
+  if (!ed) return;
+  setCodeAndPlay(previousEditCode);
+  previousEditCode = null;
+  document.getElementById('editUndo').disabled = true;
+  document.getElementById('status').textContent = 'Undone';
+}
+
 document.getElementById('editApply').addEventListener('click', doEdit);
+document.getElementById('editUndo').addEventListener('click', doUndo);
 document.getElementById('editInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); doEdit(); }
 });

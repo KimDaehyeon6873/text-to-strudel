@@ -316,6 +316,15 @@
   }
   .edit-apply:hover { filter: brightness(1.1); }
   .edit-apply:disabled { opacity: .35; cursor: wait; filter: none; }
+  .edit-undo {
+    font-family: var(--mono); font-size: .62rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: transparent; color: var(--text-3);
+    border: 1px dashed var(--border); padding: .35rem .6rem; border-radius: var(--r);
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .edit-undo:hover { color: var(--text-2); border-color: var(--border-active); }
+  .edit-undo:disabled { opacity: .25; cursor: default; }
 
   /* ---- STATUS ---- */
   .status {
@@ -452,6 +461,7 @@
     <span class="tweak-label">Edit</span>
     <input class="edit-input" id="editInput" type="text" placeholder="Describe what to change..." autocomplete="off">
     <button class="edit-apply" id="editApply">Apply</button>
+    <button class="edit-undo" id="editUndo" disabled>Undo</button>
   </div>
 
   <div class="status" id="status"></div>
