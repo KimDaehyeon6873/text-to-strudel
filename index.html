@@ -63,7 +63,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding-top: 1rem;
+    padding-top: 2.5rem;
   }
   .output.hidden { display: none; }
 
@@ -306,6 +306,7 @@
   .ch-minus:hover, .ch-plus:hover { background: var(--g-glow); color: var(--g); border-color: var(--g-mute); }
   .ch-toggle { border-radius: var(--r); margin-right: .15rem; }
   .ch-toggle:hover { color: var(--txt); border-color: var(--border-hi); }
+  .mixer-divider { border-top: 1px solid var(--border); margin: .3rem 0; }
   .mixer-tags { display: flex; flex-wrap: wrap; gap: .15rem; padding: .1rem 0; }
   .ch-tag, .ch-mood {
     background: var(--surface); border: 1px solid var(--border);
@@ -506,6 +507,7 @@
         <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" data-dir="less distortion">-</button><button class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
         <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" data-dir="less crush">-</button><button class="refine-btn ch-plus" data-dir="more crush">+</button></div>
       </div>
+      <div class="mixer-divider"></div>
       <div class="mod-label">tone</div>
       <div class="mixer-tags">
         <button class="refine-btn ch-tag" data-dir="scale:major">major</button>
