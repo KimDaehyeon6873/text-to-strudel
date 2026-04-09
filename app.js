@@ -1876,9 +1876,6 @@ document.getElementById('input').addEventListener('keydown', function(e) {
 // Edit system prompt — focused on MINIMAL edits, not rewrites
 var EDIT_SYSTEM = 'You are a Strudel live-coding assistant. You receive the current program and a short instruction. Return a minimal modification that keeps the program runnable while applying the intent.\n\nRules:\n- Preserve unrelated code and comments.\n- Prefer minimal edits over full rewrites.\n- Keep formatting consistent with the original code.\n- Only change what the instruction asks for.\n- Return ONLY the updated program. No explanation, no markdown fences, no JSON wrapping.';
 
-// Store previous code for undo
-var previousEditCode = null;
-
 async function doEdit() {
   var editInput = document.getElementById('editInput');
   var instruction = editInput.value.trim();
@@ -1892,7 +1889,6 @@ async function doEdit() {
   var apiKey = getApiKey();
   var statusEl = document.getElementById('status');
   var applyBtn = document.getElementById('editApply');
-  var undoBtn = document.getElementById('editUndo');
 
   if (!apiKey) {
     statusEl.className = 'status error';
@@ -1925,11 +1921,6 @@ async function doEdit() {
     }
 
     if (!code || !code.trim()) throw new Error('Empty response');
-
-    // Save for undo
-    previousEditCode = currentCode;
-    if (undoBtn) undoBtn.disabled = false;
-
     editInput.value = '';
     setCodeAndPlay(code);
   } catch (e) {
@@ -1938,16 +1929,6 @@ async function doEdit() {
   } finally {
     applyBtn.disabled = false;
   }
-}
-
-function doUndo() {
-  if (!previousEditCode) return;
-  var ed = getEditor();
-  if (!ed) return;
-  setCodeAndPlay(previousEditCode);
-  previousEditCode = null;
-  document.getElementById('editUndo').disabled = true;
-  document.getElementById('status').textContent = 'Undone';
 }
 
 document.getElementById('editApply').addEventListener('click', doEdit);
@@ -1960,7 +1941,6 @@ document.getElementById('mixerToggle').addEventListener('click', function() {
   mixer.style.display = visible ? 'none' : 'flex';
   btn.classList.toggle('active', !visible);
 });
-document.getElementById('editUndo').addEventListener('click', doUndo);
 document.getElementById('editInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); doEdit(); }
 });

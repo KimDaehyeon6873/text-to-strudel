@@ -343,14 +343,6 @@
   }
   .edit-apply:hover { color: var(--g); background: var(--g-glow); }
   .edit-apply:disabled { opacity: .2; }
-  .edit-undo {
-    background: transparent; border: 1px dashed var(--border);
-    color: var(--txt-dim); font-family: var(--mono);
-    font-size: .5rem; padding: .25rem .35rem;
-    border-radius: var(--r); cursor: pointer;
-  }
-  .edit-undo:hover { border-color: var(--border-hi); color: var(--txt); }
-  .edit-undo:disabled { opacity: .15; }
 
   /* ---- STATUS ---- */
   .status {
@@ -547,7 +539,6 @@
       <span class="tweak-label">edit</span>
       <input class="edit-input" id="editInput" type="text" placeholder="> describe change..." autocomplete="off">
       <button class="edit-apply" id="editApply">apply</button>
-      <button class="edit-undo" id="editUndo" disabled>undo</button>
       <button class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls">mixer</button>
     </div>
 
