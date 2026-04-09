@@ -34,7 +34,7 @@
 - **9개 장르 모드:** EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5개 서브장르), Random, Fusion
 - **Fusion 토글:** Fusion 체크박스를 선택한 뒤 여러 장르를 조합. 개수 제한 없음.
 - **인터랙티브 Strudel 에디터:** 생성된 코드를 직접 편집, `Ctrl+Enter`로 즉시 반영
-- **DJ 믹서:** 14개 채널 스트립 (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6개 스케일) + mood (4개 프리셋). 2열 그리드. 길게 누르면 연속 조절.
+- **DJ 믹서:** 13개 채널 스트립 (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6개 스케일) + mood (4개 프리셋). 2열 그리드. 길게 누르면 연속 조절.
 - **자연어 편집:** 원하는 변경사항을 자연어로 입력. LLM이 구조를 보존하면서 코드를 정밀 수정. (API 키 필요)
 - **Mood 버튼:** dark / euphoric / dreamy / aggressive. 알고리즘 모드에서는 복합 파라미터 변경, AI 모드에서는 LLM이 창의적으로 재해석.
 - **Regenerate:** 같은 입력, 다른 결과. 알고리즘 모드는 seed 증가, AI 모드는 temperature/topP 조정.
@@ -172,8 +172,8 @@ text-to-strudel/
 ```
 
 - **index.html** (~570줄) -- 2열 레이아웃: 왼쪽 패널 (컨트롤, 믹서) 고정, 오른쪽 패널 (코드 에디터) 독립 스크롤. Matrix 초록 미학, CRT 스캔라인 오버레이. CodeMirror 구문 색상을 초록 스펙트럼으로 오버라이드.
-- **index.amber.html** (~250줄) -- 단일 열 레이아웃, 앰버 액센트, 필름 그레인 오버레이, 알약형 버튼. 동일한 HTML 구조와 ID -- `app.js`와 완전 호환.
-- **app.js** (~2060줄) -- Seeded PRNG, 텍스트 분석, 7개 장르 정의, 멜로디/베이스/코드/아르페지오 생성기, 14개 믹서 채널 스트립 핸들러, 3개 LLM 프로바이더 통합, 동적 오류 복구 루프, 자연어 편집, 시스템 프롬프트 + 컴포넌트 레퍼런스.
+- **index.amber.html** (274줄) -- 단일 열 레이아웃, 앰버 액센트, 필름 그레인 오버레이, 알약형 버튼. 동일한 HTML 구조와 ID -- `app.js`와 완전 호환.
+- **app.js** (~2060줄) -- Seeded PRNG, 텍스트 분석, 7개 장르 정의, 멜로디/베이스/코드/아르페지오 생성기, 13개 믹서 채널 스트립 핸들러, 3개 LLM 프로바이더 통합, 동적 오류 복구 루프, 자연어 편집, 시스템 프롬프트 + 컴포넌트 레퍼런스.
 
 ---
 
@@ -194,7 +194,7 @@ text-to-strudel/
 
 **프로바이더별 Temperature 처리:**
 - **Gemini:** 1.0 고정 (Google은 Gemini 3+ 모델에서 낮추지 않을 것을 권장). `topP`로 변주 (0.9 -> 0.99, regen마다 증가).
-- **Claude:** 0.9 -> 1.0, regen마다 증가. 범위 0.0-1.0.
+- **Claude:** 0.9 -> 1.2, regen마다 증가. 범위 0.0-1.2.
 - **OpenAI:** 0.9 -> 1.2, regen마다 증가. temperature 지원을 위해 `reasoning: {effort: "none"}` 필요.
 
 ---

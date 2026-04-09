@@ -34,7 +34,7 @@
 - **9 genre modes:** EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5 subgenres), Random, Fusion
 - **Fusion toggle:** Check the Fusion box, then select multiple genres to combine. Any number of genres.
 - **Interactive Strudel editor:** Edit generated code live, press `Ctrl+Enter` to re-evaluate instantly
-- **DJ Mixer:** 14 channel strips (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6 scales) + mood (4 presets). 2-column grid. Long-press for continuous adjustment.
+- **DJ Mixer:** 13 channel strips (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6 scales) + mood (4 presets). 2-column grid. Long-press for continuous adjustment.
 - **Natural language Edit:** Type what you want to change in plain English. LLM modifies the code surgically, preserving structure. (Requires API key)
 - **Mood buttons:** dark / euphoric / dreamy / aggressive. Compound parameter shifts in algo mode; creative reinterpretation via LLM in AI mode.
 - **Regenerate:** Same input, different result. Algorithmic mode increments seed; AI mode adjusts temperature/topP.
@@ -172,8 +172,8 @@ text-to-strudel/
 ```
 
 - **index.html** (~570 lines) -- 2-column layout: left panel (controls, mixer) is fixed, right pane (code editor) scrolls independently. Matrix green aesthetic with CRT scanline overlay. CodeMirror syntax colors overridden to all-green spectrum.
-- **index.amber.html** (~250 lines) -- Single-column layout with amber accent, film grain overlay, pill-shaped buttons. Same HTML structure and IDs -- fully interchangeable with `app.js`.
-- **app.js** (~2060 lines) -- Seeded PRNG, text analysis, 7 genre definitions, melody/bass/chord/arp generators, 14 mixer channel strip handlers, 3 LLM provider integrations, dynamic error recovery loop, natural language edit, system prompt + component reference.
+- **index.amber.html** (274 lines) -- Single-column layout with amber accent, film grain overlay, pill-shaped buttons. Same HTML structure and IDs -- fully interchangeable with `app.js`.
+- **app.js** (~2060 lines) -- Seeded PRNG, text analysis, 7 genre definitions, melody/bass/chord/arp generators, 13 mixer channel strip handlers, 3 LLM provider integrations, dynamic error recovery loop, natural language edit, system prompt + component reference.
 
 ---
 
@@ -194,7 +194,7 @@ Keys are stored per-provider in `localStorage`. Switching providers loads that p
 
 **Temperature handling per provider:**
 - **Gemini:** Fixed at 1.0 (Google recommends not lowering for Gemini 3+). Variation via `topP` (0.9 -> 0.99 per regen).
-- **Claude:** 0.9 -> 1.0 per regen. Range 0.0-1.0.
+- **Claude:** 0.9 -> 1.2 per regen. Range 0.0-1.2.
 - **OpenAI:** 0.9 -> 1.2 per regen. Requires `reasoning: {effort: "none"}` for temperature support.
 
 ---
