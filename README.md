@@ -1,5 +1,7 @@
 # text-to-strudel
 
+<img width="1362" height="212" alt="스크린샷 2026-04-09 오후 5 27 47" src="https://github.com/user-attachments/assets/26cbbed6-cc50-4469-a4fa-3882d370b053" />
+
 **Turn any text into live-coded music. No server. No install. Just a browser.**
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
