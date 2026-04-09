@@ -739,7 +739,11 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Use $: prefix for each parallel pattern layer.
 - Start with setcpm(BPM/4).
 - Write 4-7 layers. Each layer gets a brief poetic // comment that names what it represents.
-- The opening // comment block should name the input, the key/scale, the BPM, and a one-line poetic interpretation.
+- The opening // comment block should include:
+  Line 1: the input text, genre, key/scale, BPM
+  Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:
+  // "Contains: Menthol, Camphor" -> the cold bite of menthol = phrygian's flat 2nd.
+  // Petrolatum = thick, slow bass. Essential oils = high shimmering arps that evaporate.
 
 ## MUSIC THEORY PRINCIPLES
 (These principles are implemented in the CODE STRUCTURE PATTERNS provided in the user message.)
