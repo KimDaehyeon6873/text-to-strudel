@@ -64,7 +64,7 @@ function describeMood(a) {
 var GENRES = {
   edm: {
     label: 'EDM', tempoRange: [124, 140],
-    scales: ['minor', 'phrygian', 'harmonic:minor', 'dorian', 'phrygian:dominant', 'minor:pentatonic'],
+    scales: ['minor', 'harmonic:minor', 'dorian', 'minor:pentatonic', 'lydian', 'mixolydian', 'phrygian', 'whole:tone'],
     keys: ['A', 'E', 'D', 'C', 'F', 'Bb', 'G'],
     octaves: { lead: 4, bass: 1, chord: 4, arp: 5 },
     sounds: [
