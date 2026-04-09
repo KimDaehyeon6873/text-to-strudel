@@ -246,7 +246,7 @@
   .transport-spacer { flex: 1; }
 
   /* ---- TWEAK ROWS ---- */
-  .tweak-row { display: flex; flex-wrap: nowrap; gap: .18rem; align-items: center; overflow-x: auto; }
+  .tweak-row { display: flex; flex-wrap: wrap; gap: .18rem; align-items: center; }
   .tweak-label {
     font-size: .48rem; font-weight: 700;
     letter-spacing: .12em; text-transform: uppercase;
@@ -324,37 +324,47 @@
   }
 
   /* ---- CodeMirror theme override (matrix green on black) ---- */
-  strudel-editor .cm-editor {
+  .cm-editor {
     background: #020402 !important;
-    font-size: .82rem !important;
+    font-size: .86rem !important;
   }
-  strudel-editor .cm-editor .cm-scroller {
+  .cm-editor .cm-scroller {
     font-family: var(--mono) !important;
   }
-  strudel-editor .cm-editor .cm-gutters {
+  .cm-editor .cm-gutters {
     background: #020402 !important;
     border-right: 1px solid var(--border) !important;
     color: var(--txt-dim) !important;
   }
-  strudel-editor .cm-editor .cm-activeLineGutter,
-  strudel-editor .cm-editor .cm-activeLine {
-    background: rgba(0,224,96,.03) !important;
+  .cm-editor .cm-activeLineGutter,
+  .cm-editor .cm-activeLine {
+    background: rgba(0,224,96,.04) !important;
   }
-  strudel-editor .cm-editor .cm-selectionBackground,
-  strudel-editor .cm-editor ::selection {
-    background: rgba(0,224,96,.12) !important;
+  .cm-editor .cm-selectionBackground,
+  .cm-editor ::selection {
+    background: rgba(0,224,96,.15) !important;
   }
-  strudel-editor .cm-editor .cm-cursor {
+  .cm-editor .cm-cursor {
     border-left-color: var(--g) !important;
   }
-  /* Syntax colors: all green spectrum */
-  strudel-editor .cm-editor .cm-content { color: #70a870 !important; }
-  strudel-editor .cm-editor .ͼb { color: #40c060 !important; }  /* strings */
-  strudel-editor .cm-editor .ͼc { color: #00e060 !important; }  /* keywords */
-  strudel-editor .cm-editor .ͼd { color: #80c880 !important; }  /* numbers */
-  strudel-editor .cm-editor .ͼe { color: #3a6a3a !important; }  /* comments */
-  strudel-editor .cm-editor .ͼ7 { color: #a0d8a0 !important; }  /* variables */
-  strudel-editor .cm-editor .ͼ8 { color: #50b050 !important; }  /* functions */
+  /* Base text */
+  .cm-editor .cm-content { color: #609860 !important; }
+  /* Comments: dark muted green */
+  .cm-editor .ͼ13, .cm-editor .ͼm { color: #3a5a3a !important; }
+  /* Functions/keywords: bright green */
+  .cm-editor .ͼ14, .cm-editor .ͼ19 { color: #00e060 !important; }
+  /* Numbers: medium green */
+  .cm-editor .ͼz, .cm-editor .ͼd { color: #60c060 !important; }
+  /* Strings: bright warm green */
+  .cm-editor .ͼ11, .cm-editor .ͼe { color: #40c860 !important; }
+  /* Operators/variables: light green */
+  .cm-editor .ͼv, .cm-editor .ͼt, .cm-editor .ͼc { color: #80b880 !important; }
+  /* Properties: green-white */
+  .cm-editor .ͼ1c, .cm-editor .ͼ10, .cm-editor .ͼg { color: #90d090 !important; }
+  /* Punctuation: dim */
+  .cm-editor .ͼ16 { color: #406040 !important; }
+  /* Mini-notation highlight background */
+  .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 900px) {
