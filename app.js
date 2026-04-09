@@ -80,7 +80,7 @@ var GENRES = {
       { k: 'bd [~ bd] bd [~ bd]', s: '~ cp ~ cp', h: '[~ hh]*8', x: '~ ~ [~ oh] ~' },
     ],
     progressions: [[0,5,3,6],[0,3,5,6],[0,6,5,3],[0,5,6,4],[0,3,6,5]],
-    layers: ['drums', 'bass', 'lead', 'chords', 'arp'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
     leadFx: function(rng, a, room, lpfLow, lpfHigh, filterSpeed) { return [
       '.superimpose(x=>x.add(.09))',
       '.lpf(sine.range('+lpfLow+','+lpfHigh+').slow('+filterSpeed+'))',
@@ -109,7 +109,7 @@ var GENRES = {
       { k: 'bd ~ bd ~', s: '~ [~ cp] ~ cp', h: '[hh hh [~ hh]]*2', x: '~ ~ ~ [~ oh]' },
     ],
     progressions: [[1,4,0,0],[0,5,1,4],[0,3,5,4],[2,5,1,4],[0,1,2,4]],
-    layers: ['drums', 'bass', 'lead', 'chords'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
     leadFx: function(rng, a, room) { return ['.decay(.25).sustain(.5)', '.room(.35).gain(.45)', '.every(2, x=>x.add('+pickFrom(rng,[2,-2,5,7])+')).degradeBy(.1)']; },
     bassFx: function() { return ['.room(.25).gain(.55)']; },
     chordFx: function(rng, a) { return ['.struct("x('+pickFrom(rng,[3,5])+',8,-'+pickFrom(rng,[1,2])+')")', '.every(2, early(1/8))', '.decay(.3).sustain(.4)', '.room(.3).gain(.3)']; },
@@ -127,7 +127,7 @@ var GENRES = {
     ],
     bank: null, drums: null,
     progressions: [[0,3,4,0],[0,5,3,4],[0,3,0,4],[0,4,5,3],[0,2,4,0]],
-    layers: ['bass', 'lead', 'chords', 'arp'],
+    layers: ['bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
     leadFx: function(rng, a, room) { return ['.room('+room+').gain(.5)', '.attack(.02).release(.4)']; },
     bassFx: function(rng, a, room) { return ['.room('+room+').gain(.45)']; },
     chordFx: function(rng, a, room) { return ['.attack(.15).release(.6)', '.room('+room+').gain(.3)']; },
@@ -149,7 +149,7 @@ var GENRES = {
       { k: 'bd [~ bd] sd bd', s: null, h: 'hh*6', x: '[~ oh] ~ ~ ~' },
     ],
     progressions: [[0,0,3,0],[0,3,4,0],[0,3,0,4],[0,0,4,3]],
-    layers: ['drums', 'bass', 'lead', 'chords'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
     leadFx: function(rng, a) { return ['.room(.3).gain(.5)', '.delay(.2).delayfeedback(.2)']; },
     bassFx: function() { return ['.room(.2).gain(.5)']; },
     chordFx: function(rng) { return ['.struct("[~ x]*2")', '.room(.25).gain(.35)']; },
@@ -166,7 +166,7 @@ var GENRES = {
     ],
     bank: null, drums: null,
     progressions: [[0,2,4,6],[0,3,0,5],[0,4,2,6],[0,5,3,1]],
-    layers: ['bass', 'pad', 'lead', 'arp'],
+    layers: ['bass', 'pad', 'lead', 'arp', 'texture'],
     leadFx: function(rng, a, room) { return ['.attack(.2).release(1)', '.delay(.5).delayfeedback(.5)', '.room('+(0.5+a.space*0.4).toFixed(2)+').gain(.3)']; },
     bassFx: function(rng, a, room) { return ['.lpf('+Math.round(200+a.brightness*300)+').attack(.2).release(.8).gain(.3).room('+room+')']; },
     chordFx: function(rng, a, room) { return ['.attack(.5).release(1.5)', '.lpf(sine.range('+Math.round(400+a.weight*400)+','+Math.round(1200+a.brightness*1200)+').slow(16))', '.room('+(0.5+a.space*0.4).toFixed(2)+').gain(.15)']; },
@@ -188,7 +188,7 @@ var GENRES = {
       { k: 'bd ~ sd [~ bd]', s: null, h: 'hh*8', x: '~ ~ ~ oh' },
     ],
     progressions: [[0,3,5,4],[1,4,0,5],[0,5,3,4],[0,2,3,4]],
-    layers: ['drums', 'bass', 'lead', 'chords'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
     leadFx: function(rng, a) { return ['.lpf('+Math.round(1500+a.brightness*2000)+')', '.decay(.2).sustain(.4)', '.room(.35).gain(.4)', '.degradeBy(.15)']; },
     bassFx: function(rng, a) { return ['.lpf('+Math.round(150+a.brightness*150)+').decay(.1).sustain(.3).gain(.55)']; },
     chordFx: function(rng, a) { return ['.struct("[~ x]*2")', '.lpf('+Math.round(1500+a.brightness*1500)+')', '.decay(.25).sustain(.3)', '.room(.3).gain(.3)']; },
@@ -215,7 +215,7 @@ var GENRES = {
       { k: 'bd ~ [~ bd] ~', s: null, h: '[~ hh]*4', x: 'rim ~ rim ~' },
     ],
     progressions: [[0,6,5,4],[0,1,4,0],[0,3,6,4],[0,5,6,0]],
-    layers: ['drums', 'bass', 'lead', 'chords'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
     leadFx: function(rng, a, room) { return ['.room('+room+').gain(.45)', '.delay(.25).delayfeedback(.3)']; },
     bassFx: function(rng, a, room) { return ['.room('+room+').gain(.5)']; },
     chordFx: function(rng, a, room) { return ['.room('+room+').gain(.3)', '.attack(.05).release(.4)']; },
@@ -480,7 +480,7 @@ function buildRandomGenre(rng) {
     bank: g3.bank || g1.bank || 'RolandTR808',
     drums: g3.drums || g1.drums,
     progressions: g1.progressions,
-    layers: ['drums', 'bass', 'lead', 'chords', 'arp'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
   };
 }
 
@@ -531,7 +531,7 @@ function buildFusionGenre(rng, genreNames) {
     bank: Array.isArray(bank) ? bank : (bank ? [bank] : ['RolandTR808']),
     drums: drums,
     progressions: allProgs,
-    layers: ['drums', 'bass', 'lead', 'chords', 'arp'],
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
   };
 }
 
@@ -708,6 +708,51 @@ function generateCode(text, genreName) {
     if (masks.arp) L.push('.mask(' + masks.arp + ')');
     L.push('');
   }
+
+  // PERCUSSION (separate from drums — rim, perc, shaker patterns)
+  if (g.layers.indexOf('perc') !== -1 && bank) {
+    var percPatterns = [
+      'rim*4', '[~ rim]*4', 'rim [~ rim] ~ rim', '[~ rim]*2',
+      '[~ perc]*4', 'perc [~ perc] ~ perc', '[~ cb]*4', 'rim*8',
+    ];
+    L.push(genComment(rng, 'drums', a));
+    L.push('$: s("' + pickFrom(rng, percPatterns) + '")');
+    L.push('.bank("' + (Array.isArray(bank) ? pickFrom(rng, bank) : bank) + '")');
+    L.push('.gain(' + (0.15 + a.energy * 0.15).toFixed(2) + ')');
+    if (rng() < 0.4) L.push('.pan(sine.range(.3,.7).slow(3))');
+    if (rng() < 0.3) L.push('.degradeBy(' + (0.2 + a.space * 0.3).toFixed(2) + ')');
+    if (masks.bass) L.push('.mask(' + masks.bass + ')');
+    L.push('');
+  }
+
+  // COUNTERMELODY (second melodic voice, offset from lead)
+  if (g.layers.indexOf('countermelody') !== -1) {
+    var counterMel = generateMelody(rng, Math.max(4, melLen - 2), a.space * 0.4, a.energy * 0.3);
+    L.push(genComment(rng, 'lead', a));
+    L.push('$: n("' + counterMel + '".add("<' + genAddPattern(rng, a) + '>"))');
+    L.push('.scale(' + sc(oct.lead > 3 ? oct.lead + 1 : oct.lead) + ').s("' + pickFrom(rng, ['triangle', 'sine', sounds.lead]) + '")');
+    L.push('.decay(.12).sustain(.2)');
+    L.push('.delay(.3).delayfeedback(.4)');
+    L.push('.gain(' + (0.12 + a.brightness * 0.12).toFixed(2) + ')');
+    L.push('.room(' + room + ')');
+    if (rng() < 0.5) L.push('.degradeBy(' + (0.2 + a.space * 0.2).toFixed(2) + ')');
+    if (masks.lead) L.push('.mask(' + masks.lead + ')');
+    L.push('');
+  }
+
+  // TEXTURE (filtered noise / atmosphere)
+  if (g.layers.indexOf('texture') !== -1 && rng() < 0.65) {
+    var noiseTypes = ['pink', 'white', 'brown'];
+    var noiseType = pickFrom(rng, noiseTypes);
+    L.push(genComment(rng, 'pad', a));
+    L.push('$: s("' + noiseType + '")');
+    L.push('.lpf(' + Math.round(300 + a.brightness * 800) + ')');
+    L.push('.gain(sine.range(' + (0.02).toFixed(2) + ',' + (0.06 + a.weight * 0.06).toFixed(2) + ').slow(' + Math.round(8 + a.space * 16) + '))');
+    L.push('.room(' + (0.4 + a.space * 0.4).toFixed(2) + ')');
+    if (masks.lead) L.push('.mask(' + masks.lead + ')');
+    L.push('');
+  }
+
   return L.join('\n');
 }
 
@@ -738,7 +783,11 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Output ONLY valid Strudel code. No markdown, no explanation, no prose outside comments.
 - Use $: prefix for each parallel pattern layer.
 - Start with setcpm(BPM/4).
-- Write 4-7 layers. Each layer gets a brief poetic // comment that names what it represents.
+- Write 7-12 layers. More layers = more control = better music. Split aggressively:
+  Drums should be 2-3 separate $: layers (kick, snare/clap, hats/cymbals each as own layer).
+  Bass and sub-bass can be separate. Lead melody and counter-melody separate.
+  Add dedicated layers for: percussion (rim, perc, shaker), texture/noise (filtered noise, crackle),
+  atmosphere/pad, arp/shimmer, FX (one-shot sounds, risers). Each layer gets a brief poetic // comment.
 - The opening // comment block should include:
   Line 1: the input text, genre, key/scale, BPM
   Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:
