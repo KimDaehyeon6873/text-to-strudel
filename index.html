@@ -63,6 +63,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    padding-top: 1rem;
   }
   .output.hidden { display: none; }
 
@@ -264,6 +265,60 @@
   .tweak-btn.mood:hover { color: var(--g); border-color: var(--g-dim); }
   .tweak-btn:disabled { opacity: .2; }
 
+  .mixer-toggle {
+    background: transparent; border: 1px dashed var(--border);
+    color: var(--txt-dim); font-family: var(--mono);
+    font-size: .5rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: .25rem .4rem; border-radius: var(--r); cursor: pointer;
+    margin-left: auto;
+  }
+  .mixer-toggle:hover { border-color: var(--border-hi); color: var(--txt); }
+  .mixer-toggle.active { color: var(--g-dim); border-color: var(--g-mute); border-style: solid; }
+
+  /* ---- MIXER ---- */
+  .mixer { display: flex; flex-direction: column; gap: .15rem; }
+  .mixer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .1rem .4rem;
+  }
+  .mixer-ch {
+    display: flex; align-items: center; gap: 0;
+    height: 1.4rem;
+  }
+  .ch-label {
+    font-size: .5rem; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--txt-dim); width: 4.2rem; flex-shrink: 0;
+  }
+  .ch-minus, .ch-plus, .ch-toggle {
+    width: 1.6rem; height: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--txt-dim); font-family: var(--mono);
+    font-size: .62rem; font-weight: 700;
+    border-radius: var(--r); cursor: pointer;
+    transition: all .08s;
+  }
+  .ch-minus { border-right: none; border-radius: var(--r) 0 0 var(--r); }
+  .ch-plus { border-radius: 0 var(--r) var(--r) 0; }
+  .ch-minus:hover, .ch-plus:hover { background: var(--g-glow); color: var(--g); border-color: var(--g-mute); }
+  .ch-toggle { border-radius: var(--r); margin-right: .15rem; }
+  .ch-toggle:hover { color: var(--txt); border-color: var(--border-hi); }
+  .mixer-tags { display: flex; flex-wrap: wrap; gap: .15rem; padding: .1rem 0; }
+  .ch-tag, .ch-mood {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--txt-dim); font-family: var(--mono);
+    font-size: .5rem; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase;
+    padding: .15rem .4rem; border-radius: var(--r);
+    cursor: pointer; transition: all .08s;
+  }
+  .ch-tag:hover { color: var(--g); border-color: var(--g-mute); }
+  .ch-mood { color: var(--g-dim); border-color: var(--g-mute); }
+  .ch-mood:hover { color: var(--g); border-color: var(--g-dim); background: var(--g-glow); }
+
   /* ---- EDIT ---- */
   .edit-row { display: flex; align-items: center; gap: .2rem; }
   .edit-input {
@@ -363,6 +418,8 @@
   .cm-editor .ͼ1c, .cm-editor .ͼ10, .cm-editor .ͼg { color: #90d090 !important; }
   /* Punctuation: dim */
   .cm-editor .ͼ16 { color: #406040 !important; }
+  /* Hide line numbers */
+  .cm-editor .cm-gutters { display: none !important; }
   /* Mini-notation highlight background */
   .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
 
@@ -431,40 +488,58 @@
       <button class="t-btn t-regen" id="regenBtn">regen</button>
     </div>
 
-    <div class="tweak-row" id="refineRow" style="display:none">
-      <span class="tweak-label">refine</span>
-      <button class="tweak-btn refine-btn" data-dir="faster">faster</button>
-      <button class="tweak-btn refine-btn" data-dir="slower">slower</button>
-      <button class="tweak-btn refine-btn" data-dir="brighter">brighter</button>
-      <button class="tweak-btn refine-btn" data-dir="darker">darker</button>
-      <button class="tweak-btn refine-btn" data-dir="more reverb">spacious</button>
-      <button class="tweak-btn refine-btn" data-dir="drier">dry</button>
-      <button class="tweak-btn refine-btn" data-dir="louder">louder</button>
-      <button class="tweak-btn refine-btn" data-dir="quieter">quieter</button>
-    </div>
-    <div class="tweak-row" id="moodRow" style="display:none">
-      <span class="tweak-label">mood</span>
-      <button class="tweak-btn refine-btn mood" data-dir="make it darker and moodier">dark</button>
-      <button class="tweak-btn refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
-      <button class="tweak-btn refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
-      <button class="tweak-btn refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
+    <!-- MIXER: channel strips in 2-col grid, tone/mood below -->
+    <div class="mixer" id="algoMixer" style="display:none">
+      <div class="mod-label">mixer</div>
+      <div class="mixer-grid">
+        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" data-dir="slower">-</button><button class="refine-btn ch-plus" data-dir="faster">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" data-dir="quieter">-</button><button class="refine-btn ch-plus" data-dir="louder">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" data-dir="darker">-</button><button class="refine-btn ch-plus" data-dir="brighter">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" data-dir="less resonance">-</button><button class="refine-btn ch-plus" data-dir="more resonance">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" data-dir="less highpass">-</button><button class="refine-btn ch-plus" data-dir="more highpass">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" data-dir="lower">-</button><button class="refine-btn ch-plus" data-dir="higher">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" data-dir="drier">-</button><button class="refine-btn ch-plus" data-dir="more reverb">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" data-dir="less delay">-</button><button class="refine-btn ch-plus" data-dir="more delay">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" data-dir="less feedback">-</button><button class="refine-btn ch-plus" data-dir="more feedback">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" data-dir="sparser">-</button><button class="refine-btn ch-plus" data-dir="denser">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" data-dir="straighten">off</button><button class="refine-btn ch-toggle" data-dir="add swing">on</button></div>
+        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" data-dir="less distortion">-</button><button class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" data-dir="less crush">-</button><button class="refine-btn ch-plus" data-dir="more crush">+</button></div>
+      </div>
+      <div class="mod-label">tone</div>
+      <div class="mixer-tags">
+        <button class="refine-btn ch-tag" data-dir="scale:major">major</button>
+        <button class="refine-btn ch-tag" data-dir="scale:minor">minor</button>
+        <button class="refine-btn ch-tag" data-dir="scale:dorian">dorian</button>
+        <button class="refine-btn ch-tag" data-dir="scale:phrygian">phrygian</button>
+        <button class="refine-btn ch-tag" data-dir="scale:lydian">lydian</button>
+        <button class="refine-btn ch-tag" data-dir="scale:pentatonic">pentatonic</button>
+      </div>
+      <div class="mod-label">mood</div>
+      <div class="mixer-tags">
+        <button class="refine-btn ch-mood" data-dir="make it darker and moodier">dark</button>
+        <button class="refine-btn ch-mood" data-dir="make it euphoric and uplifting">euphoric</button>
+        <button class="refine-btn ch-mood" data-dir="make it dreamy and floating">dreamy</button>
+        <button class="refine-btn ch-mood" data-dir="make it aggressive and intense">aggressive</button>
+      </div>
     </div>
 
+    <!-- LLM MODE: edit + mixer toggle -->
     <div class="edit-row" id="editRow" style="display:none">
       <span class="tweak-label">edit</span>
       <input class="edit-input" id="editInput" type="text" placeholder="> describe change..." autocomplete="off">
       <button class="edit-apply" id="editApply">apply</button>
       <button class="edit-undo" id="editUndo" disabled>undo</button>
+      <button class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls">mixer</button>
     </div>
+
+    <!-- hidden compat anchor -->
+    <div id="refineRow" style="display:none"></div>
 
     <div class="status" id="status"></div>
   </div>
 
   <div class="output hidden" id="editorWrap">
-    <div class="editor-bar">
-      <span>output</span>
-      <span class="editor-bar-hint">ctrl+enter play / ctrl+. stop</span>
-    </div>
     <strudel-editor id="strudelEditor"></strudel-editor>
   </div>
 

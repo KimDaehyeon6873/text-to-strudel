@@ -1472,9 +1472,13 @@ async function doGenerate() {
   var ew = document.getElementById('editorWrap');
   ew.classList.remove('hidden');
   ew.classList.add('visible');
-  document.getElementById('refineRow').style.display = 'flex';
-  document.getElementById('moodRow').style.display = 'flex';
-  document.getElementById('editRow').style.display = 'flex';
+  // Show controls based on API key
+  if (getApiKey()) {
+    document.getElementById('editRow').style.display = 'flex';
+    // mixer hidden by default in LLM mode, toggled by mixer button
+  } else {
+    document.getElementById('algoMixer').style.display = 'flex';
+  }
 
   if (apiKey) {
     // ---- Claude/Gemini creative mode ----
@@ -1669,8 +1673,90 @@ function algoRefine(code, direction) {
       return code.replace(/\.room\s*\(\s*([\d.]+)\s*\)/g, function(m, r) {
         return '.room(' + Math.max(0, (parseFloat(r) - 0.15)).toFixed(2) + ')';
       });
+    // ---- PITCH ----
+    case 'higher':
+      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
+        return '.scale("' + key + Math.min(7, parseInt(oct) + 1) + ':' + sc + '")';
+      });
+    case 'lower':
+      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
+        return '.scale("' + key + Math.max(1, parseInt(oct) - 1) + ':' + sc + '")';
+      });
+    // ---- DENSITY ----
+    case 'denser':
+      return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
+        return '.struct("x(' + Math.min(parseInt(n), parseInt(k) + 1) + ',' + n;
+      });
+    case 'sparser':
+      return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
+        return '.struct("x(' + Math.max(1, parseInt(k) - 1) + ',' + n;
+      });
+    // ---- SCALE CHANGE ----
+    case 'scale:major': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1major');
+    case 'scale:minor': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor');
+    case 'scale:dorian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1dorian');
+    case 'scale:phrygian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1phrygian');
+    case 'scale:lydian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1lydian');
+    case 'scale:pentatonic': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor:pentatonic');
+    // ---- FILTER: resonance & highpass ----
+    case 'more resonance':
+      return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
+        return '.lpq(' + Math.min(50, parseFloat(q) + 2).toFixed(0) + ')';
+      });
+    case 'less resonance':
+      return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
+        return '.lpq(' + Math.max(0, parseFloat(q) - 2).toFixed(0) + ')';
+      });
+    case 'more highpass':
+      return code.replace(/\.hpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
+        return '.hpf(' + Math.min(8000, Math.round(parseInt(f) * 1.3)) + ')';
+      });
+    case 'less highpass':
+      return code.replace(/\.hpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
+        return '.hpf(' + Math.max(20, Math.round(parseInt(f) * 0.7)) + ')';
+      });
+    // ---- FX ----
+    case 'more delay':
+      return code.replace(/\.delay\s*\(\s*([\d.]+)\s*\)/g, function(m, d) {
+        return '.delay(' + Math.min(1, (parseFloat(d) + 0.15)).toFixed(2) + ')';
+      });
+    case 'less delay':
+      return code.replace(/\.delay\s*\(\s*([\d.]+)\s*\)/g, function(m, d) {
+        return '.delay(' + Math.max(0, (parseFloat(d) - 0.15)).toFixed(2) + ')';
+      });
+    case 'more feedback':
+      return code.replace(/\.delayfeedback\s*\(\s*([\d.]+)\s*\)/g, function(m, f) {
+        return '.delayfeedback(' + Math.min(0.95, (parseFloat(f) + 0.1)).toFixed(2) + ')';
+      });
+    case 'less feedback':
+      return code.replace(/\.delayfeedback\s*\(\s*([\d.]+)\s*\)/g, function(m, f) {
+        return '.delayfeedback(' + Math.max(0, (parseFloat(f) - 0.1)).toFixed(2) + ')';
+      });
+    case 'more distortion':
+      return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
+        return '.shape(' + Math.min(1, (parseFloat(s) + 0.15)).toFixed(2) + ')';
+      });
+    case 'less distortion':
+      return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
+        return '.shape(' + Math.max(0, (parseFloat(s) - 0.15)).toFixed(2) + ')';
+      });
+    case 'more crush':
+      return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
+        return '.crush(' + Math.max(1, parseInt(c) - 1) + ')';  // lower = more crushed
+      });
+    case 'less crush':
+      return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
+        return '.crush(' + Math.min(16, parseInt(c) + 1) + ')';  // higher = less crushed
+      });
+    case 'add swing':
+      // Add .swing(0.15) after .bank() or after first s() call
+      if (code.indexOf('.swing(') === -1) {
+        return code.replace(/(\.bank\s*\([^)]*\))/, '$1.swing(0.15)');
+      }
+      return code;
+    case 'straighten':
+      return code.replace(/\.swing\s*\([^)]*\)/g, '');
     default:
-      // mood shifts via LLM prompt direction — pass through for LLM handler
       return code;
   }
 }
@@ -1828,6 +1914,15 @@ function doUndo() {
 }
 
 document.getElementById('editApply').addEventListener('click', doEdit);
+
+// Mixer toggle in LLM mode
+document.getElementById('mixerToggle').addEventListener('click', function() {
+  var mixer = document.getElementById('algoMixer');
+  var btn = document.getElementById('mixerToggle');
+  var visible = mixer.style.display === 'flex';
+  mixer.style.display = visible ? 'none' : 'flex';
+  btn.classList.toggle('active', !visible);
+});
 document.getElementById('editUndo').addEventListener('click', doUndo);
 document.getElementById('editInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); doEdit(); }
