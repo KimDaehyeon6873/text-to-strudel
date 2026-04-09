@@ -783,11 +783,21 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Output ONLY valid Strudel code. No markdown, no explanation, no prose outside comments.
 - Use $: prefix for each parallel pattern layer.
 - Start with setcpm(BPM/4).
-- Write 7-12 layers. More layers = more control = better music. Split aggressively:
-  Drums should be 2-3 separate $: layers (kick, snare/clap, hats/cymbals each as own layer).
-  Bass and sub-bass can be separate. Lead melody and counter-melody separate.
-  Add dedicated layers for: percussion (rim, perc, shaker), texture/noise (filtered noise, crackle),
-  atmosphere/pad, arp/shimmer, FX (one-shot sounds, risers). Each layer gets a brief poetic // comment.
+- Write 7-12 $: layers. More layers = more control = better music.
+  Split drums: kick as own $:, snare/clap as own $:, hats/cymbals as own $:.
+  Split melody: lead + counter-melody (different octave/timbre, offset with .off or .early).
+  Separate layers for: bass, sub-bass, chords/pad, arp, percussion (rim/perc/shaker),
+  texture (filtered noise, crackle), atmosphere. Each gets a poetic // comment.
+  SHARE context between layers — use const/let variables:
+    const chords = chord("<Cm7 Fm7>").dict('lefthand');
+    $: chords.voicing().struct("[~ x]*2")   // comping
+    $: n("0").set(chords).mode("root:g2").voicing().s("gm_acoustic_bass")  // bass from same chords
+  Use .layer() to split one pattern into parallel voices:
+    $: melody.layer(x=>x.scaleTranspose(0), x=>x.scaleTranspose(2).early(1/8))
+  Use const for shared FX chains:
+    const fx = x => x.s('sawtooth').cutoff(1200).gain(.5).attack(0).decay(.16);
+    $: pattern1.apply(fx)
+    $: pattern2.apply(fx)
 - The opening // comment block should include:
   Line 1: the input text, genre, key/scale, BPM
   Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:

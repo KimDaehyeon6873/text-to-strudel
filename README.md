@@ -2,7 +2,7 @@
 
 **Turn any text into live-coded music. No server. No install. Just a browser.**
 
-`AGPL-3.0` | `Zero dependencies` | `Runs offline (algorithmic mode)` | `~1700 lines total`
+`AGPL-3.0` | `Zero dependencies` | `Runs offline (algorithmic mode)` | `~2550 lines total`
 
 ---
 
@@ -29,12 +29,14 @@ Two modes of operation: a fully deterministic algorithmic pipeline that needs no
 
 - **9 genre modes**: EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5 subgenres), Random, Fusion
 - **Interactive Strudel editor**: edit generated code live, Ctrl+Enter to re-evaluate instantly
-- **Refine buttons**: faster / slower / brighter / darker / spacious / dry / louder / quieter
-- **Mood buttons**: dark / euphoric / dreamy / aggressive -- compound parameter shifts in algorithmic mode, creative reinterpretation in AI mode
+- **Refine buttons**: faster / slower / brighter / darker / spacious / dry / louder / quieter (always algorithmic -- instant, no API cost)
+- **Mood buttons**: dark / euphoric / dreamy / aggressive -- compound parameter shifts in algorithmic mode, creative reinterpretation via LLM in AI mode
+- **Long-press repeat**: hold down any ± mixer button for continuous adjustment
 - **Regenerate**: same input, different result. Algorithmic mode increments a seed counter; AI mode raises temperature (0.90 to 1.20 for Claude, 0.90 to 1.50 for Gemini) and adds a variation hint
 - **Deterministic output**: in algorithmic mode, the same text + genre + seed always produces the same music
 - **Post-generation validation**: auto-fixes GM pad naming hallucinations from LLM output (e.g., `gm_pad_1_new_age` to `gm_pad_new_age`)
 - **No server, no npm, no build step**: open the HTML file and go
+- **7-12 layers per generation**: drums, percussion, bass, lead, countermelody, chords, arp, texture/noise -- split aggressively for fine-grained control
 - **Full Strudel component reference** injected as LLM context: 92 scales, 100+ GM instruments, 58 effects, FM/wavetable/additive synthesis, sample manipulation, 8 drum banks
 - **29 code structure patterns** across 8 categories provided to the LLM as compositional idioms
 - **Genre-specific arrangement lengths** (e.g., EDM: intro 8 -> build 8 -> drop 16 -> break 8)
