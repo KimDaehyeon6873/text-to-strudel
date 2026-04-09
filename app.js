@@ -742,8 +742,8 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - The opening // comment block should include:
   Line 1: the input text, genre, key/scale, BPM
   Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:
-  // "Contains: Menthol, Camphor" -> the cold bite of menthol = phrygian's flat 2nd.
-  // Petrolatum = thick, slow bass. Essential oils = high shimmering arps that evaporate.
+  // "Contains: Menthol, Camphor" -> the cold bite of menthol = harmonic minor's raised 7th, sharp and clinical.
+  // Petrolatum = thick, slow bass that clings. Essential oils = high arps that evaporate into delay.
 
 ## MUSIC THEORY PRINCIPLES
 (These principles are implemented in the CODE STRUCTURE PATTERNS provided in the user message.)
@@ -759,13 +759,13 @@ Dynamic arc: intro (sparse, quiet) → build (add layers, open filters) → peak
 ## MOOD PARAMETERS
 
 When shifting the mood of a piece, adjust these parameters together:
-  dark: tempo -10%, lpf -200Hz, room +0.2, gain -10%, prefer minor/phrygian
-  euphoric: tempo +10%, lpf +400Hz, room +0.1, gain +10%, prefer major/lydian
-  melancholic: tempo -15%, lpf -100Hz, room +0.3, gain -5%, prefer minor/dorian
-  aggressive: tempo +15%, lpf +600Hz, gain +15%, prefer phrygian/locrian
-  dreamy: tempo -20%, lpf -300Hz, room +0.4, delay +0.3, gain -10%, prefer lydian/whole:tone
-  peaceful: tempo -25%, lpf -200Hz, room +0.25, gain -15%, prefer major:pentatonic
-  energetic: tempo +20%, lpf +300Hz, gain +10%, prefer mixolydian/dorian
+  dark: tempo -10%, lpf -200Hz, room +0.2, gain -10%
+  euphoric: tempo +10%, lpf +400Hz, room +0.1, gain +10%
+  melancholic: tempo -15%, lpf -100Hz, room +0.3, gain -5%
+  aggressive: tempo +15%, lpf +600Hz, gain +15%
+  dreamy: tempo -20%, lpf -300Hz, room +0.4, delay +0.3, gain -10%
+  peaceful: tempo -25%, lpf -200Hz, room +0.25, gain -15%
+  energetic: tempo +20%, lpf +300Hz, gain +10%
 
 ## CRITICAL REMINDERS
 (Full syntax, effects, scales, sounds, and techniques are in the user message COMPLETE COMPONENT REFERENCE.)
@@ -900,7 +900,7 @@ PATTERN MODIFIERS (essential for arrangement and variation):
 
 // ---- Genre Context: starting point, not a cage ----
 var GENRE_CONTEXT = {
-  edm:       'EDM starting point: 124-140 BPM, four-on-floor, sawtooth + filter sweeps, minor/phrygian. BUT: consider hybrid approaches — ambient-EDM with sine pads, jazz-EDM with complex chords, classical-EDM with string stabs. Typical arrangement: intro 8 cycles → build 8 → drop 16 → break 8 → drop 16 → outro 8.',
+  edm:       'EDM starting point: 124-140 BPM, four-on-floor, sawtooth + filter sweeps. Choose a scale that matches the INPUT, not a default. Consider hybrid approaches — ambient-EDM with sine pads, jazz-EDM with complex chords. Typical arrangement: intro 8 cycles → build 8 → drop 16 → break 8 → drop 16 → outro 8.',
   jazz:      'Jazz starting point: 80-160 BPM, swing feel, Rhodes/bass/ride, dorian/bebop. BUT: jazz has absorbed everything — electronic jazz, afro-jazz, jazz-funk, free jazz. Go wherever the input leads. Typical arrangement: head 8 cycles → solo 16 → head 8. Or: intro 4 → AABA form 32 → outro 4.',
   classical: 'Classical starting point: 60-120 BPM, piano/strings, major/minor, no electronics. BUT: modern classical breaks every rule — prepared piano, electronics, quarter-tones. The concept decides. Typical arrangement: exposition 16 cycles → development 16 → recapitulation 16. Or: ABA form.',
   blues:     'Blues starting point: 70-110 BPM, shuffle, pentatonic/blues scale, guitar. BUT: blues lives in hip-hop, in electronica, in jazz — the feeling is what matters, not the 12-bar form. Typical arrangement: 12-bar form repeating. Intro 4 → verse 12 → verse 12 → bridge 8 → verse 12 → outro 4.',
