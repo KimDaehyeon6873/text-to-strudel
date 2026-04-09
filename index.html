@@ -49,7 +49,7 @@
   .shell {
     display: grid;
     grid-template-columns: 1fr 2fr;
-    min-height: 100vh;
+    height: 100vh;
   }
   .panel {
     border-right: 1px solid var(--border);
@@ -58,12 +58,16 @@
     display: flex;
     flex-direction: column;
     gap: .7rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
   }
   .output {
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 100vh;
     padding-top: 2.5rem;
+    overflow-y: auto;
   }
   .output.hidden { display: none; }
 
@@ -432,9 +436,9 @@
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 900px) {
-    .shell { grid-template-columns: 1fr; }
-    .panel { border-right: none; border-bottom: 1px solid var(--border); }
-    .output { min-height: 300px; }
+    .shell { grid-template-columns: 1fr; height: auto; }
+    .panel { border-right: none; border-bottom: 1px solid var(--border); position: static; height: auto; overflow-y: visible; }
+    .output { min-height: 300px; overflow-y: visible; }
   }
   @media (max-width: 500px) {
     .panel { padding: .7rem .5rem; }
