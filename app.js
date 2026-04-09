@@ -1468,6 +1468,7 @@ async function doGenerate() {
   document.getElementById('editorWrap').classList.add('visible');
   document.getElementById('refineRow').style.display = 'flex';
   document.getElementById('moodRow').style.display = 'flex';
+  document.getElementById('editRow').style.display = 'flex';
 
   if (apiKey) {
     // ---- Claude/Gemini creative mode ----
@@ -1740,4 +1741,64 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
 
 document.getElementById('input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('playBtn').click(); }
+});
+
+// ---- Natural Language Edit ----
+async function doEdit() {
+  var editInput = document.getElementById('editInput');
+  var instruction = editInput.value.trim();
+  if (!instruction) return;
+
+  var ed = getEditor();
+  if (!ed) return;
+  var currentCode = ed.code || '';
+  if (!currentCode.trim()) return;
+
+  var apiKey = getApiKey();
+  var statusEl = document.getElementById('status');
+  var applyBtn = document.getElementById('editApply');
+
+  if (!apiKey) {
+    // No API key — can't do natural language edit
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Natural language edit requires an API key.';
+    return;
+  }
+
+  applyBtn.disabled = true;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Editing: ' + instruction.substring(0, 50) + '...';
+
+  try {
+    var editPrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nInstruction: ' + instruction + '\n\nModify the code according to the instruction. Keep the overall structure. Return the complete modified code only, no explanation.';
+    var code;
+    if (getProvider() === 'gemini') {
+      var resp = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 2048 } }) });
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error.message);
+      code = stripFences(data.candidates[0].content.parts[0].text);
+    } else {
+      var resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.5, system: STRUDEL_SYSTEM_PROMPT, messages: [{ role: 'user', content: editPrompt }] }) });
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error.message);
+      code = stripFences(data.content[0].text);
+    }
+    editInput.value = '';
+    setCodeAndPlay(code);
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Edit error: ' + e.message;
+  } finally {
+    applyBtn.disabled = false;
+  }
+}
+
+document.getElementById('editApply').addEventListener('click', doEdit);
+document.getElementById('editInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); doEdit(); }
 });

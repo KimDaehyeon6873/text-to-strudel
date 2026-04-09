@@ -293,6 +293,30 @@
   .tweak-btn.mood:hover { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, var(--border)); }
   .tweak-btn:disabled { opacity: .3; cursor: wait; }
 
+  /* ---- EDIT (natural language) ---- */
+  .edit-row {
+    display: flex; align-items: center; gap: .35rem;
+    margin-bottom: .5rem;
+  }
+  .edit-input {
+    flex: 1;
+    font-family: var(--body); font-size: .78rem; font-weight: 300;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: .35rem .6rem; border-radius: var(--r); outline: none;
+    transition: border-color .15s;
+  }
+  .edit-input:focus { border-color: var(--amber); }
+  .edit-input::placeholder { color: var(--text-3); }
+  .edit-apply {
+    font-family: var(--mono); font-size: .62rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: var(--amber); color: var(--bg);
+    border: none; padding: .35rem .7rem; border-radius: var(--r);
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .edit-apply:hover { filter: brightness(1.1); }
+  .edit-apply:disabled { opacity: .35; cursor: wait; filter: none; }
+
   /* ---- STATUS ---- */
   .status {
     font-family: var(--mono); font-size: .66rem; font-weight: 400;
@@ -422,6 +446,12 @@
     <button class="tweak-btn refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
     <button class="tweak-btn refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
     <button class="tweak-btn refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
+  </div>
+
+  <div class="edit-row" id="editRow" style="display:none">
+    <span class="tweak-label">Edit</span>
+    <input class="edit-input" id="editInput" type="text" placeholder="Describe what to change..." autocomplete="off">
+    <button class="edit-apply" id="editApply">Apply</button>
   </div>
 
   <div class="status" id="status"></div>
