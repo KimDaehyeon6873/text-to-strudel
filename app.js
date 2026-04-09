@@ -1793,17 +1793,22 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
     var currentCode = ed.code || '';
     if (!currentCode.trim()) return;
 
-    var apiKey = getApiKey();
     // Tone buttons: highlight active
     if (direction.indexOf('scale:') === 0) {
       document.querySelectorAll('.ch-tag').forEach(function(t) { t.classList.remove('active'); });
       btn.classList.add('active');
     }
 
-    if (!apiKey) {
-      // algorithmic refine: modify existing values
+    // ± mixer buttons ALWAYS use algorithm (instant, no API cost)
+    // Only mood buttons ("make it...") use LLM when API key is available
+    var isMoodDirection = direction.indexOf('make it') === 0;
+    var apiKey = getApiKey();
+    var useLLM = apiKey && isMoodDirection;
+
+    if (!useLLM) {
+      // algorithmic refine
       var result;
-      if (direction.indexOf('make it') === 0) {
+      if (isMoodDirection) {
         result = currentCode;
         if (direction.indexOf('dark') !== -1 || direction.indexOf('moodi') !== -1) {
           result = algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb');
@@ -1818,7 +1823,6 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       } else {
         result = algoRefine(currentCode, direction);
       }
-      // Flash feedback: green if changed, red if no-op
       var changed = result !== currentCode;
       btn.classList.add(changed ? 'flash-ok' : 'flash-fail');
       setTimeout(function() { btn.classList.remove('flash-ok', 'flash-fail'); }, 300);
@@ -1829,7 +1833,7 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       return;
     }
 
-    // LLM refine: send current code + direction
+    // LLM refine: mood buttons only
     var statusEl = document.getElementById('status');
     statusEl.className = 'status';
     statusEl.textContent = 'Refining: ' + direction + '...';
