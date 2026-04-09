@@ -10,8 +10,10 @@
 
 - **9개 장르 지원** — EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World, Random, Fusion
 - **인터랙티브 Strudel 에디터** — 생성된 코드를 직접 편집하고 `Ctrl+Enter`로 즉시 반영
-- **Refine 버튼 8개** — faster / slower / brighter / darker / spacious / dry / louder / quieter
-- **Mood 버튼 4개** — dark / euphoric / dreamy / aggressive
+- **Refine 버튼 8개** — faster / slower / brighter / darker / spacious / dry / louder / quieter (항상 알고리즘 방식, API 비용 없음)
+- **Mood 버튼 4개** — dark / euphoric / dreamy / aggressive (AI 모드에서는 LLM이 창의적으로 재해석)
+- **6-12개 레이어** — drums, percussion, bass, lead, countermelody, chords, arp, texture/noise
+- **길게 누르기 반복** — ± 버튼을 길게 누르면 연속 조절
 - **Regenerate** — 같은 입력으로 매번 다른 결과 생성
 - **GM pad 이름 자동 정규화** — General MIDI 패드 이름을 올바른 형식으로 변환
 - **29개 코드 구조 패턴** — 8개 카테고리에 걸친 다양한 코드 진행
@@ -83,16 +85,17 @@ Anthropic 또는 Google AI API 키를 설정하면 활성화됩니다.
 
 ```
 text-to-strudel/
-  index.html   (277줄) — UI, 레이아웃, 스타일
-  app.js     (1400+줄) — 전체 로직
+  index.html   (558줄) — UI, 레이아웃, 스타일
+  app.js     (2001줄) — 전체 로직
 ```
 
 ### index.html
 
 - 텍스트 입력 영역
-- 장르 선택 드롭다운
-- Generate / Regenerate / Play 버튼
-- Refine 버튼 (8개) 및 Mood 버튼 (4개)
+- 장르 선택 버튼 (장르별 액센트 컬러)
+- Generate / Regenerate / Stop 버튼
+- Mixer 패널: ± 버튼, tone 태그, mood 버튼
+- 인라인 편집 바 (자연어 지시로 코드 수정)
 - Strudel REPL 에디터 영역
 - API 키 설정 UI
 

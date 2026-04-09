@@ -36,7 +36,7 @@ Two modes of operation: a fully deterministic algorithmic pipeline that needs no
 - **Deterministic output**: in algorithmic mode, the same text + genre + seed always produces the same music
 - **Post-generation validation**: auto-fixes GM pad naming hallucinations from LLM output (e.g., `gm_pad_1_new_age` to `gm_pad_new_age`)
 - **No server, no npm, no build step**: open the HTML file and go
-- **7-12 layers per generation**: drums, percussion, bass, lead, countermelody, chords, arp, texture/noise -- split aggressively for fine-grained control
+- **6-12 layers per generation**: drums, percussion, bass, lead, countermelody, chords, arp, texture/noise -- split or combine as the music demands
 - **Full Strudel component reference** injected as LLM context: 92 scales, 100+ GM instruments, 58 effects, FM/wavetable/additive synthesis, sample manipulation, 8 drum banks
 - **29 code structure patterns** across 8 categories provided to the LLM as compositional idioms
 - **Genre-specific arrangement lengths** (e.g., EDM: intro 8 -> build 8 -> drop 16 -> break 8)
@@ -130,7 +130,7 @@ When an API key is configured, the tool sends the input text to Claude Haiku 4.5
 The system prompt instructs the model to interpret text as feeling, imagery, and narrative rather than literal letter-to-note mappings. It includes:
 - A creative process framework (what does this feel like, look like, what story lives inside it)
 - A worked example of creative reasoning (not included in output)
-- Output format requirements (valid Strudel code only, `$:` prefix, 7-12 layers, poetic comments)
+- Output format requirements (valid Strudel code only, `$:` prefix, 6-12 layers, poetic comments)
 - Quality criteria distinguishing good from boring output
 - Music theory principles: voice leading, 4-part harmony, anchor points, tension-release, call-and-response, rhythmic counterpoint, dynamic arc
 - Mood parameter reference (dark, euphoric, melancholic, aggressive, dreamy, peaceful, energetic) with specific numerical adjustments
@@ -154,21 +154,21 @@ A variation hint is appended to the prompt when seedCounter > 0, asking for a di
 
 **Refine via LLM**
 
-In AI mode, Refine and Mood buttons send the current code back to the LLM with a modification instruction (e.g., "modify this code to make it darker and moodier") at temperature 0.7.
+In AI mode, only Mood buttons send the current code back to the LLM with a modification instruction (e.g., "modify this code to make it darker and moodier") at temperature 0.7. Refine (±) buttons always use the algorithmic pipeline for instant feedback.
 
 ## Genre Guide
 
 | Genre       | BPM Range | Scales                                               | Typical Sounds                              | Layers                              |
 |------------|-----------|------------------------------------------------------|---------------------------------------------|--------------------------------------|
-| **EDM**        | 124-140   | minor, phrygian, harmonic minor, dorian              | Sawtooth/square leads, sine bass, TR808/909 | drums, bass, lead, chords, arp       |
-| **Jazz**       | 84-148    | dorian, mixolydian, lydian, bebop, altered            | Rhodes, acoustic bass, vibraphone, sax      | drums, bass, lead, chords            |
-| **Classical**  | 62-116    | major, minor, harmonic minor, melodic minor, lydian  | Piano, strings, flute, oboe, cello          | bass, lead, chords, arp              |
-| **Blues**       | 72-108    | minor blues, major blues, mixolydian, dorian         | Overdriven guitar, harmonica, clean guitar  | drums, bass, lead, chords            |
-| **Ambient**    | 50-76     | lydian, major pentatonic, whole tone, dorian         | Sine/triangle, celesta, blown bottle, pads  | bass, pad, lead, arp                 |
-| **Lo-fi**      | 68-86     | minor pentatonic, dorian, minor, mixolydian          | Electric piano, vibraphone, music box       | drums, bass, lead, chords            |
-| **World**      | 78-126    | Tradition-specific (see subgenres)                   | Koto, sitar, nylon guitar, accordion, oboe  | drums, bass, lead, chords            |
-| **Random**     | Varies    | Mixed from random genre combination                  | Mixed from random genre combination         | drums, bass, lead, chords, arp       |
-| **Fusion**     | Averaged  | Concatenated from two genres                         | Mixed from two genres                       | drums, bass, lead, chords, arp       |
+| **EDM**        | 124-140   | minor, phrygian, harmonic minor, dorian              | Sawtooth/square leads, sine bass, TR808/909 | drums, perc, bass, lead, countermelody, chords, arp, texture |
+| **Jazz**       | 84-148    | dorian, mixolydian, lydian, bebop, altered            | Rhodes, acoustic bass, vibraphone, sax      | drums, perc, bass, lead, countermelody, chords, texture |
+| **Classical**  | 62-116    | major, minor, harmonic minor, melodic minor, lydian  | Piano, strings, flute, oboe, cello          | bass, lead, countermelody, chords, arp, texture |
+| **Blues**       | 72-108    | minor blues, major blues, mixolydian, dorian         | Overdriven guitar, harmonica, clean guitar  | drums, perc, bass, lead, countermelody, chords, texture |
+| **Ambient**    | 50-76     | lydian, major pentatonic, whole tone, dorian         | Sine/triangle, celesta, blown bottle, pads  | bass, pad, lead, arp, texture |
+| **Lo-fi**      | 68-86     | minor pentatonic, dorian, minor, mixolydian          | Electric piano, vibraphone, music box       | drums, perc, bass, lead, countermelody, chords, texture |
+| **World**      | 78-126    | Tradition-specific (see subgenres)                   | Koto, sitar, nylon guitar, accordion, oboe  | drums, perc, bass, lead, countermelody, chords, texture |
+| **Random**     | Varies    | Mixed from random genre combination                  | Mixed from random genre combination         | drums, perc, bass, lead, countermelody, chords, arp, texture |
+| **Fusion**     | Averaged  | Concatenated from two genres                         | Mixed from two genres                       | drums, perc, bass, lead, countermelody, chords, arp, texture |
 
 **World Subgenres**: Flamenco (phrygian dominant, nylon guitar), Japanese (hirajoshi/in-sen, koto/shakuhachi), Indian (phrygian dominant, sitar), Eastern European (ukrainian dorian/hungarian minor, accordion/violin), Arabic (double harmonic major/persian, oboe).
 
@@ -189,31 +189,32 @@ UI shell and styles. Dark theme (#08080f background), 2-column layout (1:2 ratio
 - Status display with animated playing indicator
 - Script tags loading `@strudel/repl` from CDN and `app.js`
 
-### `app.js` (2005 lines)
+### `app.js` (2001 lines)
 
 All application logic:
 
 | Section                  | Lines (approx.) | Purpose                                                    |
 |-------------------------|------------------|------------------------------------------------------------|
-| Seeded PRNG              | 10-21            | Deterministic random from `text + genre + seedCounter`     |
-| Text analysis            | 23-60            | Energy, brightness, weight, space, complexity extraction   |
-| Genre definitions        | 62-223           | 7 base genres with scales, sounds, drums, progressions, FX |
+| Seeded PRNG              | 11-22            | Deterministic random from `text + genre + seedCounter`     |
+| Text analysis            | 24-61            | Energy, brightness, weight, space, complexity extraction   |
+| Genre definitions        | 63-223           | 7 base genres with scales, sounds, drums, progressions, FX |
 | Melody generation        | 225-289          | Motif-based call-response with chord tone anchoring        |
 | Pattern helpers          | 291-376          | Walking bass (8 types), chords (6 voicings), arps (6 patterns), drum gains, evocative comments |
 | Artist techniques        | 378-461          | 12 techniques applied probabilistically by text analysis   |
-| Random/Fusion builders   | 463-508          | Cross-genre hybridization                                  |
-| Main code generator      | 510-679          | Assembles complete Strudel code with arrangement           |
-| System prompt            | 682-755          | Creative philosophy, music theory, mood parameters, 10 reminders |
-| Component reference      | 766-863          | Full Strudel API: synths, effects, scales, instruments, drums, modifiers |
-| Genre context            | 865-876          | Per-genre starting points with arrangement structures      |
-| Code patterns            | 878-1029         | 29 structural idioms across 8 categories                   |
-| User message builder     | 1031-1050        | Assembles input + genre context + reference + patterns     |
-| Provider abstraction     | 1052-1075        | Claude/Gemini routing                                      |
-| Claude API call          | 1077-1101        | Anthropic Messages API with temperature scaling            |
-| Gemini API call          | 1103-1128        | Google Generative Language API with temperature scaling    |
-| Post-generation validation | 1130-1147      | GM pad name hallucination fixes                            |
-| Editor integration       | 1149-1189        | `<strudel-editor>` web component control                   |
-| UI wiring                | 1191-1411        | Event handlers, refine logic, API key management           |
+| Random/Fusion builders   | 463-537          | Cross-genre hybridization                                  |
+| Main code generator      | 538-757          | Assembles complete Strudel code with arrangement (incl. percussion, countermelody, texture layers) |
+| System prompt            | 759-846          | Creative philosophy, music theory, layer guidance, mood parameters, 10 reminders |
+| Component reference      | 857-955          | Full Strudel API: synths, effects, scales, instruments, drums, modifiers |
+| Genre context            | 956-968          | Per-genre starting points with arrangement structures      |
+| Code patterns            | 970-1121         | 29 structural idioms across 8 categories                   |
+| User message builder     | 1122-1150        | Assembles input + genre context + reference + patterns     |
+| Provider abstraction     | 1151-1228        | Claude/Gemini routing with temperature scaling             |
+| Pre-eval normalization   | 1229-1292        | GM pad hallucination fixes, error recovery, fence stripping |
+| Editor integration       | 1294-1443        | `<strudel-editor>` web component control, error recovery   |
+| UI wiring                | 1445-1695        | Event handlers, genre UI, API key management               |
+| Algorithmic refine       | 1696-1818        | BPM, filter, reverb, gain, scale adjustments               |
+| Refine & Mood buttons    | 1819-1931        | Long-press repeat, ± always algorithm, mood uses LLM      |
+| Natural language edit     | 1930-2001        | Inline edit bar with LLM-powered code modification        |
 
 ## API Setup
 
@@ -247,20 +248,26 @@ API keys are stored in `localStorage` under `tts_api_key` and `tts_provider`. Th
 
 These appear after the first generation and operate on the currently loaded code.
 
-### Refine Buttons (parameter adjustments)
+### Refine Buttons (always algorithmic -- instant, no API cost)
 
-| Button     | Algorithmic Mode                         | AI Mode                                   |
-|-----------|------------------------------------------|-------------------------------------------|
-| faster     | BPM +8 (max 200)                        | LLM rewrite with "make it faster"         |
-| slower     | BPM -8 (min 40)                         | LLM rewrite with "make it slower"         |
-| brighter   | All `.lpf()` values x1.4 (max 12000)    | LLM rewrite with "make it brighter"       |
-| darker     | All `.lpf()` values x0.6 (min 100)      | LLM rewrite with "make it darker"         |
-| spacious   | All `.room()` values +0.15 (max 1.0)    | LLM rewrite with "make it more reverb"    |
-| dry        | All `.room()` values -0.15 (min 0.0)    | LLM rewrite with "make it drier"          |
-| louder     | All `.gain()` values x1.15 (max 1.0)    | LLM rewrite with "make it louder"         |
-| quieter    | All `.gain()` values x0.85 (min 0.05)   | LLM rewrite with "make it quieter"        |
+Refine (±) buttons always run the algorithmic pipeline, even when an API key is configured. This keeps adjustments instant and free.
+
+| Button     | Effect                                            |
+|-----------|---------------------------------------------------|
+| faster     | BPM +8 (max 400)                                 |
+| slower     | BPM -8 (min 40)                                  |
+| brighter   | All `.lpf()` values x1.4 (max 12000)             |
+| darker     | All `.lpf()` values x0.6 (min 100)               |
+| spacious   | All `.room()` values +0.15 (max 1.0)             |
+| dry        | All `.room()` values -0.15 (min 0.0)             |
+| louder     | All `.gain()` values x1.15 (max 1.0)             |
+| quieter    | All `.gain()` values x0.85 (min 0.05)            |
+
+Hold down any ± button for continuous adjustment (long-press repeat).
 
 ### Mood Buttons (compound transformations)
+
+Mood buttons use compound algorithmic adjustments by default. When an API key is configured, they send the current code to the LLM for creative reinterpretation instead.
 
 | Button      | Algorithmic Mode                                  | AI Mode                             |
 |------------|---------------------------------------------------|--------------------------------------|
