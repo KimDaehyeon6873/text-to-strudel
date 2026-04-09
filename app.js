@@ -1643,7 +1643,7 @@ function algoRefine(code, direction) {
   switch (direction) {
     case 'faster':
       return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
-        return 'setcpm(' + Math.min(200, parseInt(bpm) + 8) + '/4)';
+        return 'setcpm(' + Math.min(400, parseInt(bpm) + 8) + '/4)';
       });
     case 'slower':
       return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
