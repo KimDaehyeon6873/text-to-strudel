@@ -1469,7 +1469,9 @@ async function doGenerate() {
   var genre = getEffectiveGenre();
   var apiKey = getApiKey();
   var statusEl = document.getElementById('status');
-  document.getElementById('editorWrap').classList.add('visible');
+  var ew = document.getElementById('editorWrap');
+  ew.classList.remove('hidden');
+  ew.classList.add('visible');
   document.getElementById('refineRow').style.display = 'flex';
   document.getElementById('moodRow').style.display = 'flex';
   document.getElementById('editRow').style.display = 'flex';

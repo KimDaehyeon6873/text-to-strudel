@@ -5,108 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Red+Hat+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0e;
-    --surface: #101016;
-    --raised: #16161e;
-    --border: #1e1e2a;
-    --border-active: #2e2e40;
-    --text: #d0d0d8;
-    --text-2: #8888a0;
-    --text-3: #50506a;
-    --amber: #e8a040;
-    --amber-dim: rgba(232, 160, 64, .06);
-    --green: #38c068;
-    --red: #d84848;
-    --body: 'Outfit', sans-serif;
-    --mono: 'Red Hat Mono', monospace;
-    --r: 5px;
-    --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    --bg: #030303;
+    --surface: #0a0a0a;
+    --border: #1a1a1a;
+    --border-hi: #2a2a2a;
+    --g: #00e060;
+    --g-dim: #00802a;
+    --g-glow: rgba(0,224,96,.08);
+    --g-glow2: rgba(0,224,96,.15);
+    --txt: #88aa88;
+    --txt-hi: #c0e8c0;
+    --txt-dim: #44664a;
+    --red: #e04040;
+    --amber: #d0a030;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+    --r: 2px;
   }
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     background: var(--bg);
-    color: var(--text);
-    font-family: var(--body);
-    font-weight: 300;
+    color: var(--txt);
+    font-family: var(--mono);
+    font-size: .78rem;
+    line-height: 1.5;
     min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    padding: 3rem 1.25rem 4rem;
   }
+  /* scanline overlay */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
-    background: var(--grain);
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
     pointer-events: none;
     z-index: 9999;
   }
-  .app { max-width: 740px; width: 100%; }
 
-  /* ---- HEADER ---- */
+  /* ---- 2-COLUMN LAYOUT ---- */
+  .shell {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    min-height: 100vh;
+  }
+  .panel {
+    border-right: 1px solid var(--border);
+    padding: 1.2rem 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+  }
+  .output {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ---- BRAND ---- */
   .brand {
-    font-family: var(--mono);
-    font-size: .72rem;
+    font-size: .6rem;
     font-weight: 600;
-    letter-spacing: .12em;
+    letter-spacing: .15em;
     text-transform: uppercase;
-    color: var(--text-2);
-    margin-bottom: .35rem;
+    color: var(--txt-dim);
   }
+  .brand b { color: var(--g); }
   .tagline {
-    font-size: 1.6rem;
-    font-weight: 300;
-    color: var(--text);
-    line-height: 1.3;
-    margin-bottom: 2.5rem;
+    font-size: .72rem;
+    font-weight: 400;
+    color: var(--txt-dim);
   }
-  .tagline em {
-    font-style: normal;
-    color: var(--amber);
-  }
+  .tagline em { font-style: normal; color: var(--g); }
 
   /* ---- API ---- */
-  details.api { margin-bottom: 1.5rem; }
   details.api summary {
-    font-family: var(--mono);
-    font-size: .62rem;
+    font-size: .6rem;
     font-weight: 600;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: var(--text-3);
+    color: var(--txt-dim);
     cursor: pointer;
-    user-select: none;
-    transition: color .15s;
   }
-  details.api summary:hover { color: var(--text-2); }
-  details.api[open] summary { color: var(--amber); }
-  details.api.verified summary { color: var(--green); }
+  details.api summary:hover { color: var(--txt); }
+  details.api[open] summary { color: var(--g); }
+  details.api.verified summary { color: var(--g-dim); }
   details.api.verified summary::after { content: ' \2713'; }
-  details.api.no-key summary { color: var(--text-3); }
   details.api.invalid summary { color: var(--red); }
   details.api.invalid summary::after { content: ' \2717'; }
-  .api-row { display: flex; gap: .5rem; margin-top: .5rem; }
+  .api-row { display: flex; gap: .4rem; margin-top: .4rem; }
   .api-row select, .api-row input {
-    background: var(--surface); border: 1px solid var(--border); color: var(--text);
-    font-size: .78rem; padding: .4rem .55rem; border-radius: var(--r); outline: none;
-    transition: border-color .15s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--txt);
+    font-family: var(--mono);
+    font-size: .68rem;
+    padding: .3rem .4rem;
+    border-radius: var(--r);
+    outline: none;
   }
-  .api-row select { font-family: var(--body); }
-  .api-row input { flex: 1; font-family: var(--mono); font-size: .72rem; }
-  .api-row select:focus, .api-row input:focus { border-color: var(--amber); }
+  .api-row input { flex: 1; }
+  .api-row select:focus, .api-row input:focus { border-color: var(--g-dim); }
   .api-save {
-    font-family: var(--mono); font-size: .62rem; font-weight: 600;
-    letter-spacing: .08em; text-transform: uppercase;
-    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
-    padding: .35rem .65rem; border-radius: var(--r); cursor: pointer;
-    transition: all .15s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: .6rem;
+    padding: .3rem .5rem;
+    border-radius: var(--r);
+    cursor: pointer;
+    letter-spacing: .06em;
+    text-transform: uppercase;
   }
-  .api-save:hover { border-color: var(--border-active); color: var(--text); }
-  .api-hint { font-size: .66rem; color: var(--text-3); margin-top: .3rem; }
-  .api-hint.saved { color: var(--green); }
+  .api-save:hover { border-color: var(--border-hi); color: var(--txt); }
+  .api-hint { font-size: .6rem; color: var(--txt-dim); margin-top: .25rem; }
+  .api-hint.saved { color: var(--g-dim); }
   .api-hint.error { color: var(--red); }
 
   /* ---- INPUT ---- */
@@ -114,361 +130,366 @@
     width: 100%;
     background: var(--surface);
     border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--body);
-    font-size: 1rem;
-    font-weight: 300;
-    padding: .9rem 1rem;
+    color: var(--g);
+    font-family: var(--mono);
+    font-size: .82rem;
+    padding: .6rem .7rem;
     border-radius: var(--r);
     resize: vertical;
-    min-height: 64px;
+    min-height: 52px;
     outline: none;
-    line-height: 1.5;
-    transition: border-color .2s, box-shadow .2s;
+    caret-color: var(--g);
+    transition: border-color .15s;
   }
-  .prompt-input:focus {
-    border-color: var(--amber);
-    box-shadow: 0 0 0 1px var(--amber), 0 4px 24px rgba(232,160,64,.04);
-  }
-  .prompt-input::placeholder { color: var(--text-3); }
+  .prompt-input:focus { border-color: var(--g-dim); box-shadow: 0 0 8px var(--g-glow); }
+  .prompt-input::placeholder { color: var(--txt-dim); }
 
   /* ---- GENRES ---- */
+  .section-label {
+    font-size: .56rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin-bottom: .2rem;
+  }
   .genres {
-    display: flex; flex-wrap: wrap; gap: .35rem;
-    margin: 1.2rem 0; align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
   }
   .genre-btn {
-    font-family: var(--mono); font-size: .66rem; font-weight: 400;
-    letter-spacing: .02em;
-    background: transparent;
+    background: var(--surface);
     border: 1px solid var(--border);
-    color: var(--text-3);
-    padding: .3rem .75rem;
-    border-radius: 100px;
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: .62rem;
+    padding: .2rem .5rem;
+    border-radius: var(--r);
     cursor: pointer;
-    transition: all .12s;
+    transition: all .1s;
+    letter-spacing: .02em;
   }
-  .genre-btn:hover { border-color: var(--border-active); color: var(--text-2); }
-  .genre-btn.active {
-    color: #fff;
-    border-color: var(--gc, var(--amber));
-    background: color-mix(in srgb, var(--gc, var(--amber)) 10%, transparent);
+  .genre-btn:hover { border-color: var(--border-hi); color: var(--txt); }
+  .genre-btn.active { color: var(--g); border-color: var(--g-dim); background: var(--g-glow); }
+  .genre-btn.fusion-pick {
+    color: var(--g) !important;
+    border-color: var(--g-dim) !important;
+    background: var(--g-glow) !important;
+    box-shadow: 0 0 6px var(--g-glow);
   }
-  /* fusion-pick styled via rainbow below */
-  .genre-btn[data-genre="edm"]       { --gc: #d040d0; }
-  .genre-btn[data-genre="jazz"]      { --gc: #d0b040; }
-  .genre-btn[data-genre="classical"] { --gc: #8888aa; }
-  .genre-btn[data-genre="blues"]     { --gc: #4070d0; }
-  .genre-btn[data-genre="ambient"]   { --gc: #40b8d0; }
-  .genre-btn[data-genre="lofi"]      { --gc: #d07050; }
-  .genre-btn[data-genre="world"]     { --gc: #40d070; }
-  .genre-btn[data-genre="random"]    { --gc: #909090; }
-  .genre-btn[data-genre="random"]    { --gc: #909090; }
-  .genre-sep { color: var(--text-3); font-size: .55rem; padding: 0 .1rem; user-select: none; }
+
+  /* ---- FUSION ---- */
   .fusion-toggle {
-    display: flex; align-items: center; gap: .45rem;
-    margin: .5rem 0 0; cursor: pointer; user-select: none;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    cursor: pointer;
+    user-select: none;
   }
   .fusion-toggle input {
-    appearance: none; -webkit-appearance: none;
-    width: 28px; height: 14px;
+    appearance: none;
+    width: 22px; height: 11px;
     background: var(--border);
-    border-radius: 100px;
+    border-radius: 2px;
     position: relative;
     cursor: pointer;
-    transition: background .2s;
   }
   .fusion-toggle input::after {
     content: '';
     position: absolute;
-    top: 2px; left: 2px;
-    width: 10px; height: 10px;
-    background: var(--text-3);
-    border-radius: 50%;
-    transition: all .2s;
+    top: 1px; left: 1px;
+    width: 9px; height: 9px;
+    background: var(--txt-dim);
+    border-radius: 1px;
+    transition: all .15s;
   }
-  .fusion-toggle input:checked {
-    background: var(--amber);
-  }
-  .fusion-toggle input:checked::after {
-    left: 16px;
-    background: var(--bg);
-  }
-  .fusion-label {
-    font-family: var(--mono); font-size: .64rem; font-weight: 600;
-    letter-spacing: .06em; text-transform: uppercase;
-    color: var(--text-3);
-    transition: color .15s;
-  }
-  .fusion-toggle input:checked ~ .fusion-label { color: var(--amber); }
-  .fusion-hint {
-    font-size: .6rem; color: var(--text-2); opacity: 0;
-    transition: opacity .2s;
-  }
+  .fusion-toggle input:checked { background: var(--g-dim); }
+  .fusion-toggle input:checked::after { left: 12px; background: var(--g); }
+  .fusion-label { font-size: .6rem; color: var(--txt-dim); letter-spacing: .06em; text-transform: uppercase; }
+  .fusion-toggle input:checked ~ .fusion-label { color: var(--g); }
+  .fusion-hint { font-size: .56rem; color: var(--txt-dim); opacity: 0; transition: opacity .15s; }
   .fusion-toggle input:checked ~ .fusion-hint { opacity: 1; }
 
-  /* Fusion-pick: rainbow border on selected genres when fusion is active */
-  @property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-  @keyframes spin { to { --angle: 360deg; } }
-  .genre-btn.fusion-pick {
-    border-color: transparent !important;
-    color: #fff !important;
-    background:
-      linear-gradient(var(--bg), var(--bg)) padding-box,
-      conic-gradient(from var(--angle), #d04040, #d0a040, #40d070, #4070d0, #a040d0, #d04040) border-box !important;
-    animation: spin 3s linear infinite;
-  }
-
-  /* ---- PRIMARY ACTION ---- */
-  .action-row {
-    margin: 1.2rem 0 .6rem;
-  }
+  /* ---- GENERATE ---- */
   .btn-generate {
     width: 100%;
+    background: transparent;
+    border: 1px solid var(--g-dim);
+    color: var(--g);
     font-family: var(--mono);
-    font-size: .82rem;
-    font-weight: 600;
-    letter-spacing: .08em;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .1em;
     text-transform: uppercase;
-    background: var(--amber);
-    color: var(--bg);
-    border: none;
-    padding: .7rem;
+    padding: .5rem;
     border-radius: var(--r);
     cursor: pointer;
     transition: all .15s;
   }
-  .btn-generate:hover { filter: brightness(1.1); box-shadow: 0 0 20px rgba(232,160,64,.15); }
-  .btn-generate:disabled { opacity: .35; cursor: wait; filter: none; box-shadow: none; }
+  .btn-generate:hover { background: var(--g-glow); box-shadow: 0 0 12px var(--g-glow2); }
+  .btn-generate:disabled { opacity: .3; cursor: wait; }
 
   /* ---- TRANSPORT ---- */
   .transport {
-    display: flex; align-items: center; gap: .4rem;
-    margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .3rem;
   }
   .t-btn {
-    font-family: var(--mono); font-size: .64rem; font-weight: 600;
-    letter-spacing: .06em; text-transform: uppercase;
-    background: transparent;
+    background: var(--surface);
     border: 1px solid var(--border);
-    color: var(--text-3);
-    padding: .3rem .7rem;
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: .6rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .25rem .5rem;
     border-radius: var(--r);
     cursor: pointer;
-    transition: all .12s;
+    transition: all .1s;
   }
-  .t-btn:hover { border-color: var(--border-active); color: var(--text-2); }
-  .t-btn.t-play  { color: var(--green); border-color: color-mix(in srgb, var(--green) 25%, transparent); }
-  .t-btn.t-play:hover { background: color-mix(in srgb, var(--green) 6%, transparent); border-color: var(--green); }
-  .t-btn.t-stop  { color: var(--red);   border-color: color-mix(in srgb, var(--red)   25%, transparent); }
-  .t-btn.t-stop:hover { background: color-mix(in srgb, var(--red) 6%, transparent); border-color: var(--red); }
+  .t-btn:hover { border-color: var(--border-hi); color: var(--txt); }
+  .t-btn.t-play { color: var(--g-dim); }
+  .t-btn.t-play:hover { color: var(--g); border-color: var(--g-dim); }
+  .t-btn.t-stop { color: #804040; }
+  .t-btn.t-stop:hover { color: var(--red); border-color: #804040; }
   .t-btn.t-regen { border-style: dashed; }
-  .t-btn.t-regen:hover { border-style: solid; }
-  .t-btn:disabled { opacity: .3; cursor: wait; }
+  .t-btn:disabled { opacity: .3; }
   .transport-spacer { flex: 1; }
 
-  /* ---- REFINE / MOOD ---- */
+  /* ---- TWEAK ---- */
   .tweak-row {
-    display: flex; flex-wrap: wrap; gap: .3rem;
-    align-items: center; margin-bottom: .3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    align-items: center;
   }
   .tweak-label {
-    font-family: var(--mono); font-size: .58rem; font-weight: 600;
-    letter-spacing: .1em; text-transform: uppercase;
-    color: var(--text-3); margin-right: .15rem; min-width: 3.5rem;
+    font-size: .52rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    min-width: 3rem;
   }
   .tweak-btn {
-    font-family: var(--mono); font-size: .6rem; font-weight: 400;
-    letter-spacing: .02em;
     background: transparent;
     border: 1px solid var(--border);
-    color: var(--text-3);
-    padding: .2rem .5rem;
-    border-radius: 100px;
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: .56rem;
+    padding: .15rem .4rem;
+    border-radius: var(--r);
     cursor: pointer;
-    transition: all .12s;
+    transition: all .1s;
   }
-  .tweak-btn:hover { border-color: var(--border-active); color: var(--text-2); }
-  .tweak-btn.mood { color: color-mix(in srgb, var(--amber) 70%, var(--text-3)); border-color: color-mix(in srgb, var(--amber) 18%, var(--border)); }
-  .tweak-btn.mood:hover { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, var(--border)); }
-  .tweak-btn:disabled { opacity: .3; cursor: wait; }
+  .tweak-btn:hover { border-color: var(--border-hi); color: var(--txt); }
+  .tweak-btn.mood { color: var(--amber); border-color: #3a3020; }
+  .tweak-btn.mood:hover { border-color: var(--amber); }
+  .tweak-btn:disabled { opacity: .3; }
 
-  /* ---- EDIT (natural language) ---- */
+  /* ---- EDIT ---- */
   .edit-row {
-    display: flex; align-items: center; gap: .35rem;
-    margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .25rem;
   }
   .edit-input {
     flex: 1;
-    font-family: var(--body); font-size: .78rem; font-weight: 300;
-    background: var(--surface); border: 1px solid var(--border); color: var(--text);
-    padding: .35rem .6rem; border-radius: var(--r); outline: none;
-    transition: border-color .15s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--txt);
+    font-family: var(--mono);
+    font-size: .68rem;
+    padding: .3rem .5rem;
+    border-radius: var(--r);
+    outline: none;
+    caret-color: var(--g);
   }
-  .edit-input:focus { border-color: var(--amber); }
-  .edit-input::placeholder { color: var(--text-3); }
+  .edit-input:focus { border-color: var(--g-dim); }
+  .edit-input::placeholder { color: var(--txt-dim); }
   .edit-apply {
-    font-family: var(--mono); font-size: .62rem; font-weight: 600;
-    letter-spacing: .06em; text-transform: uppercase;
-    background: var(--amber); color: var(--bg);
-    border: none; padding: .35rem .7rem; border-radius: var(--r);
-    cursor: pointer; transition: all .15s; white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--g-dim);
+    color: var(--g);
+    font-family: var(--mono);
+    font-size: .56rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .3rem .5rem;
+    border-radius: var(--r);
+    cursor: pointer;
   }
-  .edit-apply:hover { filter: brightness(1.1); }
-  .edit-apply:disabled { opacity: .35; cursor: wait; filter: none; }
+  .edit-apply:hover { background: var(--g-glow); }
+  .edit-apply:disabled { opacity: .3; }
   .edit-undo {
-    font-family: var(--mono); font-size: .62rem; font-weight: 600;
-    letter-spacing: .06em; text-transform: uppercase;
-    background: transparent; color: var(--text-3);
-    border: 1px dashed var(--border); padding: .35rem .6rem; border-radius: var(--r);
-    cursor: pointer; transition: all .15s; white-space: nowrap;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: .56rem;
+    padding: .3rem .45rem;
+    border-radius: var(--r);
+    cursor: pointer;
   }
-  .edit-undo:hover { color: var(--text-2); border-color: var(--border-active); }
-  .edit-undo:disabled { opacity: .25; cursor: default; }
+  .edit-undo:hover { border-color: var(--border-hi); color: var(--txt); }
+  .edit-undo:disabled { opacity: .2; }
 
   /* ---- STATUS ---- */
   .status {
-    font-family: var(--mono); font-size: .66rem; font-weight: 400;
-    color: var(--text-3);
-    margin: .5rem 0;
+    font-size: .62rem;
+    color: var(--txt-dim);
     min-height: 1em;
-    letter-spacing: .02em;
   }
-  .status.playing { color: var(--green); }
+  .status.playing { color: var(--g); }
   .status.error { color: var(--red); }
-  @keyframes dot { 0%,100%{opacity:1} 50%{opacity:.25} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
   .status.playing::before {
-    content: '';
-    display: inline-block;
-    width: 5px; height: 5px;
-    background: var(--green);
-    border-radius: 50%;
-    margin-right: 5px;
-    box-shadow: 0 0 6px var(--green);
-    animation: dot 1.2s ease-in-out infinite;
+    content: '>';
+    margin-right: 4px;
+    animation: blink 1s step-end infinite;
   }
 
-  /* ---- EDITOR ---- */
-  .editor-wrap {
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    overflow: hidden;
-    display: none;
-    animation: reveal .25s ease-out;
-  }
-  .editor-wrap.visible { display: block; }
-  @keyframes reveal {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  /* ---- EDITOR (right pane) ---- */
   .editor-bar {
-    display: flex; align-items: center;
-    padding: .35rem .8rem;
+    display: flex;
+    align-items: center;
+    padding: .3rem .7rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    font-family: var(--mono); font-size: .58rem; font-weight: 600;
-    letter-spacing: .1em; text-transform: uppercase; color: var(--text-3);
+    font-size: .52rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
   }
   .editor-bar-hint {
     margin-left: auto;
-    font-weight: 400; letter-spacing: .03em;
-    opacity: .5;
+    font-weight: 400;
+    opacity: .4;
   }
   strudel-editor {
     display: block;
+    flex: 1;
     min-height: 0;
-    max-height: 540px;
     overflow-y: auto;
   }
+  .output.hidden { display: none; }
 
-  /* ---- RESPONSIVE ---- */
-  @media (max-width: 600px) {
-    body { padding: 1.5rem .75rem 3rem; }
-    .tagline { font-size: 1.2rem; }
-    .btn-generate { font-size: .75rem; }
-    .genre-btn { font-size: .6rem; padding: .25rem .6rem; }
+  /* ---- RESPONSIVE: collapse to 1-column ---- */
+  @media (max-width: 900px) {
+    .shell {
+      grid-template-columns: 1fr;
+    }
+    .panel {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      max-height: none;
+    }
+    .output {
+      min-height: 300px;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .panel { padding: .8rem .6rem; }
+    .btn-generate { font-size: .65rem; }
+    .genre-btn { font-size: .56rem; padding: .15rem .35rem; }
   }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="shell">
 
-  <div class="brand">text-to-strudel</div>
-  <h1 class="tagline">Type anything. Get <em>music</em>.</h1>
-
-  <details class="api" id="apiSettings">
-    <summary>api settings</summary>
-    <div class="api-row">
-      <select id="apiProvider">
-        <option value="claude">Claude</option>
-        <option value="gemini">Gemini</option>
-      </select>
-      <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
-      <button class="api-save" id="apiSave">Save</button>
+  <!-- LEFT: CONTROLS -->
+  <div class="panel">
+    <div>
+      <div class="brand"><b>text-to-strudel</b></div>
+      <div class="tagline">type anything. get <em>music</em>.</div>
     </div>
-    <div class="api-hint" id="apiHint">No key = algorithmic mode. With key = AI creative mode.</div>
-  </details>
 
-  <textarea class="prompt-input" id="input" placeholder="A word, a phrase, a feeling..." rows="2"></textarea>
+    <details class="api" id="apiSettings">
+      <summary>api</summary>
+      <div class="api-row">
+        <select id="apiProvider">
+          <option value="claude">Claude</option>
+          <option value="gemini">Gemini</option>
+        </select>
+        <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
+        <button class="api-save" id="apiSave">save</button>
+      </div>
+      <div class="api-hint" id="apiHint">no key = algorithmic mode</div>
+    </details>
 
-  <div class="genres" id="genres">
-    <button class="genre-btn active" data-genre="edm">EDM</button>
-    <button class="genre-btn" data-genre="jazz">Jazz</button>
-    <button class="genre-btn" data-genre="classical">Classical</button>
-    <button class="genre-btn" data-genre="blues">Blues</button>
-    <button class="genre-btn" data-genre="ambient">Ambient</button>
-    <button class="genre-btn" data-genre="lofi">Lo-fi</button>
-    <button class="genre-btn" data-genre="world">World</button>
-    <button class="genre-btn" data-genre="random">Random</button>
+    <div>
+      <div class="section-label">input</div>
+      <textarea class="prompt-input" id="input" placeholder="> a word, a phrase, a feeling..." rows="2"></textarea>
+    </div>
+
+    <div>
+      <div class="section-label">genre</div>
+      <div class="genres" id="genres">
+        <button class="genre-btn active" data-genre="edm">EDM</button>
+        <button class="genre-btn" data-genre="jazz">Jazz</button>
+        <button class="genre-btn" data-genre="classical">Classical</button>
+        <button class="genre-btn" data-genre="blues">Blues</button>
+        <button class="genre-btn" data-genre="ambient">Ambient</button>
+        <button class="genre-btn" data-genre="lofi">Lo-fi</button>
+        <button class="genre-btn" data-genre="world">World</button>
+        <button class="genre-btn" data-genre="random">Random</button>
+      </div>
+      <label class="fusion-toggle" id="fusionToggle">
+        <input type="checkbox" id="fusionCheck">
+        <span class="fusion-label">Fusion</span>
+        <span class="fusion-hint">multi-select</span>
+      </label>
+    </div>
+
+    <button class="btn-generate" id="playBtn">generate &amp; play</button>
+
+    <div class="transport">
+      <button class="t-btn t-play" id="runBtn">play</button>
+      <button class="t-btn t-stop" id="stopBtn">stop</button>
+      <span class="transport-spacer"></span>
+      <button class="t-btn t-regen" id="regenBtn" title="Same input, new interpretation">regen</button>
+    </div>
+
+    <div class="tweak-row" id="refineRow" style="display:none">
+      <span class="tweak-label">refine</span>
+      <button class="tweak-btn refine-btn" data-dir="faster">faster</button>
+      <button class="tweak-btn refine-btn" data-dir="slower">slower</button>
+      <button class="tweak-btn refine-btn" data-dir="brighter">brighter</button>
+      <button class="tweak-btn refine-btn" data-dir="darker">darker</button>
+      <button class="tweak-btn refine-btn" data-dir="more reverb">spacious</button>
+      <button class="tweak-btn refine-btn" data-dir="drier">dry</button>
+      <button class="tweak-btn refine-btn" data-dir="louder">louder</button>
+      <button class="tweak-btn refine-btn" data-dir="quieter">quieter</button>
+    </div>
+    <div class="tweak-row" id="moodRow" style="display:none">
+      <span class="tweak-label">mood</span>
+      <button class="tweak-btn refine-btn mood" data-dir="make it darker and moodier">dark</button>
+      <button class="tweak-btn refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
+      <button class="tweak-btn refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
+      <button class="tweak-btn refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
+    </div>
+
+    <div class="edit-row" id="editRow" style="display:none">
+      <span class="tweak-label">edit</span>
+      <input class="edit-input" id="editInput" type="text" placeholder="> describe change..." autocomplete="off">
+      <button class="edit-apply" id="editApply">apply</button>
+      <button class="edit-undo" id="editUndo" disabled>undo</button>
+    </div>
+
+    <div class="status" id="status"></div>
   </div>
-  <label class="fusion-toggle" id="fusionToggle">
-    <input type="checkbox" id="fusionCheck">
-    <span class="fusion-label">Fusion</span>
-    <span class="fusion-hint">select multiple genres to combine</span>
-  </label>
 
-  <div class="action-row">
-    <button class="btn-generate" id="playBtn">Generate &amp; Play</button>
-  </div>
-
-  <div class="transport">
-    <button class="t-btn t-play" id="runBtn">Play</button>
-    <button class="t-btn t-stop" id="stopBtn">Stop</button>
-    <span class="transport-spacer"></span>
-    <button class="t-btn t-regen" id="regenBtn" title="Same input, new interpretation">Regen</button>
-  </div>
-
-  <div class="tweak-row" id="refineRow" style="display:none">
-    <span class="tweak-label">Refine</span>
-    <button class="tweak-btn refine-btn" data-dir="faster">faster</button>
-    <button class="tweak-btn refine-btn" data-dir="slower">slower</button>
-    <button class="tweak-btn refine-btn" data-dir="brighter">brighter</button>
-    <button class="tweak-btn refine-btn" data-dir="darker">darker</button>
-    <button class="tweak-btn refine-btn" data-dir="more reverb">spacious</button>
-    <button class="tweak-btn refine-btn" data-dir="drier">dry</button>
-    <button class="tweak-btn refine-btn" data-dir="louder">louder</button>
-    <button class="tweak-btn refine-btn" data-dir="quieter">quieter</button>
-  </div>
-  <div class="tweak-row" id="moodRow" style="display:none">
-    <span class="tweak-label">Mood</span>
-    <button class="tweak-btn refine-btn mood" data-dir="make it darker and moodier">dark</button>
-    <button class="tweak-btn refine-btn mood" data-dir="make it euphoric and uplifting">euphoric</button>
-    <button class="tweak-btn refine-btn mood" data-dir="make it dreamy and floating">dreamy</button>
-    <button class="tweak-btn refine-btn mood" data-dir="make it aggressive and intense">aggressive</button>
-  </div>
-
-  <div class="edit-row" id="editRow" style="display:none">
-    <span class="tweak-label">Edit</span>
-    <input class="edit-input" id="editInput" type="text" placeholder="Describe what to change..." autocomplete="off">
-    <button class="edit-apply" id="editApply">Apply</button>
-    <button class="edit-undo" id="editUndo" disabled>Undo</button>
-  </div>
-
-  <div class="status" id="status"></div>
-
-  <div class="editor-wrap" id="editorWrap">
+  <!-- RIGHT: EDITOR -->
+  <div class="output hidden" id="editorWrap">
     <div class="editor-bar">
-      <span>editor</span>
+      <span>output</span>
       <span class="editor-bar-hint">ctrl+enter play / ctrl+. stop</span>
     </div>
     <strudel-editor id="strudelEditor"></strudel-editor>
