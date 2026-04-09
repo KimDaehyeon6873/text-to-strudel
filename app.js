@@ -783,21 +783,17 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Output ONLY valid Strudel code. No markdown, no explanation, no prose outside comments.
 - Use $: prefix for each parallel pattern layer.
 - Start with setcpm(BPM/4).
-- Write 7-12 $: layers. More layers = more control = better music.
-  Split drums: kick as own $:, snare/clap as own $:, hats/cymbals as own $:.
-  Split melody: lead + counter-melody (different octave/timbre, offset with .off or .early).
-  Separate layers for: bass, sub-bass, chords/pad, arp, percussion (rim/perc/shaker),
-  texture (filtered noise, crackle), atmosphere. Each gets a poetic // comment.
-  SHARE context between layers — use const/let variables:
-    const chords = chord("<Cm7 Fm7>").dict('lefthand');
-    $: chords.voicing().struct("[~ x]*2")   // comping
-    $: n("0").set(chords).mode("root:g2").voicing().s("gm_acoustic_bass")  // bass from same chords
-  Use .layer() to split one pattern into parallel voices:
-    $: melody.layer(x=>x.scaleTranspose(0), x=>x.scaleTranspose(2).early(1/8))
-  Use const for shared FX chains:
-    const fx = x => x.s('sawtooth').cutoff(1200).gain(.5).attack(0).decay(.16);
-    $: pattern1.apply(fx)
-    $: pattern2.apply(fx)
+- Aim for 6-12 $: layers. Each gets a poetic // comment.
+  You can split or combine as the music demands. Some options:
+  - Drums as 1 combined layer OR split into kick / snare / hats (more control for arrangement)
+  - Lead + counter-melody as separate layers, or .layer() to split one pattern into parallel voices
+  - Separate texture/noise layer (filtered pink/white/brown noise for atmosphere)
+  - Percussion layer (rim, perc, shaker — separate from drums for independent control)
+  Advanced technique (use when it fits, not required):
+  - Shared harmonic context: const chords = chord("..."); then multiple $: layers reference it
+  - Shared FX: const fx = x => x.s('saw').cutoff(1200); then .apply(fx) on multiple layers
+  - .layer() from one source: melody.layer(x=>x.scaleTranspose(0), x=>x.scaleTranspose(2).early(1/8))
+  Do what serves the music. 5 well-crafted layers beat 12 empty ones.
 - The opening // comment block should include:
   Line 1: the input text, genre, key/scale, BPM
   Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:

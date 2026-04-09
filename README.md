@@ -91,10 +91,13 @@ Each of the 7 base genres (EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World) d
 The generator produces complete Strudel code with:
 
 - **Melodies**: Motif-based (3-4 notes) with call-and-response structure. Motifs start on chord tones (0, 2, 4). Responses vary via reversal, inversion, transposition, or fragmentation. Anchor points enforce chord tones every 3rd position. Occasional note elongation (`@2`) for phrasing.
+- **Countermelody**: Second melodic voice offset from lead -- shorter motifs, different timbre (triangle/sine), with delay and degradeBy for texture.
 - **Bass lines**: Walking bass from 8 pattern types selected by energy level -- driving roots at high energy, sparse patterns at low energy, chromatic approaches and syncopation in the middle.
 - **Chords**: 6 voicing types -- triads, wide voicings, sus4, 7ths, power chords, add9.
 - **Arpeggios**: 6 arpeggio patterns with inversions and gaps.
 - **Drums**: Genre-specific patterns with dynamically generated gain patterns (varied hi-hat dynamics, energy-scaled kick/snare levels).
+- **Percussion**: Separate layer from drums -- rim, perc, shaker patterns with optional panning and degradeBy.
+- **Texture**: Filtered noise layer (pink/white/brown) with sine-modulated gain for atmospheric depth.
 
 **Step 4: Arrangement and Techniques**
 
@@ -127,7 +130,7 @@ When an API key is configured, the tool sends the input text to Claude Haiku 4.5
 The system prompt instructs the model to interpret text as feeling, imagery, and narrative rather than literal letter-to-note mappings. It includes:
 - A creative process framework (what does this feel like, look like, what story lives inside it)
 - A worked example of creative reasoning (not included in output)
-- Output format requirements (valid Strudel code only, `$:` prefix, 4-7 layers, poetic comments)
+- Output format requirements (valid Strudel code only, `$:` prefix, 7-12 layers, poetic comments)
 - Quality criteria distinguishing good from boring output
 - Music theory principles: voice leading, 4-part harmony, anchor points, tension-release, call-and-response, rhythmic counterpoint, dynamic arc
 - Mood parameter reference (dark, euphoric, melancholic, aggressive, dreamy, peaceful, energetic) with specific numerical adjustments
@@ -173,19 +176,20 @@ In AI mode, Refine and Mood buttons send the current code back to the LLM with a
 
 The project consists of two files:
 
-### `index.html` (277 lines)
+### `index.html` (558 lines)
 
-UI shell and styles. Dark theme (#08080f background). Contains:
+UI shell and styles. Dark theme (#08080f background), 2-column layout (1:2 ratio). Contains:
 - Text input area
 - Genre selector buttons with per-genre accent colors
 - API settings collapsible panel (provider select, key input, save)
 - Generate & Play / Regenerate / Stop controls
-- Refine and Mood button rows (hidden until first generation)
+- Mixer panel with ± buttons, tone tags, and mood buttons (hidden until first generation)
+- Inline edit bar with natural language instruction input
 - `<strudel-editor>` web component wrapper
 - Status display with animated playing indicator
 - Script tags loading `@strudel/repl` from CDN and `app.js`
 
-### `app.js` (1411 lines)
+### `app.js` (2005 lines)
 
 All application logic:
 
