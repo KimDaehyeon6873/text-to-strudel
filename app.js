@@ -1150,7 +1150,7 @@ function buildUserMessage(text, genre) {
 
 // ---- Provider Abstraction ----
 function getProvider() {
-  return localStorage.getItem('tts_provider') || 'claude';
+  return localStorage.getItem('tts_provider') || 'gemini';
 }
 
 function saveProvider(p) {
@@ -1167,9 +1167,8 @@ function buildVariationPrompt(text, genre) {
 
 async function generateWithAI(text, genre, apiKey) {
   var provider = getProvider();
-  if (provider === 'gemini') {
-    return generateWithGemini(text, genre, apiKey);
-  }
+  if (provider === 'gemini') return generateWithGemini(text, genre, apiKey);
+  if (provider === 'openai') return generateWithOpenAI(text, genre, apiKey);
   return generateWithClaude(text, genre, apiKey);
 }
 
@@ -1224,6 +1223,32 @@ async function generateWithGemini(text, genre, apiKey) {
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   if (!data.candidates || !data.candidates[0]) throw new Error('No response from Gemini');
   return validateAndFix(stripFences(data.candidates[0].content.parts[0].text));
+}
+
+async function generateWithOpenAI(text, genre, apiKey) {
+  var userPrompt = buildVariationPrompt(text, genre);
+  var temperature = Math.min(1.2, 0.9 + seedCounter * 0.05);
+
+  var response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({
+      model: 'gpt-5.4-nano',
+      temperature: temperature,
+      max_tokens: 2048,
+      messages: [
+        { role: 'system', content: STRUDEL_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  });
+
+  var data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return validateAndFix(stripFences(data.choices[0].message.content));
 }
 
 // ---- Pre-evaluation normalization (silent, non-functional fixes only) ----
@@ -1417,18 +1442,26 @@ async function fixWithLLM(code, errorMsg, apiKey) {
   var prompt = 'This Strudel code has an error:\n\n' + code + '\n\nError: ' + errorMsg + '\n\nFix ONLY the error. Return the complete fixed code. No explanation.';
   var provider = getProvider();
 
+  var fixSystem = 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.';
   if (provider === 'gemini') {
     var resp = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.' }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
+        body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } }) });
     var data = await resp.json();
     if (data.error || !data.candidates) return null;
     return stripFences(data.candidates[0].content.parts[0].text);
+  } else if (provider === 'openai') {
+    var resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
+    var data = await resp.json();
+    if (data.error || !data.choices) return null;
+    return stripFences(data.choices[0].message.content);
   } else {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.', messages: [{ role: 'user', content: prompt }] }) });
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: fixSystem, messages: [{ role: 'user', content: prompt }] }) });
     var data = await resp.json();
     if (data.error || !data.content) return null;
     return stripFences(data.content[0].text);
@@ -1542,7 +1575,7 @@ async function doGenerate() {
     statusEl.className = 'status';
     var prov = getProvider();
     var temp = prov === 'gemini' ? Math.min(1.5, 0.9 + seedCounter * 0.08) : Math.min(1.2, 0.9 + seedCounter * 0.05);
-    statusEl.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' is composing... (seed ' + seedCounter + ', temp ' + temp.toFixed(2) + ')';
+    statusEl.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' is composing... (seed ' + seedCounter + ', temp ' + temp.toFixed(2) + ')';
     try {
       var code = await generateWithAI(text, genre, apiKey);
       setCodeAndPlay(code);
@@ -1603,11 +1636,11 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
   function refreshProviderUI() {
     var prov = provSelect.value;
-    keyInput.placeholder = prov === 'gemini' ? 'AIza...' : 'sk-ant-...';
+    keyInput.placeholder = prov === 'gemini' ? 'AIza...' : prov === 'openai' ? 'sk-...' : 'sk-ant-...';
     var key = getApiKey(prov);
     keyInput.value = key;
     if (key && isVerified(prov)) {
-      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' creative mode active.';
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
       setApiState('verified');
     } else if (key) {
@@ -1654,6 +1687,12 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
         var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
         var data = await resp.json();
         if (data.error) throw new Error(data.error.message);
+      } else if (prov === 'openai') {
+        var resp = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': 'Bearer ' + key },
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
       } else {
         var resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -1667,7 +1706,7 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
       saveApiKey(key, prov);
       setVerified(prov, true);
       saveProvider(prov);
-      hint.textContent = (prov === 'gemini' ? 'Gemini' : 'Claude') + ' verified.';
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' verified.';
       hint.className = 'api-hint saved';
       setApiState('verified');
     } catch (e) {
@@ -1897,7 +1936,8 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
     try {
       var refinePrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nModify this code to make it ' + direction + '. Keep the overall structure and concept. Change only what is needed for the requested direction. Return the complete modified code.';
       var code;
-      if (getProvider() === 'gemini') {
+      var refineProv = getProvider();
+      if (refineProv === 'gemini') {
         var resp = await fetch(
           'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1905,6 +1945,13 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
         var data = await resp.json();
         if (data.error) throw new Error(data.error.message);
         code = stripFences(data.candidates[0].content.parts[0].text);
+      } else if (refineProv === 'openai') {
+        var resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        code = stripFences(data.choices[0].message.content);
       } else {
         var resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -1958,7 +2005,8 @@ async function doEdit() {
   try {
     var editPrompt = 'Current Strudel program:\n\n' + currentCode + '\n\nInstruction:\n' + instruction;
     var code;
-    if (getProvider() === 'gemini') {
+    var prov = getProvider();
+    if (prov === 'gemini') {
       var resp = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1966,6 +2014,13 @@ async function doEdit() {
       var data = await resp.json();
       if (data.error) throw new Error(data.error.message);
       code = stripFences(data.candidates[0].content.parts[0].text);
+    } else if (prov === 'openai') {
+      var resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({ model: 'gpt-5.4-nano', temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error.message);
+      code = stripFences(data.choices[0].message.content);
     } else {
       var resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
