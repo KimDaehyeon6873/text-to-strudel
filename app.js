@@ -796,9 +796,11 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
   Do what serves the music. 5 well-crafted layers beat 12 empty ones.
 - The opening // comment block should include:
   Line 1: the input text, genre, key/scale, BPM
-  Line 2-3: HOW you interpreted the input — what you felt, why you chose this scale/tempo/sound, what the hidden connection is. This is the most interesting part. Write it like a brief liner note, not a technical spec. Example:
-  // "Contains: Menthol, Camphor" -> the cold bite of menthol = harmonic minor's raised 7th, sharp and clinical.
-  // Petrolatum = thick, slow bass that clings. Essential oils = high arps that evaporate into delay.
+  Line 2-4: a SHORT POEM (2-4 lines) that distills what you heard in the input — the image, feeling, or hidden story. Let the scale/tempo/sounds you chose live inside the poem without naming them. Concrete imagery, compressed, no tech jargon. Match the poem's language to the input text's language when possible. Example:
+  // "Contains: Menthol, Camphor" -> lofi / C harmonic minor / 72 BPM
+  // a cold bite under the tongue.
+  // petrolatum clings to the dusk.
+  // somewhere a small oil evaporates into blue.
 
 ## MUSIC THEORY PRINCIPLES
 (These principles are implemented in the CODE STRUCTURE PATTERNS provided in the user message.)
