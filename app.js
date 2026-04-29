@@ -5,6 +5,23 @@
 //  musical parameters. Same input + genre = same output.
 // =====================================================
 
+// ---- TUNING: shared numeric ranges/steps used across mixer + retry logic ----
+var TUNING = {
+  BPM:    { min: 40,   max: 400,   step: 8 },
+  GAIN:   { min: 0.05, max: 1.0,   step: 0.05 },
+  FILTER: { min: 100,  max: 12000, step: 200 },
+  REVERB_STEP: 0.15,
+  RETRY_MAX: 3,
+  EVAL_DELAYS: { init: 50, eval: 150, settle: 100 },
+};
+
+// ---- MODELS: provider model identifiers in one place ----
+var MODELS = {
+  gemini: 'gemini-3.1-flash-lite-preview',
+  claude: 'claude-haiku-4-5-20251001',
+  openai: 'gpt-5.4-nano',
+};
+
 // ---- Seed counter (for regeneration) ----
 var seedCounter = 0;
 
@@ -766,6 +783,89 @@ function generateCode(text, genreName) {
   return L.join('\n');
 }
 
+// ---- callLLM: unified provider dispatch (A7) ----
+async function callLLM(opts) {
+  var provider = opts.provider;
+  var apiKey = opts.apiKey;
+  var system = opts.system;
+  var user = opts.user;
+  var temperature = (opts.temperature == null) ? 1.0 : opts.temperature;
+  var maxTokens = opts.maxTokens || 2048;
+  var providerLabel = provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Claude';
+  var resp, data;
+
+  if (provider === 'gemini') {
+    resp = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + MODELS.gemini + ':generateContent?key=' + apiKey,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: system }] },
+          contents: [{ parts: [{ text: user }] }],
+          generationConfig: {
+            temperature: temperature,
+            topP: opts.topP == null ? undefined : opts.topP,
+            maxOutputTokens: maxTokens,
+          },
+        }) });
+    data = await resp.json();
+    if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
+        || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
+        || typeof data.candidates[0].content.parts[0].text !== 'string') {
+      throw new Error(providerLabel + ': malformed response shape');
+    }
+    return { text: data.candidates[0].content.parts[0].text };
+  }
+
+  if (provider === 'openai') {
+    resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: MODELS.openai,
+        reasoning: { effort: 'none' },
+        temperature: temperature,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    });
+    data = await resp.json();
+    if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
+    if (!data.choices || !data.choices[0] || !data.choices[0].message
+        || typeof data.choices[0].message.content !== 'string') {
+      throw new Error(providerLabel + ': malformed response shape');
+    }
+    return { text: data.choices[0].message.content };
+  }
+
+  // Claude (default)
+  resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: MODELS.claude,
+      max_tokens: maxTokens,
+      temperature: temperature,
+      system: system,
+      messages: [{ role: 'user', content: user }],
+    }),
+  });
+  data = await resp.json();
+  if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
+  if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') {
+    throw new Error(providerLabel + ': malformed response shape');
+  }
+  return { text: data.content[0].text };
+}
+
 // ---- API response helpers (C3, C4) ----
 function resp_ok(resp, data) {
   if (!resp || !resp.ok) return false;
@@ -1200,95 +1300,37 @@ async function generateWithAI(text, genre, apiKey) {
 }
 
 async function generateWithClaude(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  var temperature = Math.min(1.2, 0.9 + seedCounter * 0.05);
-
-  var response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      temperature: temperature,
-      system: STRUDEL_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
+  var r = await callLLM({
+    provider: 'claude', apiKey: apiKey,
+    system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre),
+    temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
+    maxTokens: 2048,
   });
-
-  var data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'Claude'));
-  if (!data || !data.content || !data.content[0] || typeof data.content[0].text !== 'string') {
-    throw new Error('Claude: malformed response shape');
-  }
-  return stripFences(data.content[0].text);
+  return stripFences(r.text);
 }
 
 async function generateWithGemini(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  // Gemini 3+: temperature < 1.0 causes looping/degraded performance.
-  // Keep at 1.0 (default) for generation, use topP for variation instead.
-  var response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] },
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: 1.0,
-          topP: Math.min(0.99, 0.9 + seedCounter * 0.02),
-          maxOutputTokens: 2048,
-        },
-      }),
-    }
-  );
-
-  var data = await response.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'Gemini'));
-  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
-      || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
-      || typeof data.candidates[0].content.parts[0].text !== 'string') {
-    throw new Error('Gemini: malformed response shape');
-  }
-  return stripFences(data.candidates[0].content.parts[0].text);
+  var r = await callLLM({
+    provider: 'gemini', apiKey: apiKey,
+    system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre),
+    temperature: 1.0,
+    topP: Math.min(0.99, 0.9 + seedCounter * 0.02),
+    maxTokens: 2048,
+  });
+  return stripFences(r.text);
 }
 
 async function generateWithOpenAI(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  // GPT-5.4 nano: temperature only works with reasoning effort "none".
-  var response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey,
-    },
-    body: JSON.stringify({
-      model: 'gpt-5.4-nano',
-      reasoning: { effort: 'none' },
-      temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
-      max_tokens: 2048,
-      messages: [
-        { role: 'system', content: STRUDEL_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
+  var r = await callLLM({
+    provider: 'openai', apiKey: apiKey,
+    system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre),
+    temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
+    maxTokens: 2048,
   });
-
-  var data = await response.json();
-  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'OpenAI'));
-  if (!data.choices || !data.choices[0] || !data.choices[0].message
-      || typeof data.choices[0].message.content !== 'string') {
-    throw new Error('OpenAI: malformed response shape');
-  }
-  return stripFences(data.choices[0].message.content);
+  return stripFences(r.text);
 }
 
 // ---- Pre-evaluation normalization (silent, non-functional fixes only) ----
@@ -1522,37 +1564,17 @@ function setCodeAndPlay(code) {
 // ---- LLM error fix: send code + error → get fixed code ----
 async function fixWithLLM(code, errorMsg, apiKey) {
   var prompt = 'This Strudel code has an error:\n\n' + code + '\n\nError: ' + errorMsg + '\n\nFix ONLY the error. Return the complete fixed code. No explanation.';
-  var provider = getProvider();
-
   var fixSystem = 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.';
-  if (provider === 'gemini') {
-    var resp = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-    var data = await resp.json();
-    if (!resp_ok(resp, data)) return null;
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
-        || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
-        || typeof data.candidates[0].content.parts[0].text !== 'string') return null;
-    return stripFences(data.candidates[0].content.parts[0].text);
-  } else if (provider === 'openai') {
-    var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
-    var data = await resp.json();
-    if (!resp_ok(resp, data)) return null;
-    if (!data.choices || !data.choices[0] || !data.choices[0].message
-        || typeof data.choices[0].message.content !== 'string') return null;
-    return stripFences(data.choices[0].message.content);
-  } else {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: fixSystem, messages: [{ role: 'user', content: prompt }] }) });
-    var data = await resp.json();
-    if (!resp_ok(resp, data)) return null;
-    if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') return null;
-    return stripFences(data.content[0].text);
+  try {
+    var r = await callLLM({
+      provider: getProvider(), apiKey: apiKey,
+      system: fixSystem, user: prompt,
+      temperature: getProvider() === 'gemini' ? 1.0 : 0.2,
+      maxTokens: 2048,
+    });
+    return stripFences(r.text);
+  } catch (e) {
+    return null;
   }
 }
 
@@ -1825,127 +1847,132 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
   });
 })();
 
-// ---- Algorithmic Refine: modify existing code values ----
-function algoRefine(code, direction) {
-  switch (direction) {
-    case 'faster':
-      return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
-        return 'setcpm(' + Math.min(400, parseInt(bpm) + 8) + '/4)';
-      });
-    case 'slower':
-      return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
-        return 'setcpm(' + Math.max(40, parseInt(bpm) - 8) + '/4)';
-      });
-    case 'louder':
-      return code.replace(/\.gain\s*\(\s*([\d.]+)\s*\)/g, function(m, g) {
-        return '.gain(' + Math.min(1, (parseFloat(g) * 1.15)).toFixed(2) + ')';
-      });
-    case 'quieter':
-      return code.replace(/\.gain\s*\(\s*([\d.]+)\s*\)/g, function(m, g) {
-        return '.gain(' + Math.max(0.05, (parseFloat(g) * 0.85)).toFixed(2) + ')';
-      });
-    case 'brighter':
-      return code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.lpf(' + Math.min(12000, Math.round(parseInt(f) * 1.4)) + ')';
-      });
-    case 'darker':
-      return code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.lpf(' + Math.max(100, Math.round(parseInt(f) * 0.6)) + ')';
-      });
-    case 'more reverb':
-      return code.replace(/\.room\s*\(\s*([\d.]+)\s*\)/g, function(m, r) {
-        return '.room(' + Math.min(1, (parseFloat(r) + 0.15)).toFixed(2) + ')';
-      });
-    case 'drier':
-      return code.replace(/\.room\s*\(\s*([\d.]+)\s*\)/g, function(m, r) {
-        return '.room(' + Math.max(0, (parseFloat(r) - 0.15)).toFixed(2) + ')';
-      });
-    // ---- PITCH ----
-    case 'higher':
-      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
-        return '.scale("' + key + Math.min(7, parseInt(oct) + 1) + ':' + sc + '")';
-      });
-    case 'lower':
-      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
-        return '.scale("' + key + Math.max(1, parseInt(oct) - 1) + ':' + sc + '")';
-      });
-    // ---- DENSITY ----
-    case 'denser':
-      return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
-        return '.struct("x(' + Math.min(parseInt(n), parseInt(k) + 1) + ',' + n;
-      });
-    case 'sparser':
-      return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
-        return '.struct("x(' + Math.max(1, parseInt(k) - 1) + ',' + n;
-      });
-    // ---- SCALE CHANGE ----
-    case 'scale:major': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1major');
-    case 'scale:minor': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor');
-    case 'scale:dorian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1dorian');
-    case 'scale:phrygian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1phrygian');
-    case 'scale:lydian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1lydian');
-    case 'scale:pentatonic': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor:pentatonic');
-    // ---- FILTER: resonance & highpass ----
-    case 'more resonance':
-      return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
-        return '.lpq(' + Math.min(50, parseFloat(q) + 2).toFixed(0) + ')';
-      });
-    case 'less resonance':
-      return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
-        return '.lpq(' + Math.max(0, parseFloat(q) - 2).toFixed(0) + ')';
-      });
-    case 'more highpass':
-      return code.replace(/\.hpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.hpf(' + Math.min(8000, Math.round(parseInt(f) * 1.3)) + ')';
-      });
-    case 'less highpass':
-      return code.replace(/\.hpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.hpf(' + Math.max(20, Math.round(parseInt(f) * 0.7)) + ')';
-      });
-    // ---- FX ----
-    case 'more delay':
-      return code.replace(/\.delay\s*\(\s*([\d.]+)\s*\)/g, function(m, d) {
-        return '.delay(' + Math.min(1, (parseFloat(d) + 0.15)).toFixed(2) + ')';
-      });
-    case 'less delay':
-      return code.replace(/\.delay\s*\(\s*([\d.]+)\s*\)/g, function(m, d) {
-        return '.delay(' + Math.max(0, (parseFloat(d) - 0.15)).toFixed(2) + ')';
-      });
-    case 'more feedback':
-      return code.replace(/\.delayfeedback\s*\(\s*([\d.]+)\s*\)/g, function(m, f) {
-        return '.delayfeedback(' + Math.min(0.95, (parseFloat(f) + 0.1)).toFixed(2) + ')';
-      });
-    case 'less feedback':
-      return code.replace(/\.delayfeedback\s*\(\s*([\d.]+)\s*\)/g, function(m, f) {
-        return '.delayfeedback(' + Math.max(0, (parseFloat(f) - 0.1)).toFixed(2) + ')';
-      });
-    case 'more distortion':
-      return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
-        return '.shape(' + Math.min(1, (parseFloat(s) + 0.15)).toFixed(2) + ')';
-      });
-    case 'less distortion':
-      return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
-        return '.shape(' + Math.max(0, (parseFloat(s) - 0.15)).toFixed(2) + ')';
-      });
-    case 'more crush':
-      return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
-        return '.crush(' + Math.max(1, parseInt(c) - 1) + ')';  // lower = more crushed
-      });
-    case 'less crush':
-      return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
-        return '.crush(' + Math.min(16, parseInt(c) + 1) + ')';  // higher = less crushed
-      });
-    case 'add swing':
-      // Add .swing(0.15) after .bank() or after first s() call
-      if (code.indexOf('.swing(') === -1) {
-        return code.replace(/(\.bank\s*\([^)]*\))/, '$1.swing(0.15)');
-      }
-      return code;
-    case 'straighten':
-      return code.replace(/\.swing\s*\([^)]*\)/g, '');
-    default:
-      return code;
+// ---- Algorithmic Refine: table-driven (Q24). Each entry is a code -> code transform. ----
+var REFINERS = (function() {
+  function setcpm(code, delta) {
+    return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
+      var v = parseInt(bpm) + delta;
+      v = Math.max(TUNING.BPM.min, Math.min(TUNING.BPM.max, v));
+      return 'setcpm(' + v + '/4)';
+    });
   }
+  function scaleGain(code, factor) {
+    return code.replace(/\.gain\s*\(\s*([\d.]+)\s*\)/g, function(m, g) {
+      var v = parseFloat(g) * factor;
+      v = Math.max(TUNING.GAIN.min, Math.min(TUNING.GAIN.max, v));
+      return '.gain(' + v.toFixed(2) + ')';
+    });
+  }
+  function scaleLpf(code, factor) {
+    return code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
+      var v = Math.round(parseInt(f) * factor);
+      v = Math.max(TUNING.FILTER.min, Math.min(TUNING.FILTER.max, v));
+      return '.lpf(' + v + ')';
+    });
+  }
+  function shiftRoom(code, delta) {
+    return code.replace(/\.room\s*\(\s*([\d.]+)\s*\)/g, function(m, r) {
+      var v = parseFloat(r) + delta;
+      v = Math.max(0, Math.min(1, v));
+      return '.room(' + v.toFixed(2) + ')';
+    });
+  }
+  function shiftOctave(code, delta) {
+    return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
+      var v = Math.max(1, Math.min(7, parseInt(oct) + delta));
+      return '.scale("' + key + v + ':' + sc + '")';
+    });
+  }
+  function shiftDensity(code, delta) {
+    return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
+      var ki = parseInt(k), ni = parseInt(n);
+      var v = delta > 0 ? Math.min(ni, ki + 1) : Math.max(1, ki - 1);
+      return '.struct("x(' + v + ',' + n;
+    });
+  }
+  function setScale(name) {
+    return function(code) {
+      return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1' + name);
+    };
+  }
+  function shiftLpq(code, delta) {
+    return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
+      var v = Math.max(0, Math.min(50, parseFloat(q) + delta));
+      return '.lpq(' + v.toFixed(0) + ')';
+    });
+  }
+  function scaleHpf(code, factor) {
+    return code.replace(/\.hpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
+      var v = Math.max(20, Math.min(8000, Math.round(parseInt(f) * factor)));
+      return '.hpf(' + v + ')';
+    });
+  }
+  function shiftDelay(code, delta) {
+    return code.replace(/\.delay\s*\(\s*([\d.]+)\s*\)/g, function(m, d) {
+      var v = Math.max(0, Math.min(1, parseFloat(d) + delta));
+      return '.delay(' + v.toFixed(2) + ')';
+    });
+  }
+  function shiftDelayFb(code, delta) {
+    return code.replace(/\.delayfeedback\s*\(\s*([\d.]+)\s*\)/g, function(m, f) {
+      var v = Math.max(0, Math.min(0.95, parseFloat(f) + delta));
+      return '.delayfeedback(' + v.toFixed(2) + ')';
+    });
+  }
+  function shiftShape(code, delta) {
+    return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
+      var v = Math.max(0, Math.min(1, parseFloat(s) + delta));
+      return '.shape(' + v.toFixed(2) + ')';
+    });
+  }
+  function shiftCrush(code, delta) {
+    return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
+      var v = Math.max(1, Math.min(16, parseInt(c) + delta));
+      return '.crush(' + v + ')';
+    });
+  }
+  return {
+    'faster':         function(c) { return setcpm(c, +TUNING.BPM.step); },
+    'slower':         function(c) { return setcpm(c, -TUNING.BPM.step); },
+    'louder':         function(c) { return scaleGain(c, 1.15); },
+    'quieter':        function(c) { return scaleGain(c, 0.85); },
+    'brighter':       function(c) { return scaleLpf(c, 1.4); },
+    'darker':         function(c) { return scaleLpf(c, 0.6); },
+    'more reverb':    function(c) { return shiftRoom(c, +TUNING.REVERB_STEP); },
+    'drier':          function(c) { return shiftRoom(c, -TUNING.REVERB_STEP); },
+    'higher':         function(c) { return shiftOctave(c, +1); },
+    'lower':          function(c) { return shiftOctave(c, -1); },
+    'denser':         function(c) { return shiftDensity(c, +1); },
+    'sparser':        function(c) { return shiftDensity(c, -1); },
+    'scale:major':       setScale('major'),
+    'scale:minor':       setScale('minor'),
+    'scale:dorian':      setScale('dorian'),
+    'scale:phrygian':    setScale('phrygian'),
+    'scale:lydian':      setScale('lydian'),
+    'scale:pentatonic':  setScale('minor:pentatonic'),
+    'more resonance': function(c) { return shiftLpq(c, +2); },
+    'less resonance': function(c) { return shiftLpq(c, -2); },
+    'more highpass':  function(c) { return scaleHpf(c, 1.3); },
+    'less highpass':  function(c) { return scaleHpf(c, 0.7); },
+    'more delay':     function(c) { return shiftDelay(c, +0.15); },
+    'less delay':     function(c) { return shiftDelay(c, -0.15); },
+    'more feedback':  function(c) { return shiftDelayFb(c, +0.1); },
+    'less feedback':  function(c) { return shiftDelayFb(c, -0.1); },
+    'more distortion': function(c) { return shiftShape(c, +0.15); },
+    'less distortion': function(c) { return shiftShape(c, -0.15); },
+    'more crush':     function(c) { return shiftCrush(c, -1); },
+    'less crush':     function(c) { return shiftCrush(c, +1); },
+    'add swing': function(c) {
+      if (c.indexOf('.swing(') !== -1) return c;
+      return c.replace(/(\.bank\s*\([^)]*\))/, '$1.swing(0.15)');
+    },
+    'straighten':     function(c) { return c.replace(/\.swing\s*\([^)]*\)/g, ''); },
+  };
+})();
+
+function algoRefine(code, direction) {
+  var fn = REFINERS[direction];
+  return fn ? fn(code) : code;
 }
 
 // ---- Refine & Mood Buttons ----
@@ -2028,37 +2055,14 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
 
     try {
       var refinePrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nModify this code to make it ' + direction + '. Keep the overall structure and concept. Change only what is needed for the requested direction. Return the complete modified code.';
-      var code;
       var refineProv = getProvider();
-      if (refineProv === 'gemini') {
-        var resp = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: refinePrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-        var data = await resp.json();
-        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Gemini'));
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
-            || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
-            || typeof data.candidates[0].content.parts[0].text !== 'string') throw new Error('Gemini: malformed response shape');
-        code = stripFences(data.candidates[0].content.parts[0].text);
-      } else if (refineProv === 'openai') {
-        var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
-        var data = await resp.json();
-        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'OpenAI'));
-        if (!data.choices || !data.choices[0] || !data.choices[0].message
-            || typeof data.choices[0].message.content !== 'string') throw new Error('OpenAI: malformed response shape');
-        code = stripFences(data.choices[0].message.content);
-      } else {
-        var resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.7, system: STRUDEL_SYSTEM_PROMPT, messages: [{ role: 'user', content: refinePrompt }] }) });
-        var data = await resp.json();
-        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Claude'));
-        if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') throw new Error('Claude: malformed response shape');
-        code = stripFences(data.content[0].text);
-      }
+      var r = await callLLM({
+        provider: refineProv, apiKey: apiKey,
+        system: STRUDEL_SYSTEM_PROMPT, user: refinePrompt,
+        temperature: refineProv === 'gemini' ? 1.0 : 0.7,
+        maxTokens: 2048,
+      });
+      var code = stripFences(r.text);
       setCodeAndPlay(code);
     } catch (e) {
       statusEl.className = 'status error';
@@ -2103,37 +2107,14 @@ async function doEdit() {
 
   try {
     var editPrompt = 'Current Strudel program:\n\n' + currentCode + '\n\nInstruction:\n' + instruction;
-    var code;
     var prov = getProvider();
-    if (prov === 'gemini') {
-      var resp = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-      var data = await resp.json();
-      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Gemini'));
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
-          || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
-          || typeof data.candidates[0].content.parts[0].text !== 'string') throw new Error('Gemini: malformed response shape');
-      code = stripFences(data.candidates[0].content.parts[0].text);
-    } else if (prov === 'openai') {
-      var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
-      var data = await resp.json();
-      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'OpenAI'));
-      if (!data.choices || !data.choices[0] || !data.choices[0].message
-          || typeof data.choices[0].message.content !== 'string') throw new Error('OpenAI: malformed response shape');
-      code = stripFences(data.choices[0].message.content);
-    } else {
-      var resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: EDIT_SYSTEM, messages: [{ role: 'user', content: editPrompt }] }) });
-      var data = await resp.json();
-      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Claude'));
-      if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') throw new Error('Claude: malformed response shape');
-      code = stripFences(data.content[0].text);
-    }
+    var r = await callLLM({
+      provider: prov, apiKey: apiKey,
+      system: EDIT_SYSTEM, user: editPrompt,
+      temperature: prov === 'gemini' ? 1.0 : 0.2,
+      maxTokens: 2048,
+    });
+    var code = stripFences(r.text);
 
     if (!code || !code.trim()) throw new Error('Empty response');
     editInput.value = '';
