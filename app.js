@@ -27,9 +27,19 @@ function clamp(v) { return Math.max(0, Math.min(1, v)); }
 function analyzeText(text) {
   if (!text.trim()) return { energy: 0.5, brightness: 0.5, weight: 0.5, space: 0.3, complexity: 0.5 };
   var lower = text.toLowerCase();
-  var chars = lower.replace(/[^a-z0-9]/g, '');
-  var vowels = (lower.match(/[aeiou]/g) || []).length;
-  var letters = (lower.match(/[a-z]/g) || []).length;
+  // Letters now include both ASCII a-z and Hangul (jamo + syllables) for Korean (U20).
+  // Combined character class for "letter-like" content used to derive density/uniqueness.
+  var letterRe = /[a-zㄱ-ㆎ가-힣]/g;
+  var hangulSylRe = /[가-힣]/g;
+  var asciiVowelRe = /[aeiou]/g;
+  var letters = (lower.match(letterRe) || []).length;
+  var asciiOnly = (lower.match(/[a-z]/g) || []).length;
+  var hangulSyllables = (lower.match(hangulSylRe) || []).length;
+  // Brightness heuristic: ASCII vowels count directly; each Hangul syllable contributes 0.5
+  // as a vowel-proxy (every Korean syllable contains exactly one medial vowel, but the
+  // syllable also contains 1-2 consonants so 0.5 approximates the vowel/consonant ratio).
+  var vowelContribution = (lower.match(asciiVowelRe) || []).length + hangulSyllables * 0.5;
+  var chars = (lower.match(/[a-z0-9ㄱ-ㆎ가-힣]/g) || []).join('');
   var words = text.trim().split(/\s+/).filter(Boolean);
   var uniqueChars = new Set(chars).size;
   var avgWordLen = words.reduce(function(s, w) { return s + w.length; }, 0) / Math.max(1, words.length);
@@ -37,7 +47,7 @@ function analyzeText(text) {
   var uppercase = (text.match(/[A-Z]/g) || []).length;
   return {
     energy: clamp((uniqueChars / 20) * 0.3 + (punctuation / Math.max(1, text.length)) * 3 + (uppercase / Math.max(1, text.length)) * 2 + Math.min(1, words.length / 8) * 0.3),
-    brightness: clamp(vowels / Math.max(1, letters) * 1.8),
+    brightness: clamp(vowelContribution / Math.max(1, letters) * 1.8),
     weight: clamp(avgWordLen / 9),
     space: clamp(1 - chars.length / Math.max(1, text.length) + (words.length < 3 ? 0.2 : 0)),
     complexity: clamp(uniqueChars / Math.max(1, chars.length) * 1.2),
@@ -756,6 +766,21 @@ function generateCode(text, genreName) {
   return L.join('\n');
 }
 
+// ---- API response helpers (C3, C4) ----
+function resp_ok(resp, data) {
+  if (!resp || !resp.ok) return false;
+  if (data && data.error) return false;
+  return true;
+}
+function api_error(resp, data, providerLabel) {
+  var status = resp ? (resp.status + ' ' + (resp.statusText || '')) : '';
+  if (data && data.error) {
+    var m = (typeof data.error === 'string') ? data.error : (data.error.message || JSON.stringify(data.error));
+    return providerLabel + ': ' + m + (status ? ' [' + status.trim() + ']' : '');
+  }
+  return providerLabel + ': HTTP ' + status.trim();
+}
+
 // ---- Claude API Integration ----
 var STRUDEL_SYSTEM_PROMPT = `You generate Strudel live-coding music. Strudel is a browser-based JavaScript port of Tidal Cycles for algorithmic music composition.
 
@@ -1197,7 +1222,11 @@ async function generateWithClaude(text, genre, apiKey) {
 
   var data = await response.json();
   if (data.error) throw new Error(data.error.message);
-  return validateAndFix(stripFences(data.content[0].text));
+  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'Claude'));
+  if (!data || !data.content || !data.content[0] || typeof data.content[0].text !== 'string') {
+    throw new Error('Claude: malformed response shape');
+  }
+  return stripFences(data.content[0].text);
 }
 
 async function generateWithGemini(text, genre, apiKey) {
@@ -1223,8 +1252,13 @@ async function generateWithGemini(text, genre, apiKey) {
 
   var data = await response.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (!data.candidates || !data.candidates[0]) throw new Error('No response from Gemini');
-  return validateAndFix(stripFences(data.candidates[0].content.parts[0].text));
+  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'Gemini'));
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
+      || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
+      || typeof data.candidates[0].content.parts[0].text !== 'string') {
+    throw new Error('Gemini: malformed response shape');
+  }
+  return stripFences(data.candidates[0].content.parts[0].text);
 }
 
 async function generateWithOpenAI(text, genre, apiKey) {
@@ -1249,8 +1283,12 @@ async function generateWithOpenAI(text, genre, apiKey) {
   });
 
   var data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return validateAndFix(stripFences(data.choices[0].message.content));
+  if (!resp_ok(response, data)) throw new Error(api_error(response, data, 'OpenAI'));
+  if (!data.choices || !data.choices[0] || !data.choices[0].message
+      || typeof data.choices[0].message.content !== 'string') {
+    throw new Error('OpenAI: malformed response shape');
+  }
+  return stripFences(data.choices[0].message.content);
 }
 
 // ---- Pre-evaluation normalization (silent, non-functional fixes only) ----
@@ -1267,13 +1305,50 @@ function normalize(code) {
     .replace(/gm_pad_8[_a-z]*/g, 'gm_pad_sweep');
 }
 
+// Strip a .fnName(...) call with balanced-paren matching (C5).
+function stripFnCall(code, fnName) {
+  var needle = '.' + fnName;
+  var out = '';
+  var i = 0;
+  while (i < code.length) {
+    if (code.charCodeAt(i) === 46 && code.substr(i, needle.length) === needle) {
+      var afterDot = i + needle.length;
+      var j = afterDot;
+      while (j < code.length && (code[j] === ' ' || code[j] === '\t')) j++;
+      if (code[j] === '(') {
+        var depth = 1;
+        j++;
+        while (j < code.length && depth > 0) {
+          var ch = code[j];
+          if (ch === '(') depth++;
+          else if (ch === ')') depth--;
+          j++;
+        }
+        if (depth === 0) {
+          i = j;
+          continue;
+        }
+      }
+    }
+    out += code[i];
+    i++;
+  }
+  return out;
+}
+
+// Returns true if `name` only occurs inside double-quoted mini-notation strings
+// (so commenting out lines containing it would wrongly disable patterns).
+function nameOnlyInsideStrings(line, name) {
+  var stripped = line.replace(/"[^"]*"/g, '""');
+  return stripped.indexOf(name) === -1;
+}
+
 // ---- Dynamic error recovery: parse error → fix → retry ----
 function tryFixFromError(code, errorMsg) {
   // "X is not defined" → known substitutions or remove the call
   var notDefined = errorMsg.match(/(\w+) is not defined/);
   if (notDefined) {
     var name = notDefined[1];
-    // known substitutions
     if (/^set[Bb][Pp][Mm]$/.test(name)) {
       return code.replace(/set[Bb][Pp][Mm]\s*\(\s*([^)]+)\)/g, function(m, inner) {
         return 'setcpm(' + (inner.trim().indexOf('/4') !== -1 ? inner.trim() : inner.trim() + '/4') + ')';
@@ -1282,16 +1357,15 @@ function tryFixFromError(code, errorMsg) {
     if (name === 'line' || name === 'ramp') {
       return code.replace(new RegExp('\\b' + name + '\\s*\\(\\s*([^,]+),\\s*([^,]+),\\s*([^)]+)\\)', 'g'), 'saw.range($1,$2).slow($3)');
     }
-    // generic: comment out lines containing the undefined name
     return code.split('\n').map(function(l) {
-      // don't comment out lines that are already comments
       if (l.trim().indexOf('//') === 0) return l;
-      if (l.indexOf(name) !== -1) return '// [auto-disabled: ' + name + ' not defined] ' + l;
-      return l;
+      if (l.indexOf(name) === -1) return l;
+      if (nameOnlyInsideStrings(l, name)) return l;
+      return '// [auto-disabled: ' + name + ' not defined] ' + l;
     }).join('\n');
   }
 
-  // "X is not a function" → known substitutions or remove the .X() call
+  // "X is not a function" → known substitutions or strip the .X(...) call entirely
   var notFunc = errorMsg.match(/(\w+) is not a function/);
   if (notFunc) {
     var fn = notFunc[1];
@@ -1299,8 +1373,7 @@ function tryFixFromError(code, errorMsg) {
     if (subs[fn]) {
       return code.replace(new RegExp('\\.' + fn + '\\s*\\(', 'g'), '.' + subs[fn] + '(');
     }
-    // unknown function: strip the .fn(...) call entirely
-    return code.replace(new RegExp('\\.' + fn + '\\s*\\([^)]*\\)', 'g'), '');
+    return stripFnCall(code, fn);
   }
 
   // "parse error at line N" → try () → [] fix in mini-notation
@@ -1336,10 +1409,17 @@ function setCodeAndPlay(code) {
   statusEl.textContent = 'Loading editor...';
   var fixAttempt = 0;
 
-  function waitForEditor(cb) {
+  function waitForEditor(cb, attempts) {
+    attempts = attempts || 0;
     var ed = getEditor();
     if (ed) return cb(ed);
-    setTimeout(function() { waitForEditor(cb); }, 200);
+    if (attempts >= 50) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Editor failed to load';
+      btn.disabled = false;
+      return;
+    }
+    setTimeout(function() { waitForEditor(cb, attempts + 1); }, 200);
   }
 
   function evalAndRecover(ed, currentCode) {
@@ -1451,21 +1531,27 @@ async function fixWithLLM(code, errorMsg, apiKey) {
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
     var data = await resp.json();
-    if (data.error || !data.candidates) return null;
+    if (!resp_ok(resp, data)) return null;
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
+        || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
+        || typeof data.candidates[0].content.parts[0].text !== 'string') return null;
     return stripFences(data.candidates[0].content.parts[0].text);
   } else if (provider === 'openai') {
     var resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
     var data = await resp.json();
-    if (data.error || !data.choices) return null;
+    if (!resp_ok(resp, data)) return null;
+    if (!data.choices || !data.choices[0] || !data.choices[0].message
+        || typeof data.choices[0].message.content !== 'string') return null;
     return stripFences(data.choices[0].message.content);
   } else {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: fixSystem, messages: [{ role: 'user', content: prompt }] }) });
     var data = await resp.json();
-    if (data.error || !data.content) return null;
+    if (!resp_ok(resp, data)) return null;
+    if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') return null;
     return stripFences(data.content[0].text);
   }
 }
@@ -1688,21 +1774,26 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
       if (prov === 'gemini') {
         var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
         var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (!resp.ok || (data && data.error)) {
+          throw new Error((data && data.error && data.error.message) || ('HTTP ' + resp.status));
+        }
       } else if (prov === 'openai') {
         var resp = await fetch('https://api.openai.com/v1/models', {
           headers: { 'Authorization': 'Bearer ' + key },
         });
         var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (!resp.ok || (data && data.error)) {
+          throw new Error((data && data.error && data.error.message) || ('HTTP ' + resp.status));
+        }
       } else {
-        var resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+        var resp = await fetch('https://api.anthropic.com/v1/models', {
+          method: 'GET',
+          headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         });
-        var data = await resp.json();
-        if (data.error && data.error.type === 'authentication_error') throw new Error('Invalid API key');
+        var data = await resp.json().catch(function() { return null; });
+        if (resp.status === 401) throw new Error('Invalid API key');
+        if (!resp.ok) throw new Error('Anthropic transient error: HTTP ' + resp.status);
+        if (!data || !Array.isArray(data.data)) throw new Error('Anthropic: malformed /v1/models response');
       }
 
       saveApiKey(key, prov);
@@ -1945,21 +2036,27 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: refinePrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
         var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Gemini'));
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
+            || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
+            || typeof data.candidates[0].content.parts[0].text !== 'string') throw new Error('Gemini: malformed response shape');
         code = stripFences(data.candidates[0].content.parts[0].text);
       } else if (refineProv === 'openai') {
         var resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
           body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
         var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'OpenAI'));
+        if (!data.choices || !data.choices[0] || !data.choices[0].message
+            || typeof data.choices[0].message.content !== 'string') throw new Error('OpenAI: malformed response shape');
         code = stripFences(data.choices[0].message.content);
       } else {
         var resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.7, system: STRUDEL_SYSTEM_PROMPT, messages: [{ role: 'user', content: refinePrompt }] }) });
         var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Claude'));
+        if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') throw new Error('Claude: malformed response shape');
         code = stripFences(data.content[0].text);
       }
       setCodeAndPlay(code);
@@ -2014,21 +2111,27 @@ async function doEdit() {
         { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
       var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
+      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Gemini'));
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
+          || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
+          || typeof data.candidates[0].content.parts[0].text !== 'string') throw new Error('Gemini: malformed response shape');
       code = stripFences(data.candidates[0].content.parts[0].text);
     } else if (prov === 'openai') {
       var resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
         body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
       var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
+      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'OpenAI'));
+      if (!data.choices || !data.choices[0] || !data.choices[0].message
+          || typeof data.choices[0].message.content !== 'string') throw new Error('OpenAI: malformed response shape');
       code = stripFences(data.choices[0].message.content);
     } else {
       var resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: EDIT_SYSTEM, messages: [{ role: 'user', content: editPrompt }] }) });
       var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
+      if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, 'Claude'));
+      if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') throw new Error('Claude: malformed response shape');
       code = stripFences(data.content[0].text);
     }
 
