@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com 'unsafe-eval'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Red+Hat+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -276,7 +277,10 @@
   </div>
 
 </div>
-<script src="https://unpkg.com/@strudel/repl@latest"></script>
+<!-- Strudel REPL pinned to 1.3.0 with SRI integrity hash for supply-chain safety. -->
+<script src="https://unpkg.com/@strudel/repl@1.3.0/dist/index.js"
+        integrity="sha384-lCEvnEkKT0yduqm8nTtM4FQxz6oegFdhDdI1nOaIpPHuQ8v1PLH7ATGwV66YH+Ot"
+        crossorigin="anonymous"></script>
 <script src="app.js"></script>
 </body>
 </html>
