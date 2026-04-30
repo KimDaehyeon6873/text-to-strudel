@@ -44,7 +44,6 @@
 - **Deterministic output:** In algorithmic mode, the same `text + genre + seed` always produces the exact same music.
 - **6-12 layers per generation:** drums, percussion, bass, lead, countermelody, chords, arp, texture/noise.
 - **Two themes:** Matrix (green-on-black, 2-column, JetBrains Mono) and Amber (warm dark, single-column, Outfit + Red Hat Mono).
-- **Bilingual UI (KO/EN):** Toggle in the brand row. Auto-detects from `navigator.language`. Persists in `localStorage`.
 - **Zero friction:** No server, no npm, no build step. Open the HTML file and go.
 
 ## Tests & Type Check
@@ -56,7 +55,7 @@ npm run typecheck  # tsc --checkJs against JSDoc annotations
 
 `app.js` opts into TypeScript checking with `// @ts-check` and JSDoc `@type` / `@typedef` annotations. The check covers DOM type narrowing (`HTMLInputElement` placeholders, `HTMLButtonElement.disabled`, `dataset` access on `HTMLElement`), the `Provider` / `Channel` enum types on `callLLM()`, the `Analysis` shape from `analyzeText()`, and the Strudel REPL's custom element augmentation. Runs from JSDoc only — no `tsconfig.json`, no build step, no `.ts` files. Same `app.js` runs as-is in the browser.
 
-The 35 `node:test` smoke tests cover pure functions: `analyzeText` (incl. Hangul brightness regression guard), `createRNG` (determinism), `stripFences`, `stripFnCall` (nested-paren regression guard), `nameOnlyInsideStrings`, `tryFixFromError`, `normalize`, `algoRefine` (BPM/gain clamping), `generateCode` (deterministic snapshot), `getApiKey`/`saveApiKey` (sessionStorage + opt-in persist), `isVerified`/`invalidateVerified` (TTL), `cancelInflight`, and `t()` (i18n fallback chain). No browser, no DOM — runs straight on `node`.
+The 35 `node:test` smoke tests cover pure functions: `analyzeText` (incl. Hangul brightness regression guard), `createRNG` (determinism), `stripFences`, `stripFnCall` (nested-paren regression guard), `nameOnlyInsideStrings`, `tryFixFromError`, `normalize`, `algoRefine` (BPM/gain clamping), `generateCode` (deterministic snapshot), `getApiKey`/`saveApiKey` (sessionStorage + opt-in persist), `isVerified`/`invalidateVerified` (TTL), and `cancelInflight`. No browser, no DOM — runs straight on `node`.
 
 ---
 

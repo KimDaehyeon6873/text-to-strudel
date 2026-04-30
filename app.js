@@ -74,85 +74,6 @@ function $(id) {
   return DOM[id];
 }
 
-// ---- i18n: minimal locale table for ko/en (U19) ----
-var LOCALE = {
-  en: {
-    'tagline': 'Type anything. Get music.',
-    'api': 'api', 'input': 'input', 'genre': 'genre', 'mixer': 'mixer', 'tone': 'tone', 'mood': 'mood', 'edit': 'edit',
-    'save': 'save', 'play': 'play', 'stop': 'stop', 'regen': 'regen', 'apply': 'apply',
-    'generate': 'generate & play',
-    'fusion': 'Fusion', 'fusion-hint': 'multi-select',
-    'mood-dark': 'dark', 'mood-euphoric': 'euphoric', 'mood-dreamy': 'dreamy', 'mood-aggressive': 'aggressive',
-    'no-key': 'no key = algorithmic mode',
-    'remember': 'remember on disk (else: this tab only)',
-    'warn-keys': 'Keys live in browser storage on this device. Strudel REPL evaluates user code via unsafe-eval — only paste trusted patterns.',
-    'placeholder-input': '> enter signal...',
-    'placeholder-edit': '> describe change...',
-    'type-first': 'Type something first',
-    'cancelled': 'Cancelled.',
-    'loading-editor': 'Loading editor...',
-    'editor-failed': 'Editor failed to load',
-    'evaluating': 'Evaluating...',
-    'playing': 'Playing',
-    'stopped': 'Stopped',
-    'verifying': 'Verifying...',
-    'cleared': 'Cleared. Algorithmic mode.',
-    'algo-mode': 'Algorithmic mode',
-  },
-  ko: {
-    'tagline': '아무거나 입력. 음악이 흐른다.',
-    'api': 'API', 'input': '입력', 'genre': '장르', 'mixer': '믹서', 'tone': '음색', 'mood': '무드', 'edit': '편집',
-    'save': '저장', 'play': '재생', 'stop': '정지', 'regen': '재생성', 'apply': '적용',
-    'generate': '생성 & 재생',
-    'fusion': '퓨전', 'fusion-hint': '복수 선택',
-    'mood-dark': '어둡게', 'mood-euphoric': '고양', 'mood-dreamy': '몽환', 'mood-aggressive': '강렬',
-    'no-key': 'API 키 없음 = 알고리즘 모드',
-    'remember': '디스크에 저장 (해제 시 이 탭에서만)',
-    'warn-keys': '키는 이 기기의 브라우저 저장소에 보관됩니다. Strudel REPL은 unsafe-eval로 사용자 코드를 실행하므로 신뢰하지 않는 패턴은 붙여넣지 마세요.',
-    'placeholder-input': '> 신호 입력...',
-    'placeholder-edit': '> 변경 사항 입력...',
-    'type-first': '먼저 텍스트를 입력하세요',
-    'cancelled': '취소됨.',
-    'loading-editor': '에디터 로딩 중...',
-    'editor-failed': '에디터 로딩 실패',
-    'evaluating': '평가 중...',
-    'playing': '재생 중',
-    'stopped': '정지됨',
-    'verifying': '검증 중...',
-    'cleared': '키 삭제됨. 알고리즘 모드.',
-    'algo-mode': '알고리즘 모드',
-  },
-};
-function getLang() {
-  var saved = localStorage.getItem('tts_lang');
-  if (saved === 'ko' || saved === 'en') return saved;
-  var nav = (typeof navigator !== 'undefined' && navigator.language) ? navigator.language : 'en';
-  return /^ko/i.test(nav) ? 'ko' : 'en';
-}
-function setLang(l) {
-  if (l !== 'ko' && l !== 'en') return;
-  localStorage.setItem('tts_lang', l);
-  applyI18n();
-}
-function t(key) {
-  var l = getLang();
-  return (LOCALE[l] && LOCALE[l][key]) || LOCALE.en[key] || key;
-}
-function applyI18n() {
-  if (typeof document === 'undefined') return;
-  if (document.documentElement) document.documentElement.lang = getLang();
-  document.querySelectorAll('[data-i18n]').forEach(function(el) {
-    var v = t(el.getAttribute('data-i18n'));
-    if (v) el.textContent = v;
-  });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
-    var v = t(el.getAttribute('data-i18n-placeholder'));
-    if (v) /** @type {HTMLInputElement | HTMLTextAreaElement} */ (el).placeholder = v;
-  });
-  var btn = document.getElementById('langToggle');
-  if (btn) btn.textContent = getLang() === 'ko' ? 'EN' : 'KO';
-}
-
 // ---- Seed counter (for regeneration) ----
 var seedCounter = 0;
 
@@ -1629,7 +1550,7 @@ function setCodeAndPlay(code) {
   var btn = $('playBtn');
   btn.disabled = true;
   statusEl.className = 'status';
-  statusEl.textContent = t('loading-editor');
+  statusEl.textContent = 'Loading editor...';
   var fixAttempt = 0;
 
   function waitForEditor(cb, attempts) {
@@ -1638,7 +1559,7 @@ function setCodeAndPlay(code) {
     if (ed) return cb(ed);
     if (attempts >= 50) {
       statusEl.className = 'status error';
-      statusEl.textContent = t('editor-failed');
+      statusEl.textContent = 'Editor failed to load';
       btn.disabled = false;
       return;
     }
@@ -1649,7 +1570,7 @@ function setCodeAndPlay(code) {
     ed.setCode(currentCode);
     statusEl.textContent = fixAttempt > 0
       ? 'Fix attempt ' + fixAttempt + '/' + MAX_FIX_ATTEMPTS + '...'
-      : t('evaluating');
+      : 'Evaluating...';
 
     setTimeout(function() {
       try {
@@ -1768,7 +1689,7 @@ function stopPlayback() {
   if (ed) ed.stop();
   var s = $('status');
   s.className = 'status';
-  s.textContent = t('stopped');
+  s.textContent = 'Stopped';
 }
 
 // ---- UI Wiring ----
@@ -1843,7 +1764,7 @@ async function doGenerate() {
   var statusEl = $('status');
   if (!text) {
     statusEl.className = 'status error';
-    statusEl.textContent = t('type-first');
+    statusEl.textContent = 'Type something first';
     return;
   }
 
@@ -1876,7 +1797,7 @@ async function doGenerate() {
     } catch (e) {
       if (isAbortError(e)) {
         statusEl.className = 'status';
-        statusEl.textContent = t('cancelled');
+        statusEl.textContent = 'Cancelled.';
       } else {
         statusEl.className = 'status error';
         statusEl.textContent = 'API error: ' + e.message + ' — falling back to algorithm';
@@ -1889,7 +1810,7 @@ async function doGenerate() {
       _inflight.generate = null;
     }
   } else {
-    statusEl.textContent = t('algo-mode') + ' (seed ' + seedCounter + ')';
+    statusEl.textContent = 'Algorithmic mode (seed ' + seedCounter + ')';
     var code = generateCode(text, genre);
     setCodeAndPlay(code);
   }
@@ -1905,19 +1826,13 @@ $('regenBtn').addEventListener('click', function() {
   doGenerate();
 });
 
-applyI18n();
-(function() {
-  var lt = document.getElementById('langToggle');
-  if (lt) lt.addEventListener('click', function() { setLang(getLang() === 'ko' ? 'en' : 'ko'); });
-})();
-
 $('runBtn').addEventListener('click', function() {
   var ed = getEditor();
   if (ed) {
     try { ed.evaluate(true); } catch(e) {}
     var s = $('status');
     s.className = 'status playing';
-    s.textContent = t('playing');
+    s.textContent = 'Playing';
   }
 });
 
@@ -1991,13 +1906,13 @@ function invalidateVerified(prov) {
       saveApiKey('', prov);
       setVerified(prov, false);
       saveProvider(prov);
-      hint.textContent = t('cleared');
+      hint.textContent = 'Cleared. Algorithmic mode.';
       hint.className = 'api-hint';
       setApiState('no-key');
       return;
     }
 
-    hint.textContent = t('verifying');
+    hint.textContent = 'Verifying...';
     hint.className = 'api-hint';
 
     try {

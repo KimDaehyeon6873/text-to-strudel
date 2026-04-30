@@ -308,26 +308,4 @@ test('isAbortError: matches AbortError name', () => {
   assert.equal(ctx.isAbortError({ message: 'unrelated' }), false);
 });
 
-test('i18n: t() returns Korean for ko, English for en, falls back to key', () => {
-  ctx.setLang('ko');
-  assert.equal(ctx.t('save'), '저장');
-  assert.equal(ctx.t('mood-dark'), '어둡게');
-  ctx.setLang('en');
-  assert.equal(ctx.t('save'), 'save');
-  assert.equal(ctx.t('mood-dark'), 'dark');
-  assert.equal(ctx.t('nonexistent-key'), 'nonexistent-key');
-});
 
-test('i18n: getLang persists via localStorage', () => {
-  ctx.setLang('ko');
-  assert.equal(ctx.getLang(), 'ko');
-  assert.equal(ctx.localStorage.getItem('tts_lang'), 'ko');
-  ctx.setLang('en');
-  assert.equal(ctx.getLang(), 'en');
-});
-
-test('i18n: setLang ignores invalid values', () => {
-  ctx.setLang('en');
-  ctx.setLang('jp');
-  assert.equal(ctx.getLang(), 'en', 'invalid lang should be rejected');
-});
