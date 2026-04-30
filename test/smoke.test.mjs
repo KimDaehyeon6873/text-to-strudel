@@ -76,7 +76,7 @@ function makeContext() {
     document,
     localStorage: makeStorage(),
     sessionStorage: makeStorage(),
-    window: {},
+    window: { name: '' },
     navigator: { userAgent: 'node-test' },
     fetch: async () => ({ ok: true, status: 200, json: async () => ({}) }),
     AbortController: class { constructor() { this.signal = {}; } abort() {} },
@@ -86,6 +86,11 @@ function makeContext() {
     Math, JSON, Object, Array, Set, Map, Date, String, Number, RegExp, Error,
     parseInt, parseFloat, isNaN, isFinite,
     encodeURIComponent, decodeURIComponent,
+    Uint8Array,
+    TextEncoder, TextDecoder,
+    btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
+    atob: (s) => Buffer.from(s, 'base64').toString('binary'),
+    crypto: { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; } },
   };
   vm.createContext(ctx);
   vm.runInContext(src, ctx);
@@ -249,34 +254,36 @@ test('determinism: different seed -> different output', () => {
   assert.notEqual(a, b);
 });
 
-test('saveApiKey: persist=false stores in sessionStorage only', () => {
+test('saveApiKey: persist=false routes to splitStore (no localStorage mirror)', () => {
   ctx.saveApiKey('test-key-1', 'gemini', false);
-  assert.equal(ctx.sessionStorage.getItem('tts_api_key_gemini'), 'test-key-1');
   assert.equal(ctx.localStorage.getItem('tts_api_key_gemini'), null);
+  assert.equal(ctx.sessionStorage.getItem('tts_api_key_gemini'), null);
+  assert.ok(ctx.sessionStorage.getItem('tts_split_gemini'), 'split half in sessionStorage');
+  assert.equal(ctx.getApiKey('gemini'), 'test-key-1');
   ctx.saveApiKey('', 'gemini');
 });
 
-test('saveApiKey: persist=true stores in both', () => {
+test('saveApiKey: persist=true stores in localStorage only (no splitStore)', () => {
   ctx.saveApiKey('test-key-2', 'openai', true);
-  assert.equal(ctx.sessionStorage.getItem('tts_api_key_openai'), 'test-key-2');
   assert.equal(ctx.localStorage.getItem('tts_api_key_openai'), 'test-key-2');
+  assert.equal(ctx.sessionStorage.getItem('tts_split_openai'), null, 'split half should be cleared');
+  assert.equal(ctx.getApiKey('openai'), 'test-key-2');
   ctx.saveApiKey('', 'openai');
 });
 
-test('saveApiKey: "" clears both stores and persist flag', () => {
+test('saveApiKey: "" clears split + localStorage + persist flag', () => {
   ctx.saveApiKey('abc', 'claude', true);
   ctx.saveApiKey('', 'claude');
-  assert.equal(ctx.sessionStorage.getItem('tts_api_key_claude'), null);
   assert.equal(ctx.localStorage.getItem('tts_api_key_claude'), null);
   assert.equal(ctx.localStorage.getItem('tts_persist_claude'), null);
+  assert.equal(ctx.sessionStorage.getItem('tts_split_claude'), null);
+  assert.equal(ctx.getApiKey('claude'), '');
 });
 
-test('getApiKey: prefers sessionStorage but falls back to localStorage and warms cache', () => {
-  ctx.sessionStorage.removeItem('tts_api_key_gemini');
+test('getApiKey: returning user with persisted key still resolves through fallback', () => {
   ctx.localStorage.setItem('tts_api_key_gemini', 'persisted-key');
+  ctx.localStorage.setItem('tts_persist_gemini', '1');
   assert.equal(ctx.getApiKey('gemini'), 'persisted-key');
-  assert.equal(ctx.sessionStorage.getItem('tts_api_key_gemini'), 'persisted-key',
-    'fallback should warm sessionStorage');
   ctx.saveApiKey('', 'gemini');
 });
 

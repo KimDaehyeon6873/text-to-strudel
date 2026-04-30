@@ -1049,14 +1049,104 @@ When shifting the mood of a piece, adjust these parameters together:
 
 var KEY_NS = 'tts_api_key_';
 var PERSIST_FLAG_NS = 'tts_persist_';
+var SPLIT_SS_NS = 'tts_split_';
+
+// ---- splitStore ----
+// XOR-split keystore for ephemeral mode (persist OFF). Stores half the cipher
+// in window.name (volatile, browser never writes it to disk) and the other
+// half in sessionStorage (which IS sometimes disk-dumped via session restore,
+// but only sees random bytes — not the original secret — without the other half).
+var SPLIT_NAMESPACE = 'tts';
+
+function _readWindowNamespace() {
+  try {
+    var raw = window.name || '';
+    if (!raw) return {};
+    var parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object' && parsed[SPLIT_NAMESPACE] && typeof parsed[SPLIT_NAMESPACE] === 'object')
+      ? parsed[SPLIT_NAMESPACE]
+      : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _writeWindowNamespace(ns) {
+  var outer;
+  try { outer = JSON.parse(window.name || '{}'); } catch (_) { outer = {}; }
+  if (!outer || typeof outer !== 'object') outer = {};
+  outer[SPLIT_NAMESPACE] = ns;
+  window.name = JSON.stringify(outer);
+}
+
+function _b64encode(bytes) {
+  var s = '';
+  for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function _b64decode(s) {
+  var bin = atob(s);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function setSplitKey(provider, secret) {
+  var enc = new TextEncoder().encode(secret);
+  var share = crypto.getRandomValues(new Uint8Array(enc.length));
+  var xor = new Uint8Array(enc.length);
+  for (var i = 0; i < enc.length; i++) xor[i] = enc[i] ^ share[i];
+  var ns = _readWindowNamespace();
+  ns['k_' + provider] = _b64encode(share);
+  _writeWindowNamespace(ns);
+  sessionStorage.setItem(SPLIT_SS_NS + provider, _b64encode(xor));
+}
+
+function getSplitKey(provider) {
+  var ns = _readWindowNamespace();
+  var shareB64 = ns['k_' + provider];
+  var xorB64 = sessionStorage.getItem(SPLIT_SS_NS + provider);
+  if (!shareB64 || !xorB64) return '';
+  var share, xor;
+  try {
+    share = _b64decode(shareB64);
+    xor = _b64decode(xorB64);
+  } catch (_) {
+    return '';
+  }
+  if (share.length !== xor.length) {
+    // Corrupted state — clear both halves so we don't return garbage.
+    clearSplitKey(provider);
+    return '';
+  }
+  var out = new Uint8Array(share.length);
+  for (var j = 0; j < share.length; j++) out[j] = share[j] ^ xor[j];
+  try { return new TextDecoder().decode(out); } catch (_) { return ''; }
+}
+
+function clearSplitKey(provider) {
+  var ns = _readWindowNamespace();
+  delete ns['k_' + provider];
+  _writeWindowNamespace(ns);
+  sessionStorage.removeItem(SPLIT_SS_NS + provider);
+}
 
 function getApiKey(provider) {
   var p = provider || getProvider();
-  var k = sessionStorage.getItem(KEY_NS + p);
-  if (k) return k;
-  k = localStorage.getItem(KEY_NS + p);
-  if (k) sessionStorage.setItem(KEY_NS + p, k);
-  return k || '';
+  var persist = localStorage.getItem(PERSIST_FLAG_NS + p) === '1';
+  if (persist) {
+    var ls = localStorage.getItem(KEY_NS + p);
+    if (ls) return ls;
+  } else {
+    var sp = getSplitKey(p);
+    if (sp) return sp;
+  }
+  var sp2 = getSplitKey(p);
+  if (sp2) return sp2;
+  var ls2 = localStorage.getItem(KEY_NS + p);
+  if (ls2) return ls2;
+  return '';
 }
 
 function getApiKeyPersist(provider) {
@@ -1067,20 +1157,57 @@ function getApiKeyPersist(provider) {
 function saveApiKey(key, provider, persist) {
   var p = provider || getProvider();
   if (!key) {
-    sessionStorage.removeItem(KEY_NS + p);
+    clearSplitKey(p);
     localStorage.removeItem(KEY_NS + p);
     localStorage.removeItem(PERSIST_FLAG_NS + p);
     return;
   }
-  sessionStorage.setItem(KEY_NS + p, key);
   if (persist) {
+    clearSplitKey(p);
     localStorage.setItem(KEY_NS + p, key);
     localStorage.setItem(PERSIST_FLAG_NS + p, '1');
   } else {
     localStorage.removeItem(KEY_NS + p);
     localStorage.removeItem(PERSIST_FLAG_NS + p);
+    setSplitKey(p, key);
   }
 }
+
+// ---- One-time migration v1 ----
+// Move legacy session-only keys (which used to live in localStorage) into
+// splitStore, and convert the boolean tts_verified_<prov> flag into the
+// timestamp form. Idempotent and best-effort: on failure we don't mark
+// the migration done and we don't damage the originals — retry next load.
+function _migrateV1() {
+  if (localStorage.getItem('tts_migrated_v1') === '1') return;
+  var providers = ['gemini', 'openai', 'claude'];
+  try {
+    for (var i = 0; i < providers.length; i++) {
+      var pr = providers[i];
+      var lsKey = localStorage.getItem(KEY_NS + pr);
+      var persistFlag = localStorage.getItem(PERSIST_FLAG_NS + pr) === '1';
+      if (lsKey && !persistFlag) {
+        // User had a session-only key that we previously kept in localStorage
+        // (legacy behavior). Move it to splitStore.
+        setSplitKey(pr, lsKey);
+        localStorage.removeItem(KEY_NS + pr);
+      }
+      // Boolean -> timestamp verify flag.
+      var oldVerifiedFlag = localStorage.getItem('tts_verified_' + pr);
+      if (oldVerifiedFlag === '1' && !localStorage.getItem('tts_verified_at_' + pr)) {
+        localStorage.setItem('tts_verified_at_' + pr, String(Date.now()));
+      }
+      if (oldVerifiedFlag !== null) {
+        localStorage.removeItem('tts_verified_' + pr);
+      }
+    }
+    localStorage.setItem('tts_migrated_v1', '1');
+  } catch (e) {
+    // Don't set the flag — retry on next load. Don't damage originals.
+    console.warn('[tts] migration v1 deferred:', e && e.message);
+  }
+}
+_migrateV1();
 
 // ---- Full Strudel Component Reference ----
 // Injected into user message so Claude knows EVERYTHING available, not just genre stereotypes.
