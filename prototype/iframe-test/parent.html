@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Phase 0 — Sandboxed iframe parent</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.4 system-ui, sans-serif;
+    background: #111;
+    color: #eee;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  h1 { margin: 0 0 8px; font-size: 18px; }
+  h2 { margin: 16px 0 8px; font-size: 14px; color: #9cf; }
+  iframe {
+    width: 100%;
+    height: 70vh;
+    border: 1px solid #444;
+    background: #000;
+  }
+  button {
+    background: #2a2a2a;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 8px 12px;
+    margin: 4px 4px 4px 0;
+    cursor: pointer;
+    font: inherit;
+  }
+  button:hover { background: #3a3a3a; }
+  pre {
+    background: #000;
+    border: 1px solid #333;
+    padding: 8px;
+    margin: 0;
+    max-height: 50vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .badge { display: inline-block; padding: 2px 6px; background: #333; border-radius: 3px; font-size: 11px; }
+  .ok { color: #6f6; }
+  .err { color: #f66; }
+</style>
+</head>
+<body>
+<section>
+  <h1>Parent (origin: <span id="origin"></span>)</h1>
+  <div>
+    <span class="badge">localStorage[<code id="senKey"></code>] = <code id="senVal"></code></span>
+    <span class="badge">window.name = <code id="senName"></code></span>
+  </div>
+
+  <h2>Controls</h2>
+  <div class="row">
+    <button id="btnPlay">Play test pattern</button>
+    <button id="btnStop">Stop</button>
+    <button id="btnProbe">Probe parent storage from iframe</button>
+    <button id="btnBench">RTT bench (10 pings)</button>
+    <button id="btnClear">Clear log</button>
+  </div>
+
+  <h2>iframe (sandbox="allow-scripts", no allow-same-origin)</h2>
+  <iframe id="frame" sandbox="allow-scripts" src="child.html"></iframe>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <pre id="log"></pre>
+</section>
+
+<script>
+  // Sentinels — child should NOT be able to read these because the sandboxed
+  // iframe has an opaque origin (different from parent's actual origin).
+  const SENTINEL_KEY = 'tts_proto_sentinel';
+  const SENTINEL_VAL = 'parent-only-secret-XYZ';
+  const NAME_VAL = 'parent-name-secret-ABC';
+
+  try { localStorage.setItem(SENTINEL_KEY, SENTINEL_VAL); } catch (e) {}
+  window.name = NAME_VAL;
+
+  document.getElementById('origin').textContent = location.origin;
+  document.getElementById('senKey').textContent = SENTINEL_KEY;
+  document.getElementById('senVal').textContent = SENTINEL_VAL;
+  document.getElementById('senName').textContent = NAME_VAL;
+
+  const frame = document.getElementById('frame');
+  const logEl = document.getElementById('log');
+
+  function log(label, data) {
+    const ts = new Date().toISOString().split('T')[1].replace('Z', '');
+    const line = `[${ts}] ${label}: ${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}\n`;
+    logEl.textContent += line;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Sandboxed iframes (no allow-same-origin) have an opaque origin reported as
+  // the string "null" in event.origin. We can't narrow targetOrigin so we use '*'.
+  // We compensate by validating event.source === frame.contentWindow.
+  function postToFrame(msg) {
+    frame.contentWindow.postMessage(msg, '*');
+  }
+
+  // Pending RTT pings
+  const pings = new Map();
+  let benchSamples = [];
+  let benchInFlight = 0;
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== frame.contentWindow) return;
+    if (event.origin !== 'null' && event.origin !== '') {
+      log('rejected (unexpected origin)', { origin: event.origin });
+      return;
+    }
+    const msg = event.data || {};
+    if (msg.type === 'pong') {
+      const start = pings.get(msg.id);
+      if (start != null) {
+        const rtt = performance.now() - start;
+        pings.delete(msg.id);
+        benchSamples.push(rtt);
+        benchInFlight--;
+        if (benchInFlight === 0 && benchSamples.length >= 10) {
+          const sorted = [...benchSamples].sort((a, b) => a - b);
+          const p50 = sorted[Math.floor(sorted.length * 0.5)];
+          const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? sorted[sorted.length - 1];
+          log('rtt bench complete', {
+            samples: sorted.map(n => +n.toFixed(2)),
+            p50_ms: +p50.toFixed(2),
+            p95_ms: +p95.toFixed(2),
+          });
+        }
+      }
+      return;
+    }
+    log('reply', msg);
+  });
+
+  document.getElementById('btnPlay').addEventListener('click', () => {
+    log('send', { type: 'eval', code: 'setcpm(120/4); $: s("bd*4")' });
+    postToFrame({ type: 'eval', code: 'setcpm(120/4); $: s("bd*4")' });
+  });
+
+  document.getElementById('btnStop').addEventListener('click', () => {
+    log('send', { type: 'stop' });
+    postToFrame({ type: 'stop' });
+  });
+
+  document.getElementById('btnProbe').addEventListener('click', () => {
+    log('send', { type: 'probe' });
+    postToFrame({ type: 'probe' });
+  });
+
+  document.getElementById('btnBench').addEventListener('click', () => {
+    benchSamples = [];
+    benchInFlight = 0;
+    log('send', 'rtt bench starting (10 pings)');
+    for (let i = 0; i < 10; i++) {
+      const id = `b${i}-${Math.random().toString(36).slice(2, 8)}`;
+      pings.set(id, performance.now());
+      benchInFlight++;
+      postToFrame({ type: 'ping', id });
+    }
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    logEl.textContent = '';
+  });
+
+  log('parent ready', { origin: location.origin, sentinelSet: true });
+</script>
+</body>
+</html>
