@@ -1,0 +1,11 @@
+{
+  "name": "text-to-strudel",
+  "version": "1.0.0",
+  "description": "Text-to-music generator (browser-only, no build).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'test/**/*.test.mjs'",
+    "typecheck": "npx -p typescript@5 tsc --noEmit --allowJs --checkJs --target es2020 --lib es2020,dom --strict false --skipLibCheck app.js"
+  }
+}
