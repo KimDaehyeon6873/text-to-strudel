@@ -190,11 +190,13 @@
   .api-persist input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
-    left: 2px; top: -1px;
-    width: 4px; height: 8px;
+    left: 50%;
+    top: 45%;
+    width: 3px;
+    height: 6px;
     border: solid var(--g);
     border-width: 0 1.5px 1.5px 0;
-    transform: rotate(45deg);
+    transform: translate(-50%, -50%) rotate(45deg);
   }
   .api-warn {
     font-family: var(--mono);
@@ -554,7 +556,8 @@
         <span>remember on disk (else: this tab only)</span>
       </label>
       <div class="api-warn">
-        Keys live in browser storage on this device. Strudel REPL evaluates user code via <code>unsafe-eval</code> — only paste trusted patterns.
+        Keys live in browser storage on this device.<br>
+        Strudel REPL evaluates user code via <code>unsafe-eval</code> — only paste trusted patterns.
       </div>
     </details>
 
