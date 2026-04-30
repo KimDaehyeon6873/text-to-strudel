@@ -14,6 +14,11 @@
   "type": "module",
   "scripts": {
     "test": "node --test 'test/**/*.test.mjs'",
-    "typecheck": "npx -p typescript@5 tsc --noEmit --allowJs --checkJs --target es2020 --lib es2020,dom --strict false --skipLibCheck app.js"
+    "typecheck": "npx -p typescript@5 tsc --noEmit --allowJs --checkJs --target es2020 --lib es2020,dom --strict false --skipLibCheck app.js",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
   }
 }

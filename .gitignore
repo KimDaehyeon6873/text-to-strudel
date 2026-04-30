@@ -28,3 +28,8 @@ CLAUDE.MD
 
 # Logs
 *.log
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.cache/
