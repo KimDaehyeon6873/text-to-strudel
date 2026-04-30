@@ -44,7 +44,19 @@
 - **Deterministic output:** In algorithmic mode, the same `text + genre + seed` always produces the exact same music.
 - **6-12 layers per generation:** drums, percussion, bass, lead, countermelody, chords, arp, texture/noise.
 - **Two themes:** Matrix (green-on-black, 2-column, JetBrains Mono) and Amber (warm dark, single-column, Outfit + Red Hat Mono).
+- **Bilingual UI (KO/EN):** Toggle in the brand row. Auto-detects from `navigator.language`. Persists in `localStorage`.
 - **Zero friction:** No server, no npm, no build step. Open the HTML file and go.
+
+## Tests & Type Check
+
+```bash
+npm test       # 35 node:test smoke tests
+npm run typecheck  # tsc --checkJs against JSDoc annotations
+```
+
+`app.js` opts into TypeScript checking with `// @ts-check` and JSDoc `@type` / `@typedef` annotations. The check covers DOM type narrowing (`HTMLInputElement` placeholders, `HTMLButtonElement.disabled`, `dataset` access on `HTMLElement`), the `Provider` / `Channel` enum types on `callLLM()`, the `Analysis` shape from `analyzeText()`, and the Strudel REPL's custom element augmentation. Runs from JSDoc only — no `tsconfig.json`, no build step, no `.ts` files. Same `app.js` runs as-is in the browser.
+
+The 35 `node:test` smoke tests cover pure functions: `analyzeText` (incl. Hangul brightness regression guard), `createRNG` (determinism), `stripFences`, `stripFnCall` (nested-paren regression guard), `nameOnlyInsideStrings`, `tryFixFromError`, `normalize`, `algoRefine` (BPM/gain clamping), `generateCode` (deterministic snapshot), `getApiKey`/`saveApiKey` (sessionStorage + opt-in persist), `isVerified`/`invalidateVerified` (TTL), `cancelInflight`, and `t()` (i18n fallback chain). No browser, no DOM — runs straight on `node`.
 
 ---
 
@@ -192,7 +204,9 @@ text-to-strudel/
 3. Paste your key, press **Enter** (auto-verifies)
 4. Green checkmark = verified. Red cross = invalid.
 
-Keys are stored per-provider in `localStorage`. Switching providers loads that provider's saved key automatically. Verified status persists across sessions. Click outside the API panel to close it.
+Keys are stored per-provider in **`sessionStorage` by default** (cleared when the tab closes). Tick **"remember on disk"** to also persist them in `localStorage`. Switching providers loads that provider's saved key automatically. Verified status is cached for 24h, then re-checked. The system invalidates the verified flag automatically on `401`/`403` responses. Click outside the API panel to close it.
+
+> **Why this matters:** the Strudel REPL evaluates user-typed code via `unsafe-eval`. A malicious pattern shared by URL or pasted from an untrusted source could read `localStorage`. Session-only storage limits the blast radius. Only paste patterns from sources you trust.
 
 **Temperature handling per provider:**
 - **Gemini:** Fixed at 1.0 (Google recommends not lowering for Gemini 3+). Variation via `topP` (0.9 -> 0.99 per regen).

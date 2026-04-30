@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com 'unsafe-eval'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com 'unsafe-eval'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none';">
+<meta name="referrer" content="no-referrer">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Red+Hat+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -177,99 +178,107 @@
   <div class="panel">
     <div class="brand-row">
       <div class="brand">text-to-strudel</div>
-      <div class="tagline">Type anything. Get <em>music</em>.</div>
+      <div class="tagline" data-i18n="tagline">Type anything. Get music.</div>
+      <button type="button" id="langToggle" class="lang-toggle" aria-label="Toggle language" style="margin-left:auto;background:transparent;border:1px solid var(--border-hi);color:var(--txt-3);padding:.1rem .4rem;font-family:inherit;font-size:.65rem;cursor:pointer;letter-spacing:.1em;border-radius:var(--r);">KO</button>
     </div>
 
     <details class="api" id="apiSettings">
-      <summary>api</summary>
+      <summary data-i18n="api">api</summary>
       <div class="api-row">
         <select id="apiProvider"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select>
         <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
-        <button class="api-save" id="apiSave">save</button>
+        <button type="button" class="api-save" id="apiSave" data-i18n="save">save</button>
       </div>
-      <div class="api-hint" id="apiHint">no key = algorithmic mode</div>
+      <div class="api-hint" id="apiHint" data-i18n="no-key">no key = algorithmic mode</div>
+      <label class="api-persist" style="display:flex;align-items:center;gap:.4em;font-size:.7rem;color:var(--txt-dim);margin-top:.3em;">
+        <input type="checkbox" id="apiPersist">
+        <span data-i18n="remember">remember on disk (else: this tab only)</span>
+      </label>
+      <div class="api-warn" data-i18n="warn-keys" style="font-size:.65rem;color:var(--txt-dim);margin-top:.3em;line-height:1.3;">
+        Keys live in browser storage on this device. Strudel REPL evaluates user code via unsafe-eval — only paste trusted patterns.
+      </div>
     </details>
 
     <div>
-      <div class="mod-label">input</div>
-      <textarea class="prompt-input" id="input" placeholder="A word, a phrase, a feeling..." rows="2"></textarea>
+      <div class="mod-label" data-i18n="input">input</div>
+      <textarea class="prompt-input" id="input" placeholder="> enter signal..." data-i18n-placeholder="placeholder-input" rows="2"></textarea>
     </div>
 
     <div>
-      <div class="mod-label">genre</div>
+      <div class="mod-label" data-i18n="genre">genre</div>
       <div class="genres" id="genres">
-        <button class="genre-btn active" data-genre="edm">EDM</button>
-        <button class="genre-btn" data-genre="jazz">Jazz</button>
-        <button class="genre-btn" data-genre="classical">Classical</button>
-        <button class="genre-btn" data-genre="blues">Blues</button>
-        <button class="genre-btn" data-genre="ambient">Ambient</button>
-        <button class="genre-btn" data-genre="lofi">Lo-fi</button>
-        <button class="genre-btn" data-genre="world">World</button>
-        <button class="genre-btn" data-genre="random">Random</button>
+        <button type="button" class="genre-btn active" data-genre="edm">EDM</button>
+        <button type="button" class="genre-btn" data-genre="jazz">Jazz</button>
+        <button type="button" class="genre-btn" data-genre="classical">Classical</button>
+        <button type="button" class="genre-btn" data-genre="blues">Blues</button>
+        <button type="button" class="genre-btn" data-genre="ambient">Ambient</button>
+        <button type="button" class="genre-btn" data-genre="lofi">Lo-fi</button>
+        <button type="button" class="genre-btn" data-genre="world">World</button>
+        <button type="button" class="genre-btn" data-genre="random">Random</button>
       </div>
       <label class="fusion-toggle" id="fusionToggle">
         <input type="checkbox" id="fusionCheck">
-        <span class="fusion-label">Fusion</span>
-        <span class="fusion-hint">multi-select</span>
+        <span class="fusion-label" data-i18n="fusion">Fusion</span>
+        <span class="fusion-hint" data-i18n="fusion-hint">multi-select</span>
       </label>
     </div>
 
-    <button class="btn-generate" id="playBtn">Generate &amp; Play</button>
+    <button type="button" class="btn-generate" id="playBtn" data-i18n="generate">Generate &amp; Play</button>
 
     <div class="transport">
-      <button class="t-btn t-play" id="runBtn">Play</button>
-      <button class="t-btn t-stop" id="stopBtn">Stop</button>
+      <button type="button" class="t-btn t-play" id="runBtn" data-i18n="play">Play</button>
+      <button type="button" class="t-btn t-stop" id="stopBtn" data-i18n="stop">Stop</button>
       <span class="transport-spacer"></span>
-      <button class="t-btn t-regen" id="regenBtn">Regen</button>
+      <button type="button" class="t-btn t-regen" id="regenBtn" data-i18n="regen">Regen</button>
     </div>
 
     <div class="mixer" id="algoMixer" style="display:none">
-      <div class="mod-label">mixer</div>
+      <div class="mod-label" data-i18n="mixer">mixer</div>
       <div class="mixer-grid">
-        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" data-dir="slower">-</button><button class="refine-btn ch-plus" data-dir="faster">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" data-dir="quieter">-</button><button class="refine-btn ch-plus" data-dir="louder">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" data-dir="darker">-</button><button class="refine-btn ch-plus" data-dir="brighter">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" data-dir="less resonance">-</button><button class="refine-btn ch-plus" data-dir="more resonance">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" data-dir="less highpass">-</button><button class="refine-btn ch-plus" data-dir="more highpass">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" data-dir="lower">-</button><button class="refine-btn ch-plus" data-dir="higher">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" data-dir="drier">-</button><button class="refine-btn ch-plus" data-dir="more reverb">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" data-dir="less delay">-</button><button class="refine-btn ch-plus" data-dir="more delay">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" data-dir="less feedback">-</button><button class="refine-btn ch-plus" data-dir="more feedback">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" data-dir="sparser">-</button><button class="refine-btn ch-plus" data-dir="denser">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" data-dir="straighten">off</button><button class="refine-btn ch-toggle" data-dir="add swing">on</button></div>
-        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" data-dir="less distortion">-</button><button class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" data-dir="less crush">-</button><button class="refine-btn ch-plus" data-dir="more crush">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">bpm</span><button type="button" class="refine-btn ch-minus" data-dir="slower">-</button><button type="button" class="refine-btn ch-plus" data-dir="faster">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">gain</span><button type="button" class="refine-btn ch-minus" data-dir="quieter">-</button><button type="button" class="refine-btn ch-plus" data-dir="louder">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">cutoff</span><button type="button" class="refine-btn ch-minus" data-dir="darker">-</button><button type="button" class="refine-btn ch-plus" data-dir="brighter">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">resonance</span><button type="button" class="refine-btn ch-minus" data-dir="less resonance">-</button><button type="button" class="refine-btn ch-plus" data-dir="more resonance">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">highpass</span><button type="button" class="refine-btn ch-minus" data-dir="less highpass">-</button><button type="button" class="refine-btn ch-plus" data-dir="more highpass">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">octave</span><button type="button" class="refine-btn ch-minus" data-dir="lower">-</button><button type="button" class="refine-btn ch-plus" data-dir="higher">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">reverb</span><button type="button" class="refine-btn ch-minus" data-dir="drier">-</button><button type="button" class="refine-btn ch-plus" data-dir="more reverb">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">delay</span><button type="button" class="refine-btn ch-minus" data-dir="less delay">-</button><button type="button" class="refine-btn ch-plus" data-dir="more delay">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">feedback</span><button type="button" class="refine-btn ch-minus" data-dir="less feedback">-</button><button type="button" class="refine-btn ch-plus" data-dir="more feedback">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">density</span><button type="button" class="refine-btn ch-minus" data-dir="sparser">-</button><button type="button" class="refine-btn ch-plus" data-dir="denser">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">swing</span><button type="button" class="refine-btn ch-toggle" data-dir="straighten">off</button><button type="button" class="refine-btn ch-toggle" data-dir="add swing">on</button></div>
+        <div class="mixer-ch"><span class="ch-label">distort</span><button type="button" class="refine-btn ch-minus" data-dir="less distortion">-</button><button type="button" class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">crush</span><button type="button" class="refine-btn ch-minus" data-dir="less crush">-</button><button type="button" class="refine-btn ch-plus" data-dir="more crush">+</button></div>
       </div>
       <div class="mixer-divider"></div>
-      <div class="mod-label">tone</div>
+      <div class="mod-label" data-i18n="tone">tone</div>
       <div class="mixer-tags">
-        <button class="refine-btn ch-tag" data-dir="scale:major">major</button>
-        <button class="refine-btn ch-tag" data-dir="scale:minor">minor</button>
-        <button class="refine-btn ch-tag" data-dir="scale:dorian">dorian</button>
-        <button class="refine-btn ch-tag" data-dir="scale:phrygian">phrygian</button>
-        <button class="refine-btn ch-tag" data-dir="scale:lydian">lydian</button>
-        <button class="refine-btn ch-tag" data-dir="scale:pentatonic">pentatonic</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:major">major</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:minor">minor</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:dorian">dorian</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:phrygian">phrygian</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:lydian">lydian</button>
+        <button type="button" class="refine-btn ch-tag" data-dir="scale:pentatonic">pentatonic</button>
       </div>
       <div class="mixer-divider"></div>
-      <div class="mod-label">mood</div>
+      <div class="mod-label" data-i18n="mood">mood</div>
       <div class="mixer-tags">
-        <button class="refine-btn ch-mood" data-dir="make it darker and moodier">dark</button>
-        <button class="refine-btn ch-mood" data-dir="make it euphoric and uplifting">euphoric</button>
-        <button class="refine-btn ch-mood" data-dir="make it dreamy and floating">dreamy</button>
-        <button class="refine-btn ch-mood" data-dir="make it aggressive and intense">aggressive</button>
+        <button type="button" class="refine-btn ch-mood" data-dir="make it darker and moodier" data-i18n="mood-dark">dark</button>
+        <button type="button" class="refine-btn ch-mood" data-dir="make it euphoric and uplifting" data-i18n="mood-euphoric">euphoric</button>
+        <button type="button" class="refine-btn ch-mood" data-dir="make it dreamy and floating" data-i18n="mood-dreamy">dreamy</button>
+        <button type="button" class="refine-btn ch-mood" data-dir="make it aggressive and intense" data-i18n="mood-aggressive">aggressive</button>
       </div>
     </div>
 
     <div class="edit-row" id="editRow" style="display:none">
-      <span class="tweak-label">edit</span>
-      <input class="edit-input" id="editInput" type="text" placeholder="Describe what to change..." autocomplete="off">
-      <button class="edit-apply" id="editApply">Apply</button>
-      <button class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls">mixer</button>
+      <span class="tweak-label" data-i18n="edit">edit</span>
+      <input class="edit-input" id="editInput" type="text" placeholder="> describe change..." data-i18n-placeholder="placeholder-edit" autocomplete="off">
+      <button type="button" class="edit-apply" id="editApply" data-i18n="apply">Apply</button>
+      <button type="button" class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls" data-i18n="mixer">mixer</button>
     </div>
 
     <div id="refineRow" style="display:none"></div>
 
-    <div class="status" id="status"></div>
+    <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
   </div>
 
   <div class="output hidden" id="editorWrap">

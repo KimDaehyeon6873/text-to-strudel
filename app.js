@@ -1,9 +1,19 @@
+// @ts-check
 // =====================================================
 //  STRUDEL MUSE - Text-to-Music Generator
 //  Analyzes text qualities (energy, brightness, weight,
 //  space, complexity) and maps them to genre-appropriate
 //  musical parameters. Same input + genre = same output.
 // =====================================================
+
+/**
+ * @typedef {{ energy: number, brightness: number, weight: number, space: number, complexity: number }} Analysis
+ * @typedef {'gemini' | 'openai' | 'claude'} Provider
+ * @typedef {'generate' | 'refine' | 'edit' | 'fix' | 'verify'} Channel
+ * @typedef {{ provider: Provider, apiKey: string, system: string, user: string,
+ *             temperature?: number, topP?: number, maxTokens?: number,
+ *             channel?: Channel, timeoutMs?: number }} CallLLMOpts
+ */
 
 // ---- TUNING: shared numeric ranges/steps used across mixer + retry logic ----
 var TUNING = {
@@ -21,6 +31,127 @@ var MODELS = {
   claude: 'claude-haiku-4-5-20251001',
   openai: 'gpt-5.4-nano',
 };
+
+// ---- NETWORK: fetch with timeout + in-flight cancellation ----
+var NET = {
+  REQUEST_TIMEOUT_MS: 60000,         // hard timeout for any LLM call
+  VERIFY_TIMEOUT_MS:  10000,         // shorter timeout for /v1/models verify pings
+  VERIFY_TTL_MS: 24 * 60 * 60 * 1000, // re-verify if last verify older than 24h
+};
+
+// Active controllers per "channel" so a new generate cancels the prior in-flight call
+var _inflight = { generate: null, refine: null, edit: null, fix: null, verify: null };
+function cancelInflight(channel) {
+  var c = _inflight[channel];
+  if (c) { try { c.abort(); } catch (e) {} _inflight[channel] = null; }
+}
+function newController(channel) {
+  cancelInflight(channel);
+  var c = new AbortController();
+  _inflight[channel] = c;
+  return c;
+}
+async function fetchWithTimeout(url, opts, timeoutMs, channel) {
+  var controller = (channel && _inflight[channel]) || new AbortController();
+  if (channel && !_inflight[channel]) _inflight[channel] = controller;
+  var t = setTimeout(function() { try { controller.abort(); } catch (e) {} }, timeoutMs);
+  try {
+    var merged = Object.assign({}, opts || {}, { signal: controller.signal });
+    var resp = await fetch(url, merged);
+    return resp;
+  } finally {
+    clearTimeout(t);
+  }
+}
+function isAbortError(e) {
+  return e && (e.name === 'AbortError' || /aborted/i.test(String(e.message || '')));
+}
+
+// ---- DOM: cached element handles for hot paths (Q16) ----
+var DOM = {};
+function $(id) {
+  if (!DOM[id]) DOM[id] = document.getElementById(id);
+  return DOM[id];
+}
+
+// ---- i18n: minimal locale table for ko/en (U19) ----
+var LOCALE = {
+  en: {
+    'tagline': 'Type anything. Get music.',
+    'api': 'api', 'input': 'input', 'genre': 'genre', 'mixer': 'mixer', 'tone': 'tone', 'mood': 'mood', 'edit': 'edit',
+    'save': 'save', 'play': 'play', 'stop': 'stop', 'regen': 'regen', 'apply': 'apply',
+    'generate': 'generate & play',
+    'fusion': 'Fusion', 'fusion-hint': 'multi-select',
+    'mood-dark': 'dark', 'mood-euphoric': 'euphoric', 'mood-dreamy': 'dreamy', 'mood-aggressive': 'aggressive',
+    'no-key': 'no key = algorithmic mode',
+    'remember': 'remember on disk (else: this tab only)',
+    'warn-keys': 'Keys live in browser storage on this device. Strudel REPL evaluates user code via unsafe-eval — only paste trusted patterns.',
+    'placeholder-input': '> enter signal...',
+    'placeholder-edit': '> describe change...',
+    'type-first': 'Type something first',
+    'cancelled': 'Cancelled.',
+    'loading-editor': 'Loading editor...',
+    'editor-failed': 'Editor failed to load',
+    'evaluating': 'Evaluating...',
+    'playing': 'Playing',
+    'stopped': 'Stopped',
+    'verifying': 'Verifying...',
+    'cleared': 'Cleared. Algorithmic mode.',
+    'algo-mode': 'Algorithmic mode',
+  },
+  ko: {
+    'tagline': '아무거나 입력. 음악이 흐른다.',
+    'api': 'API', 'input': '입력', 'genre': '장르', 'mixer': '믹서', 'tone': '음색', 'mood': '무드', 'edit': '편집',
+    'save': '저장', 'play': '재생', 'stop': '정지', 'regen': '재생성', 'apply': '적용',
+    'generate': '생성 & 재생',
+    'fusion': '퓨전', 'fusion-hint': '복수 선택',
+    'mood-dark': '어둡게', 'mood-euphoric': '고양', 'mood-dreamy': '몽환', 'mood-aggressive': '강렬',
+    'no-key': 'API 키 없음 = 알고리즘 모드',
+    'remember': '디스크에 저장 (해제 시 이 탭에서만)',
+    'warn-keys': '키는 이 기기의 브라우저 저장소에 보관됩니다. Strudel REPL은 unsafe-eval로 사용자 코드를 실행하므로 신뢰하지 않는 패턴은 붙여넣지 마세요.',
+    'placeholder-input': '> 신호 입력...',
+    'placeholder-edit': '> 변경 사항 입력...',
+    'type-first': '먼저 텍스트를 입력하세요',
+    'cancelled': '취소됨.',
+    'loading-editor': '에디터 로딩 중...',
+    'editor-failed': '에디터 로딩 실패',
+    'evaluating': '평가 중...',
+    'playing': '재생 중',
+    'stopped': '정지됨',
+    'verifying': '검증 중...',
+    'cleared': '키 삭제됨. 알고리즘 모드.',
+    'algo-mode': '알고리즘 모드',
+  },
+};
+function getLang() {
+  var saved = localStorage.getItem('tts_lang');
+  if (saved === 'ko' || saved === 'en') return saved;
+  var nav = (typeof navigator !== 'undefined' && navigator.language) ? navigator.language : 'en';
+  return /^ko/i.test(nav) ? 'ko' : 'en';
+}
+function setLang(l) {
+  if (l !== 'ko' && l !== 'en') return;
+  localStorage.setItem('tts_lang', l);
+  applyI18n();
+}
+function t(key) {
+  var l = getLang();
+  return (LOCALE[l] && LOCALE[l][key]) || LOCALE.en[key] || key;
+}
+function applyI18n() {
+  if (typeof document === 'undefined') return;
+  if (document.documentElement) document.documentElement.lang = getLang();
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var v = t(el.getAttribute('data-i18n'));
+    if (v) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+    var v = t(el.getAttribute('data-i18n-placeholder'));
+    if (v) /** @type {HTMLInputElement | HTMLTextAreaElement} */ (el).placeholder = v;
+  });
+  var btn = document.getElementById('langToggle');
+  if (btn) btn.textContent = getLang() === 'ko' ? 'EN' : 'KO';
+}
 
 // ---- Seed counter (for regeneration) ----
 var seedCounter = 0;
@@ -403,6 +534,7 @@ function genComment(rng, role, analysis) {
 }
 
 // ---- Artist-Inspired Techniques (applied probabilistically) ----
+/** @type {Record<string, (...args: any[]) => string>} */
 var TECHNIQUES = {
   // .off() for time-shifted melodic copy
   off: function(rng, a) {
@@ -783,7 +915,7 @@ function generateCode(text, genreName) {
   return L.join('\n');
 }
 
-// ---- callLLM: unified provider dispatch (A7) ----
+// ---- callLLM: unified provider dispatch with timeout, cancel, refusal handling ----
 async function callLLM(opts) {
   var provider = opts.provider;
   var apiKey = opts.apiKey;
@@ -791,12 +923,19 @@ async function callLLM(opts) {
   var user = opts.user;
   var temperature = (opts.temperature == null) ? 1.0 : opts.temperature;
   var maxTokens = opts.maxTokens || 2048;
+  var channel = opts.channel || 'generate';
+  var timeoutMs = opts.timeoutMs || NET.REQUEST_TIMEOUT_MS;
   var providerLabel = provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Claude';
+  newController(channel);
   var resp, data;
 
+  function maybeInvalidateAuth(status) {
+    if (status === 401 || status === 403) invalidateVerified(provider);
+  }
+
   if (provider === 'gemini') {
-    resp = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/' + MODELS.gemini + ':generateContent?key=' + apiKey,
+    resp = await fetchWithTimeout(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + MODELS.gemini + ':generateContent?key=' + encodeURIComponent(apiKey),
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: system }] },
@@ -806,19 +945,25 @@ async function callLLM(opts) {
             topP: opts.topP == null ? undefined : opts.topP,
             maxOutputTokens: maxTokens,
           },
-        }) });
-    data = await resp.json();
+        }) }, timeoutMs, channel);
+    data = await resp.json().catch(function() { return null; });
+    maybeInvalidateAuth(resp.status);
     if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content
-        || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]
-        || typeof data.candidates[0].content.parts[0].text !== 'string') {
-      throw new Error(providerLabel + ': malformed response shape');
+    var cand = data && data.candidates && data.candidates[0];
+    if (cand && cand.finishReason && /SAFETY|RECITATION|BLOCKLIST/i.test(cand.finishReason)) {
+      throw new Error(providerLabel + ': content blocked (' + cand.finishReason + ')');
     }
-    return { text: data.candidates[0].content.parts[0].text };
+    if (!cand || !cand.content || !cand.content.parts || !cand.content.parts[0]
+        || typeof cand.content.parts[0].text !== 'string') {
+      throw new Error(providerLabel + ': empty or malformed response');
+    }
+    var gtext = cand.content.parts[0].text;
+    if (!gtext.trim()) throw new Error(providerLabel + ': empty response');
+    return { text: gtext };
   }
 
   if (provider === 'openai') {
-    resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({
@@ -831,18 +976,23 @@ async function callLLM(opts) {
           { role: 'user', content: user },
         ],
       }),
-    });
-    data = await resp.json();
+    }, timeoutMs, channel);
+    data = await resp.json().catch(function() { return null; });
+    maybeInvalidateAuth(resp.status);
     if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
-    if (!data.choices || !data.choices[0] || !data.choices[0].message
-        || typeof data.choices[0].message.content !== 'string') {
-      throw new Error(providerLabel + ': malformed response shape');
+    var choice = data && data.choices && data.choices[0];
+    if (choice && choice.finish_reason === 'content_filter') {
+      throw new Error(providerLabel + ': content filtered by moderation');
     }
-    return { text: data.choices[0].message.content };
+    if (!choice || !choice.message || typeof choice.message.content !== 'string') {
+      throw new Error(providerLabel + ': empty or malformed response');
+    }
+    var otext = choice.message.content;
+    if (!otext.trim()) throw new Error(providerLabel + ': empty response');
+    return { text: otext };
   }
 
-  // Claude (default)
-  resp = await fetch('https://api.anthropic.com/v1/messages', {
+  resp = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -857,13 +1007,19 @@ async function callLLM(opts) {
       system: system,
       messages: [{ role: 'user', content: user }],
     }),
-  });
-  data = await resp.json();
+  }, timeoutMs, channel);
+  data = await resp.json().catch(function() { return null; });
+  maybeInvalidateAuth(resp.status);
   if (!resp_ok(resp, data)) throw new Error(api_error(resp, data, providerLabel));
-  if (!data.content || !data.content[0] || typeof data.content[0].text !== 'string') {
-    throw new Error(providerLabel + ': malformed response shape');
+  if (data && data.stop_reason === 'refusal') {
+    throw new Error(providerLabel + ': model refused the request');
   }
-  return { text: data.content[0].text };
+  if (!data || !data.content || !data.content[0] || typeof data.content[0].text !== 'string') {
+    throw new Error(providerLabel + ': empty or malformed response');
+  }
+  var ctext = data.content[0].text;
+  if (!ctext.trim()) throw new Error(providerLabel + ': empty response');
+  return { text: ctext };
 }
 
 // ---- API response helpers (C3, C4) ----
@@ -970,15 +1126,39 @@ When shifting the mood of a piece, adjust these parameters together:
 16. BASS DENSITY: In EDM/blues/jazz, bass should play multiple notes per cycle. WRONG: n("<0 3 5 7>") = 1 note per cycle = too slow. RIGHT: n("<[0 0 3 0] [5 5 7 5]>") or n("0 3 5 7") = 4 notes per cycle.
 17. TRIADS not power chords: [0,2,4] = root+3rd+5th (triad). [0,4,7] = root+5th+octave (power chord, empty). Use [root, root+2, root+4] for scale-degree triads.`;
 
+var KEY_NS = 'tts_api_key_';
+var PERSIST_FLAG_NS = 'tts_persist_';
+
 function getApiKey(provider) {
   var p = provider || getProvider();
-  return localStorage.getItem('tts_api_key_' + p) || '';
+  var k = sessionStorage.getItem(KEY_NS + p);
+  if (k) return k;
+  k = localStorage.getItem(KEY_NS + p);
+  if (k) sessionStorage.setItem(KEY_NS + p, k);
+  return k || '';
 }
 
-function saveApiKey(key, provider) {
+function getApiKeyPersist(provider) {
   var p = provider || getProvider();
-  if (key) localStorage.setItem('tts_api_key_' + p, key);
-  else localStorage.removeItem('tts_api_key_' + p);
+  return localStorage.getItem(PERSIST_FLAG_NS + p) === '1';
+}
+
+function saveApiKey(key, provider, persist) {
+  var p = provider || getProvider();
+  if (!key) {
+    sessionStorage.removeItem(KEY_NS + p);
+    localStorage.removeItem(KEY_NS + p);
+    localStorage.removeItem(PERSIST_FLAG_NS + p);
+    return;
+  }
+  sessionStorage.setItem(KEY_NS + p, key);
+  if (persist) {
+    localStorage.setItem(KEY_NS + p, key);
+    localStorage.setItem(PERSIST_FLAG_NS + p, '1');
+  } else {
+    localStorage.removeItem(KEY_NS + p);
+    localStorage.removeItem(PERSIST_FLAG_NS + p);
+  }
 }
 
 // ---- Full Strudel Component Reference ----
@@ -1434,6 +1614,7 @@ function stripFences(code) {
 }
 
 // ---- Editor Integration (strudel-editor web component) ----
+/** @type {(HTMLElement & { editor?: any, repl?: any }) | null} */
 var editorEl = document.getElementById('strudelEditor');
 
 function getEditor() {
@@ -1444,11 +1625,11 @@ var MAX_FIX_ATTEMPTS = 3;
 
 function setCodeAndPlay(code) {
   code = normalize(code);
-  var statusEl = document.getElementById('status');
-  var btn = document.getElementById('playBtn');
+  var statusEl = $('status');
+  var btn = $('playBtn');
   btn.disabled = true;
   statusEl.className = 'status';
-  statusEl.textContent = 'Loading editor...';
+  statusEl.textContent = t('loading-editor');
   var fixAttempt = 0;
 
   function waitForEditor(cb, attempts) {
@@ -1457,7 +1638,7 @@ function setCodeAndPlay(code) {
     if (ed) return cb(ed);
     if (attempts >= 50) {
       statusEl.className = 'status error';
-      statusEl.textContent = 'Editor failed to load';
+      statusEl.textContent = t('editor-failed');
       btn.disabled = false;
       return;
     }
@@ -1468,7 +1649,7 @@ function setCodeAndPlay(code) {
     ed.setCode(currentCode);
     statusEl.textContent = fixAttempt > 0
       ? 'Fix attempt ' + fixAttempt + '/' + MAX_FIX_ATTEMPTS + '...'
-      : 'Evaluating...';
+      : t('evaluating');
 
     setTimeout(function() {
       try {
@@ -1561,7 +1742,6 @@ function setCodeAndPlay(code) {
   waitForEditor(function(ed) { evalAndRecover(ed, code); });
 }
 
-// ---- LLM error fix: send code + error → get fixed code ----
 async function fixWithLLM(code, errorMsg, apiKey) {
   var prompt = 'This Strudel code has an error:\n\n' + code + '\n\nError: ' + errorMsg + '\n\nFix ONLY the error. Return the complete fixed code. No explanation.';
   var fixSystem = 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.';
@@ -1571,6 +1751,7 @@ async function fixWithLLM(code, errorMsg, apiKey) {
       system: fixSystem, user: prompt,
       temperature: getProvider() === 'gemini' ? 1.0 : 0.2,
       maxTokens: 2048,
+      channel: 'fix',
     });
     return stripFences(r.text);
   } catch (e) {
@@ -1579,10 +1760,15 @@ async function fixWithLLM(code, errorMsg, apiKey) {
 }
 
 function stopPlayback() {
+  cancelInflight('generate');
+  cancelInflight('refine');
+  cancelInflight('edit');
+  cancelInflight('fix');
   var ed = getEditor();
   if (ed) ed.stop();
-  document.getElementById('status').className = 'status';
-  document.getElementById('status').textContent = 'Stopped';
+  var s = $('status');
+  s.className = 'status';
+  s.textContent = t('stopped');
 }
 
 // ---- UI Wiring ----
@@ -1591,8 +1777,8 @@ var fusionMode = false;
 var fusionGenres = [];
 var lastInput = '';
 
-var genreBtns = document.querySelectorAll('.genre-btn');
-var fusionCheck = document.getElementById('fusionCheck');
+var genreBtns = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.genre-btn'));
+var fusionCheck = /** @type {HTMLInputElement} */ ($('fusionCheck'));
 
 function updateGenreUI() {
   genreBtns.forEach(function(b) {
@@ -1652,103 +1838,127 @@ function getEffectiveGenre() {
   return selectedGenre;
 }
 
-// shared generate function
 async function doGenerate() {
-  var text = document.getElementById('input').value.trim();
+  var text = $('input').value.trim();
+  var statusEl = $('status');
   if (!text) {
-    document.getElementById('status').className = 'status error';
-    document.getElementById('status').textContent = 'Type something first';
+    statusEl.className = 'status error';
+    statusEl.textContent = t('type-first');
     return;
   }
 
-  // reset seed when input text changes
   if (text !== lastInput) { seedCounter = 0; lastInput = text; }
 
   var genre = getEffectiveGenre();
   var apiKey = getApiKey();
-  var statusEl = document.getElementById('status');
-  var ew = document.getElementById('editorWrap');
+  var ew = $('editorWrap');
   ew.classList.remove('hidden');
   ew.classList.add('visible');
-  // Show controls based on API key
-  if (getApiKey()) {
-    document.getElementById('editRow').style.display = 'flex';
-    // mixer hidden by default in LLM mode, toggled by mixer button
+  if (apiKey) {
+    $('editRow').style.display = 'flex';
   } else {
-    document.getElementById('algoMixer').style.display = 'flex';
+    $('algoMixer').style.display = 'flex';
   }
 
+  cancelInflight('generate');
+
   if (apiKey) {
-    // ---- Claude/Gemini creative mode ----
-    document.getElementById('playBtn').disabled = true;
-    document.getElementById('regenBtn').disabled = true;
+    var playBtn = $('playBtn'), regenBtn = $('regenBtn');
+    playBtn.disabled = true;
+    regenBtn.disabled = true;
     statusEl.className = 'status';
     var prov = getProvider();
     var temp = prov === 'gemini' ? Math.min(1.5, 0.9 + seedCounter * 0.08) : Math.min(1.2, 0.9 + seedCounter * 0.05);
     statusEl.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' is composing... (seed ' + seedCounter + ', temp ' + temp.toFixed(2) + ')';
     try {
-      var code = await generateWithAI(text, genre, apiKey);
-      setCodeAndPlay(code);
+      var aiCode = await generateWithAI(text, genre, apiKey);
+      setCodeAndPlay(aiCode);
     } catch (e) {
-      statusEl.className = 'status error';
-      statusEl.textContent = 'API error: ' + e.message + ' — falling back to algorithm';
-      var fallback = generateCode(text, genre);
-      setCodeAndPlay(fallback);
+      if (isAbortError(e)) {
+        statusEl.className = 'status';
+        statusEl.textContent = t('cancelled');
+      } else {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'API error: ' + e.message + ' — falling back to algorithm';
+        var fallback = generateCode(text, genre);
+        setCodeAndPlay(fallback);
+      }
     } finally {
-      document.getElementById('playBtn').disabled = false;
-      document.getElementById('regenBtn').disabled = false;
+      playBtn.disabled = false;
+      regenBtn.disabled = false;
+      _inflight.generate = null;
     }
   } else {
-    // ---- Algorithmic mode ----
-    statusEl.textContent = 'Algorithmic mode (seed ' + seedCounter + ')';
+    statusEl.textContent = t('algo-mode') + ' (seed ' + seedCounter + ')';
     var code = generateCode(text, genre);
     setCodeAndPlay(code);
   }
 }
 
-document.getElementById('playBtn').addEventListener('click', function() {
-  seedCounter = 0; // Generate = fresh start
+$('playBtn').addEventListener('click', function() {
+  seedCounter = 0;
   doGenerate();
 });
 
-document.getElementById('regenBtn').addEventListener('click', function() {
-  seedCounter++; // Regenerate = increment seed
+$('regenBtn').addEventListener('click', function() {
+  seedCounter++;
   doGenerate();
 });
 
-document.getElementById('runBtn').addEventListener('click', function() {
+applyI18n();
+(function() {
+  var lt = document.getElementById('langToggle');
+  if (lt) lt.addEventListener('click', function() { setLang(getLang() === 'ko' ? 'en' : 'ko'); });
+})();
+
+$('runBtn').addEventListener('click', function() {
   var ed = getEditor();
   if (ed) {
     try { ed.evaluate(true); } catch(e) {}
-    document.getElementById('status').className = 'status playing';
-    document.getElementById('status').textContent = 'Playing';
+    var s = $('status');
+    s.className = 'status playing';
+    s.textContent = t('playing');
   }
 });
 
-document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+$('stopBtn').addEventListener('click', stopPlayback);
+
+// ---- Verify state with TTL (timestamp-based, expires after NET.VERIFY_TTL_MS) ----
+function verifyTsKey(p) { return 'tts_verified_at_' + p; }
+function isVerified(prov) {
+  var ts = parseInt(localStorage.getItem(verifyTsKey(prov)) || '0', 10);
+  if (!ts) return false;
+  return (Date.now() - ts) < NET.VERIFY_TTL_MS;
+}
+function setVerified(prov, v) {
+  if (v) localStorage.setItem(verifyTsKey(prov), String(Date.now()));
+  else localStorage.removeItem(verifyTsKey(prov));
+  localStorage.removeItem('tts_verified_' + prov);
+}
+function invalidateVerified(prov) {
+  setVerified(prov, false);
+  document.dispatchEvent(new CustomEvent('tts:verify-invalidated', { detail: { provider: prov } }));
+}
 
 // ---- API Key UI ----
 (function() {
-  var keyInput = document.getElementById('apiKey');
-  var provSelect = document.getElementById('apiProvider');
-  var hint = document.getElementById('apiHint');
-
-  var apiDetails = document.getElementById('apiSettings');
+  var keyInput = $('apiKey');
+  var provSelect = $('apiProvider');
+  var hint = $('apiHint');
+  var apiDetails = $('apiSettings');
+  var persistCb = $('apiPersist');
 
   function setApiState(state) {
     apiDetails.classList.remove('verified', 'invalid', 'no-key');
     apiDetails.classList.add(state);
   }
 
-  // verified status stored per provider: tts_verified_claude, tts_verified_gemini
-  function isVerified(prov) { return localStorage.getItem('tts_verified_' + prov) === '1'; }
-  function setVerified(prov, v) { localStorage.setItem('tts_verified_' + prov, v ? '1' : '0'); }
-
   function refreshProviderUI() {
     var prov = provSelect.value;
     keyInput.placeholder = prov === 'gemini' ? 'AIza...' : prov === 'openai' ? 'sk-...' : 'sk-ant-...';
     var key = getApiKey(prov);
     keyInput.value = key;
+    if (persistCb) persistCb.checked = getApiKeyPersist(prov);
     if (key && isVerified(prov)) {
       hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
@@ -1764,87 +1974,104 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
     }
   }
 
-  // restore saved state
   provSelect.value = getProvider();
   refreshProviderUI();
 
-  // swap key display when provider changes
   provSelect.addEventListener('change', function() {
     saveProvider(provSelect.value);
     refreshProviderUI();
   });
 
-  // save + verify
   async function doSaveKey() {
     var key = keyInput.value.trim();
     var prov = provSelect.value;
+    var persist = persistCb ? !!persistCb.checked : false;
 
     if (!key) {
       saveApiKey('', prov);
       setVerified(prov, false);
       saveProvider(prov);
-      hint.textContent = 'Cleared. Algorithmic mode.';
+      hint.textContent = t('cleared');
       hint.className = 'api-hint';
       setApiState('no-key');
       return;
     }
 
-    hint.textContent = 'Verifying...';
+    hint.textContent = t('verifying');
     hint.className = 'api-hint';
 
     try {
+      var resp, data;
       if (prov === 'gemini') {
-        var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
-        var data = await resp.json();
+        resp = await fetchWithTimeout(
+          'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key),
+          {}, NET.VERIFY_TIMEOUT_MS, 'verify');
+        data = await resp.json().catch(function() { return null; });
+        if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key (HTTP ' + resp.status + ')');
+        if (resp.status === 429) throw new Error('Rate limited — try again later (HTTP 429)');
         if (!resp.ok || (data && data.error)) {
           throw new Error((data && data.error && data.error.message) || ('HTTP ' + resp.status));
         }
       } else if (prov === 'openai') {
-        var resp = await fetch('https://api.openai.com/v1/models', {
+        resp = await fetchWithTimeout('https://api.openai.com/v1/models', {
           headers: { 'Authorization': 'Bearer ' + key },
-        });
-        var data = await resp.json();
+        }, NET.VERIFY_TIMEOUT_MS, 'verify');
+        data = await resp.json().catch(function() { return null; });
+        if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key (HTTP ' + resp.status + ')');
+        if (resp.status === 429) throw new Error('Rate limited — try again later (HTTP 429)');
         if (!resp.ok || (data && data.error)) {
           throw new Error((data && data.error && data.error.message) || ('HTTP ' + resp.status));
         }
       } else {
-        var resp = await fetch('https://api.anthropic.com/v1/models', {
+        resp = await fetchWithTimeout('https://api.anthropic.com/v1/models', {
           method: 'GET',
           headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        });
-        var data = await resp.json().catch(function() { return null; });
-        if (resp.status === 401) throw new Error('Invalid API key');
+        }, NET.VERIFY_TIMEOUT_MS, 'verify');
+        data = await resp.json().catch(function() { return null; });
+        if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key (HTTP ' + resp.status + ')');
+        if (resp.status === 429) throw new Error('Rate limited — try again later (HTTP 429)');
         if (!resp.ok) throw new Error('Anthropic transient error: HTTP ' + resp.status);
         if (!data || !Array.isArray(data.data)) throw new Error('Anthropic: malformed /v1/models response');
       }
 
-      saveApiKey(key, prov);
+      saveApiKey(key, prov, persist);
       setVerified(prov, true);
       saveProvider(prov);
-      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' verified.';
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' verified' + (persist ? ' (persisted)' : ' (this session only)') + '.';
       hint.className = 'api-hint saved';
       setApiState('verified');
     } catch (e) {
       setVerified(prov, false);
-      hint.textContent = 'Invalid: ' + e.message;
+      var msg = isAbortError(e) ? 'Verify timed out' : ('Invalid: ' + e.message);
+      hint.textContent = msg;
       hint.className = 'api-hint error';
       setApiState('invalid');
+    } finally {
+      _inflight.verify = null;
     }
   }
 
-  document.getElementById('apiSave').addEventListener('click', doSaveKey);
+  $('apiSave').addEventListener('click', doSaveKey);
 
-  // Enter in key input triggers save
+  if (persistCb) {
+    persistCb.addEventListener('change', function() {
+      var prov = provSelect.value;
+      var key = getApiKey(prov);
+      if (key) saveApiKey(key, prov, !!persistCb.checked);
+    });
+  }
+
   keyInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); doSaveKey(); }
   });
 
-  // Click outside closes details
   document.addEventListener('click', function(e) {
     if (apiDetails.open && !apiDetails.contains(e.target)) {
       apiDetails.open = false;
     }
   });
+
+  document.addEventListener('tts:verify-invalidated', function() { refreshProviderUI(); });
 })();
 
 // ---- Algorithmic Refine: table-driven (Q24). Each entry is a code -> code transform. ----
@@ -1975,42 +2202,78 @@ function algoRefine(code, direction) {
   return fn ? fn(code) : code;
 }
 
-// ---- Refine & Mood Buttons ----
-// ---- Long-press repeat for ± buttons ----
-function setupRepeat(btn) {
-  var timer = null;
-  var interval = null;
-  function trigger() { btn.click(); }
-  btn.addEventListener('mousedown', function() {
+// ---- Long-press repeat via single delegated handler on the mixer (Q17) ----
+(function() {
+  var REPEAT_DELAY_MS = 400;
+  var REPEAT_INTERVAL_MS = 150;
+  var mixer = $('algoMixer');
+  if (!mixer) return;
+  var timer = null, interval = null, activeBtn = null;
+  function isRepeatable(el) {
+    return el && el.classList && (el.classList.contains('ch-minus') || el.classList.contains('ch-plus') || el.classList.contains('ch-toggle'));
+  }
+  function start(btn) {
+    activeBtn = btn;
+    btn.classList.add('pressing');
     timer = setTimeout(function() {
-      interval = setInterval(trigger, 150);
-    }, 400);
+      interval = setInterval(function() { if (activeBtn) activeBtn.click(); }, REPEAT_INTERVAL_MS);
+    }, REPEAT_DELAY_MS);
+  }
+  function stop() {
+    if (activeBtn) activeBtn.classList.remove('pressing');
+    clearTimeout(timer); clearInterval(interval);
+    timer = null; interval = null; activeBtn = null;
+  }
+  mixer.addEventListener('mousedown', function(e) {
+    var b = e.target.closest && e.target.closest('button');
+    if (isRepeatable(b)) start(b);
   });
-  function stop() { clearTimeout(timer); clearInterval(interval); timer = null; interval = null; }
-  btn.addEventListener('mouseup', stop);
-  btn.addEventListener('mouseleave', stop);
-  // touch support
-  btn.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    timer = setTimeout(function() { interval = setInterval(trigger, 150); }, 400);
+  mixer.addEventListener('mouseup', stop);
+  mixer.addEventListener('mouseleave', stop);
+  mixer.addEventListener('touchstart', function(e) {
+    var b = e.target.closest && e.target.closest('button');
+    if (isRepeatable(b)) { e.preventDefault(); start(b); }
+  }, { passive: false });
+  mixer.addEventListener('touchend', stop);
+  mixer.addEventListener('touchcancel', stop);
+})();
+
+// ---- A11y: derive aria-labels for icon-only mixer buttons (Q21) ----
+(function() {
+  document.querySelectorAll('.mixer-ch').forEach(function(strip) {
+    var label = strip.querySelector('.ch-label');
+    if (!label) return;
+    var name = label.textContent.trim();
+    strip.querySelectorAll('button').forEach(function(b) {
+      if (b.hasAttribute('aria-label')) return;
+      var op = b.textContent.trim();
+      var verbose = op === '+' ? ('increase ' + name)
+                  : op === '-' ? ('decrease ' + name)
+                  : (name + ' ' + op);
+      b.setAttribute('aria-label', verbose);
+    });
   });
-  btn.addEventListener('touchend', stop);
-  btn.addEventListener('touchcancel', stop);
-}
-document.querySelectorAll('.ch-minus, .ch-plus, .ch-toggle').forEach(setupRepeat);
+  document.querySelectorAll('.ch-tag, .ch-mood').forEach(function(b) {
+    var hb = /** @type {HTMLElement} */ (b);
+    if (!hb.hasAttribute('aria-label') && hb.dataset.dir) {
+      hb.setAttribute('aria-label', hb.dataset.dir);
+    }
+  });
+})();
 
 document.querySelectorAll('.refine-btn').forEach(function(btn) {
-  btn.addEventListener('click', async function() {
-    var direction = btn.dataset.dir;
+  var hbtn = /** @type {HTMLButtonElement} */ (btn);
+  hbtn.addEventListener('click', async function() {
+    var direction = hbtn.dataset.dir || '';
     var ed = getEditor();
     if (!ed) return;
     var currentCode = ed.code || '';
     if (!currentCode.trim()) return;
 
-    // Tone buttons: highlight active
+      // Tone buttons: highlight active
     if (direction.indexOf('scale:') === 0) {
       document.querySelectorAll('.ch-tag').forEach(function(t) { t.classList.remove('active'); });
-      btn.classList.add('active');
+      hbtn.classList.add('active');
     }
 
     // ± mixer buttons ALWAYS use algorithm (instant, no API cost)
@@ -2038,8 +2301,8 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
         result = algoRefine(currentCode, direction);
       }
       var changed = result !== currentCode;
-      btn.classList.add(changed ? 'flash-ok' : 'flash-fail');
-      setTimeout(function() { btn.classList.remove('flash-ok', 'flash-fail'); }, 300);
+      hbtn.classList.add(changed ? 'flash-ok' : 'flash-fail');
+      setTimeout(function() { hbtn.classList.remove('flash-ok', 'flash-fail'); }, 300);
       if (changed) {
         ed.setCode(result);
         ed.evaluate(true);
@@ -2047,11 +2310,10 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       return;
     }
 
-    // LLM refine: mood buttons only
-    var statusEl = document.getElementById('status');
+    var statusEl = $('status');
     statusEl.className = 'status';
     statusEl.textContent = 'Refining: ' + direction + '...';
-    document.querySelectorAll('.refine-btn').forEach(function(b) { b.disabled = true; });
+    document.querySelectorAll('.refine-btn').forEach(function(b) { /** @type {HTMLButtonElement} */ (b).disabled = true; });
 
     try {
       var refinePrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nModify this code to make it ' + direction + '. Keep the overall structure and concept. Change only what is needed for the requested direction. Return the complete modified code.';
@@ -2061,20 +2323,27 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
         system: STRUDEL_SYSTEM_PROMPT, user: refinePrompt,
         temperature: refineProv === 'gemini' ? 1.0 : 0.7,
         maxTokens: 2048,
+        channel: 'refine',
       });
       var code = stripFences(r.text);
       setCodeAndPlay(code);
     } catch (e) {
-      statusEl.className = 'status error';
-      statusEl.textContent = 'Refine error: ' + e.message;
+      if (isAbortError(e)) {
+        statusEl.className = 'status';
+        statusEl.textContent = 'Refine cancelled.';
+      } else {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Refine error: ' + e.message;
+      }
     } finally {
-      document.querySelectorAll('.refine-btn').forEach(function(b) { b.disabled = false; });
+      document.querySelectorAll('.refine-btn').forEach(function(b) { /** @type {HTMLButtonElement} */ (b).disabled = false; });
+      _inflight.refine = null;
     }
   });
 });
 
-document.getElementById('input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('playBtn').click(); }
+$('input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('playBtn').click(); }
 });
 
 // ---- Natural Language Edit ----
@@ -2082,7 +2351,7 @@ document.getElementById('input').addEventListener('keydown', function(e) {
 var EDIT_SYSTEM = 'You are a Strudel live-coding assistant. You receive the current program and a short instruction. Return a minimal modification that keeps the program runnable while applying the intent.\n\nRules:\n- Preserve unrelated code and comments.\n- Prefer minimal edits over full rewrites.\n- Keep formatting consistent with the original code.\n- Only change what the instruction asks for.\n- Return ONLY the updated program. No explanation, no markdown fences, no JSON wrapping.';
 
 async function doEdit() {
-  var editInput = document.getElementById('editInput');
+  var editInput = $('editInput');
   var instruction = editInput.value.trim();
   if (!instruction) return;
 
@@ -2092,8 +2361,8 @@ async function doEdit() {
   if (!currentCode.trim()) return;
 
   var apiKey = getApiKey();
-  var statusEl = document.getElementById('status');
-  var applyBtn = document.getElementById('editApply');
+  var statusEl = $('status');
+  var applyBtn = $('editApply');
 
   if (!apiKey) {
     statusEl.className = 'status error';
@@ -2113,6 +2382,7 @@ async function doEdit() {
       system: EDIT_SYSTEM, user: editPrompt,
       temperature: prov === 'gemini' ? 1.0 : 0.2,
       maxTokens: 2048,
+      channel: 'edit',
     });
     var code = stripFences(r.text);
 
@@ -2120,23 +2390,28 @@ async function doEdit() {
     editInput.value = '';
     setCodeAndPlay(code);
   } catch (e) {
-    statusEl.className = 'status error';
-    statusEl.textContent = 'Edit error: ' + e.message;
+    if (isAbortError(e)) {
+      statusEl.className = 'status';
+      statusEl.textContent = 'Edit cancelled.';
+    } else {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Edit error: ' + e.message;
+    }
   } finally {
     applyBtn.disabled = false;
+    _inflight.edit = null;
   }
 }
 
-document.getElementById('editApply').addEventListener('click', doEdit);
+$('editApply').addEventListener('click', doEdit);
 
-// Mixer toggle in LLM mode
-document.getElementById('mixerToggle').addEventListener('click', function() {
-  var mixer = document.getElementById('algoMixer');
-  var btn = document.getElementById('mixerToggle');
+$('mixerToggle').addEventListener('click', function() {
+  var mixer = $('algoMixer');
+  var btn = $('mixerToggle');
   var visible = mixer.style.display === 'flex';
   mixer.style.display = visible ? 'none' : 'flex';
   btn.classList.toggle('active', !visible);
 });
-document.getElementById('editInput').addEventListener('keydown', function(e) {
+$('editInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); doEdit(); }
 });
