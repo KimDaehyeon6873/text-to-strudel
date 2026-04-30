@@ -2039,6 +2039,17 @@ function invalidateVerified(prov) {
   var hint = $('apiHint');
   var apiDetails = $('apiSettings');
   var persistCb = $('apiPersist');
+  var apiModeEl = $('apiMode');
+
+  var SESSION_COPY = '<strong>Session only.</strong> Key held in volatile tab memory, split between <code>window.name</code> and <code>sessionStorage</code>. Resists casual disk inspection (browser session-restore files). Cleared when you close this tab.';
+  var PERSIST_COPY = '<strong>Persisted on disk.</strong> Key written to browser <code>localStorage</code> in plaintext. Readable from DevTools, browser extensions, and anyone with access to this device or browser profile. Use only on a trusted personal device.';
+
+  function updatePersistMode() {
+    if (!apiModeEl || !persistCb) return;
+    var mode = persistCb.checked ? 'persist' : 'session';
+    apiModeEl.setAttribute('data-mode', mode);
+    apiModeEl.innerHTML = mode === 'persist' ? PERSIST_COPY : SESSION_COPY;
+  }
 
   function setApiState(state) {
     apiDetails.classList.remove('verified', 'invalid', 'no-key');
@@ -2051,6 +2062,7 @@ function invalidateVerified(prov) {
     var key = getApiKey(prov);
     keyInput.value = key;
     if (persistCb) persistCb.checked = getApiKeyPersist(prov);
+    updatePersistMode();
     if (key && isVerified(prov)) {
       hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
@@ -2147,9 +2159,24 @@ function invalidateVerified(prov) {
 
   if (persistCb) {
     persistCb.addEventListener('change', function() {
+      if (persistCb.checked && localStorage.getItem('tts_persist_acknowledged') !== '1') {
+        var ok = window.confirm(
+          'Persist API key on this device?\n\n' +
+          'The key will be written to browser localStorage in plaintext.\n' +
+          'Anyone with access to this device or browser profile can read it.\n\n' +
+          'Click OK only if you trust this device.'
+        );
+        if (!ok) {
+          persistCb.checked = false;
+          updatePersistMode();
+          return;
+        }
+        try { localStorage.setItem('tts_persist_acknowledged', '1'); } catch (_) {}
+      }
       var prov = provSelect.value;
       var key = getApiKey(prov);
       if (key) saveApiKey(key, prov, !!persistCb.checked);
+      updatePersistMode();
     });
   }
 

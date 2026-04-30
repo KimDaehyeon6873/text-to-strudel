@@ -200,20 +200,34 @@ Uses a separate edit-focused system prompt: *"Preserve unrelated code and commen
 
 ## Security Model
 
-This is a static client-side site. The trade-offs are visible and documented.
+LLM API keys live entirely on the client — no server proxy. Two storage modes,
+each with explicit trade-offs:
 
-| Surface | Mitigation |
-|:---|:---|
-| Strudel REPL evaluates user-typed code via `unsafe-eval` | Required by Strudel; cannot be removed without dropping the live editor. |
-| LLM API keys in browser storage | Default = `sessionStorage` (cleared with the tab). Optional persist = `localStorage` (toggle in the API panel). |
-| Sticky verified flag (old behavior) | Replaced with 24 h TTL + automatic invalidate on 401/403 from real calls. |
-| Supply-chain compromise of `@strudel/repl` CDN | SRI hash on the `<script>` tag. Bundle pinned to `@1.3.0`. |
-| Sample/data hosts in `connect-src` and `media-src` | Explicit allow-list: `raw.githubusercontent.com`, `*.githubusercontent.com`, `felixroos.github.io`, `cdn.freesound.org`, `shabda.ndre.gr`, `kabel.salat.dev`, `strudel.cc`, `*.strudel.cc`. |
-| Clickjacking, base-tag injection, form hijacking | CSP `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'none'`, `object-src 'none'`. |
-| Referrer leakage to APIs | `<meta name="referrer" content="no-referrer">`. |
-| Network hang / runaway request | 60 s hard timeout per LLM call (10 s for verify). |
-| Race between repeated Generate clicks | Channel-based cancellation (`generate` / `refine` / `edit` / `fix` / `verify`); a new request aborts the prior in-flight one. `Stop` cancels everything. |
+| Mode | Where | Disk write | Recovery on tab close | Visible to |
+|------|-------|------------|-----------------------|------------|
+| **Session only** (default) | `window.name` (volatile) + `sessionStorage`, XOR-split | Random bytes only — neither half reveals the key | Lost (intentional) | DevTools / extensions only while tab is open |
+| **Persisted** (opt-in checkbox) | `localStorage` plaintext | Yes | Survives restart | DevTools, browser extensions, anyone with disk access |
+
+### What is protected
+
+| Threat | Mitigation |
+|--------|------------|
+| Malicious Strudel pattern reads `localStorage` via `eval` | The REPL runs in a `sandbox="allow-scripts"` iframe with an opaque origin. The iframe cannot read the parent's storage — every browser engine throws on access. |
+| Browser session-restore disk dump | Session-only keys are XOR-split. Disk-dumped halves are random bytes; the other half lives in `window.name` which the browser never writes to disk. |
+| Revoked or expired key fails silently | Verified-state has a 24 h TTL and is invalidated automatically on any 401/403 response from a real call. |
+| CDN supply-chain compromise | Strudel REPL is pinned to `@strudel/repl@1.3.0` with an SRI hash. CSP `frame-src 'self'` blocks loading attacker frames. The parent has no `unsafe-eval`; main-page XSS cannot reach `eval`. |
+| Sample/data host exfiltration | `connect-src` and `media-src` are an explicit allow-list (`raw.githubusercontent.com`, `*.githubusercontent.com`, `felixroos.github.io`, `cdn.freesound.org`, `shabda.ndre.gr`, `kabel.salat.dev`, `strudel.cc`, `*.strudel.cc`). |
+| Clickjacking / base-tag / form hijack | CSP `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'none'`, `object-src 'none'`. |
+| Network hang / runaway request | 60 s hard timeout per LLM call (10 s for verify) via `AbortController`. |
 | Empty / refused LLM response silently overwriting good code | Explicit checks for `refusal`, `content_filter`, `SAFETY`, and empty content. Surfaces as a status error instead of injecting garbage. |
+
+### What is NOT protected
+
+- A device-level attacker (OS-account access, full memory dump). Out of scope for any web-only tool.
+- A browser extension you've already trusted with all-page-data permission. Browsers grant such extensions full storage access; nothing the page can do prevents it.
+- Patterns *you* paste from sources you don't trust. The iframe blocks `localStorage` exfiltration but eval'd code can still produce sound, navigate, etc., within the iframe's allowed scope.
+
+If your threat model includes any of the above, run text-to-strudel locally from a fresh browser profile, supply your key only in session mode, and revoke it after the session.
 
 Pinning + grep recipe for upgrading Strudel:
 

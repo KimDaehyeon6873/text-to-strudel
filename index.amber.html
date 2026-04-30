@@ -116,19 +116,34 @@
     border-width: 0 1.5px 1.5px 0;
     transform: translate(-50%, -50%) rotate(45deg);
   }
-  .api-warn {
+  .api-mode {
+    margin-top: .55rem;
+    padding: .5rem .65rem;
+    border-left: 2px solid var(--border-hi);
     font-family: var(--mono);
-    font-size: .62rem;
+    font-size: .76rem;
     color: var(--txt-3);
-    margin-top: .7rem;
-    line-height: 1.55;
+    line-height: 1.4;
     letter-spacing: .01em;
-    border-left: 1px solid var(--border);
-    padding-left: .55rem;
+    background: rgba(255,176,80,.04);
   }
-  .api-warn code {
+  .api-mode strong { color: var(--txt); }
+  .api-mode code   { font-family: var(--mono); color: var(--accent); }
+  .api-mode[data-mode="session"]::before {
+    content: '\2713  ';
     color: var(--accent);
-    font-family: var(--mono);
+    font-weight: 700;
+  }
+  .api-mode[data-mode="persist"] {
+    border-left-color: var(--red);
+    background: rgba(192,48,48,.04);
+    color: var(--txt-2);
+  }
+  .api-mode[data-mode="persist"] strong { color: var(--red); }
+  .api-mode[data-mode="persist"]::before {
+    content: '\26a0  ';
+    color: var(--red);
+    font-weight: 700;
   }
 
   /* ---- INPUT ---- */
@@ -257,11 +272,13 @@
       <div class="api-hint" id="apiHint">no key = algorithmic mode</div>
       <label class="api-persist">
         <input type="checkbox" id="apiPersist">
-        <span>remember on disk (else: this tab only)</span>
+        <span>Persist key on this device</span>
       </label>
-      <div class="api-warn">
-        Keys live in browser storage on this device.<br>
-        Strudel REPL evaluates user code via <code>unsafe-eval</code> — only paste trusted patterns.
+      <div class="api-mode" id="apiMode" data-mode="session">
+        <strong>Session only.</strong>
+        Key held in volatile tab memory, split between <code>window.name</code>
+        and <code>sessionStorage</code>. Resists casual disk inspection
+        (browser session-restore files). Cleared when you close this tab.
       </div>
     </details>
 
