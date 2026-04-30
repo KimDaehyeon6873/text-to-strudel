@@ -1534,133 +1534,184 @@ function stripFences(code) {
   return code.replace(/^```[\w]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
 }
 
-// ---- Editor Integration (strudel-editor web component) ----
-/** @type {(HTMLElement & { editor?: any, repl?: any }) | null} */
-var editorEl = document.getElementById('strudelEditor');
+// ---- Editor Integration (sandboxed iframe + postMessage RPC) ----
+// All Strudel evaluation runs inside <iframe id="strudelFrame"> on an opaque
+// origin (sandbox without allow-same-origin). T1 of the security plan: eval'd
+// patterns can no longer read the parent's localStorage or window.name.
+//
+// Protocol:
+//   parent -> iframe: {type:'rpc', id, cmd, payload}
+//   iframe -> parent: {type:'rpc-result', id, ok, result|error}
+//   iframe -> parent: {type:'event', name:'ready'|'evalError', detail}
 
-function getEditor() {
-  return editorEl && editorEl.editor ? editorEl.editor : null;
-}
+/** @type {HTMLIFrameElement | null} */
+var iframeEl = /** @type {any} */ (document.getElementById('strudelFrame'));
 
+/** @type {Map<string, {resolve:Function, reject:Function, timer:any}>} */
+var _pendingRpc = new Map();
+var _readyQueue = [];
+var _iframeReady = false;
+var _rpcSeq = 0;
+var _lastEvaluatedCode = '';
+var _fixAttempt = 0;
 var MAX_FIX_ATTEMPTS = 3;
 
-function setCodeAndPlay(code) {
+function _setStatus(cls, text) {
+  var s = $('status');
+  if (!s) return;
+  s.className = cls;
+  s.textContent = text;
+}
+
+function iframeRpc(cmd, payload, timeoutMs) {
+  if (timeoutMs == null) timeoutMs = 5000;
+  return new Promise(function (resolve, reject) {
+    var id = String(++_rpcSeq);
+    function dispatch() {
+      if (!iframeEl || !iframeEl.contentWindow) {
+        reject(new Error('iframe not available'));
+        return;
+      }
+      var timer = setTimeout(function () {
+        _pendingRpc.delete(id);
+        reject(new Error('RPC timeout: ' + cmd));
+      }, timeoutMs);
+      _pendingRpc.set(id, { resolve: resolve, reject: reject, timer: timer });
+      try {
+        iframeEl.contentWindow.postMessage(
+          { type: 'rpc', id: id, cmd: cmd, payload: payload },
+          '*'
+        );
+      } catch (e) {
+        clearTimeout(timer);
+        _pendingRpc.delete(id);
+        reject(e);
+      }
+    }
+    if (_iframeReady) dispatch();
+    else _readyQueue.push(dispatch);
+  });
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('message', function (event) {
+    if (!iframeEl || event.source !== iframeEl.contentWindow) return;
+    // Sandboxed-iframe origin is opaque — reported as the literal 'null' (or '' on some engines).
+    if (event.origin !== 'null' && event.origin !== '') return;
+    var msg = event.data || {};
+    if (msg.type === 'event' && msg.name === 'ready') {
+      if (msg.detail && msg.detail.error) {
+        _setStatus('status error', 'Editor failed to initialize');
+        return;
+      }
+      _iframeReady = true;
+      var queue = _readyQueue.splice(0);
+      queue.forEach(function (fn) { try { fn(); } catch (_) {} });
+      return;
+    }
+    if (msg.type === 'event' && msg.name === 'evalError') {
+      handleEvalError(msg.detail);
+      return;
+    }
+    if (msg.type === 'rpc-result') {
+      var p = _pendingRpc.get(msg.id);
+      if (!p) return;
+      clearTimeout(p.timer);
+      _pendingRpc.delete(msg.id);
+      if (msg.ok) p.resolve(msg.result);
+      else p.reject(new Error(msg.error || 'rpc error'));
+    }
+  });
+}
+
+if (iframeEl && typeof iframeEl.addEventListener === 'function') {
+  iframeEl.addEventListener('error', function () {
+    _setStatus('status error', 'Editor failed to load (network)');
+  });
+}
+// Only schedule the 15s ready timeout when running in a real browser
+// (iframeEl.contentWindow exists). The unit-test vm stub returns a fake element
+// without contentWindow; scheduling a 15s timer there would keep node:test alive.
+if (iframeEl && iframeEl.contentWindow) {
+  var _readyTimer = /** @type {any} */ (setTimeout(function () {
+    if (!_iframeReady) _setStatus('status error', 'Editor failed to initialize');
+  }, 15000));
+  if (_readyTimer && typeof _readyTimer.unref === 'function') _readyTimer.unref();
+}
+
+async function setCodeAndPlay(code) {
   code = normalize(code);
   var statusEl = $('status');
   var btn = $('playBtn');
-  btn.disabled = true;
-  statusEl.className = 'status';
-  statusEl.textContent = 'Loading editor...';
-  var fixAttempt = 0;
-
-  function waitForEditor(cb, attempts) {
-    attempts = attempts || 0;
-    var ed = getEditor();
-    if (ed) return cb(ed);
-    if (attempts >= 50) {
-      statusEl.className = 'status error';
-      statusEl.textContent = 'Editor failed to load';
-      btn.disabled = false;
-      return;
-    }
-    setTimeout(function() { waitForEditor(cb, attempts + 1); }, 200);
+  if (btn) btn.disabled = true;
+  if (statusEl) {
+    statusEl.className = 'status';
+    statusEl.textContent = 'Loading editor...';
   }
-
-  function evalAndRecover(ed, currentCode) {
-    ed.setCode(currentCode);
-    statusEl.textContent = fixAttempt > 0
-      ? 'Fix attempt ' + fixAttempt + '/' + MAX_FIX_ATTEMPTS + '...'
-      : 'Evaluating...';
-
-    setTimeout(function() {
-      try {
-        ed.evaluate(true);
-      } catch(e) { /* editor handles internally */ }
-
-      // check for errors after evaluation
-      setTimeout(function() {
-        var error = null;
-        try {
-          var repl = ed.repl || (editorEl && editorEl.repl);
-          if (repl && repl.state && repl.state.evalError) {
-            error = repl.state.evalError;
-          }
-        } catch(e) {}
-
-        // also check for errors via the editor's visual state
-        if (!error) {
-          var errorEl = editorEl.querySelector && editorEl.querySelector('.error-message, [class*="error"]');
-          if (errorEl && errorEl.textContent) error = errorEl.textContent;
-        }
-
-        if (error && fixAttempt < MAX_FIX_ATTEMPTS) {
-          fixAttempt++;
-          var errMsg = typeof error === 'string' ? error : (error.message || String(error));
-          statusEl.className = 'status error';
-          statusEl.textContent = 'Error: ' + errMsg.substring(0, 80) + ' — fixing...';
-
-          // Try LLM fix if API key available
-          var apiKey = getApiKey();
-          if (apiKey) {
-            fixWithLLM(currentCode, errMsg, apiKey).then(function(fixedCode) {
-              if (fixedCode && fixedCode !== currentCode) {
-                evalAndRecover(ed, normalize(fixedCode));
-              } else {
-                // LLM couldn't fix — try algorithmic
-                var algoFix = tryFixFromError(currentCode, errMsg);
-                if (algoFix && algoFix !== currentCode) {
-                  evalAndRecover(ed, algoFix);
-                } else {
-                  showPlaying(statusEl, btn);
-                }
-              }
-            }).catch(function() {
-              var algoFix = tryFixFromError(currentCode, errMsg);
-              if (algoFix && algoFix !== currentCode) {
-                evalAndRecover(ed, algoFix);
-              } else {
-                showPlaying(statusEl, btn);
-              }
-            });
-            return;
-          }
-
-          // No API key — algorithmic fix only
-          var algoFix = tryFixFromError(currentCode, errMsg);
-          if (algoFix && algoFix !== currentCode) {
-            evalAndRecover(ed, algoFix);
-            return;
-          }
-        }
-
-        showPlaying(statusEl, btn);
-      }, 300);
-    }, 150);
-  }
-
-  function showPlaying(statusEl, btn) {
-    // Final error check — if still broken after all fix attempts, show error
-    setTimeout(function() {
-      var ed = getEditor();
-      var finalErr = null;
-      try {
-        if (ed && ed.repl && ed.repl.state) {
-          finalErr = ed.repl.state.evalError || ed.repl.state.error;
-        }
-      } catch(e) {}
-      if (finalErr) {
-        var msg = typeof finalErr === 'string' ? finalErr : (finalErr.message || String(finalErr));
-        statusEl.className = 'status error';
-        statusEl.textContent = 'Error: ' + msg.substring(0, 100);
-      } else {
+  _lastEvaluatedCode = code;
+  _fixAttempt = 0;
+  try {
+    await iframeRpc('setCode', { code: code });
+    if (statusEl) statusEl.textContent = 'Evaluating...';
+    await iframeRpc('evaluate');
+    setTimeout(function () {
+      if (!statusEl) return;
+      var txt = statusEl.textContent || '';
+      // Don't overwrite an Error/fixing status that handleEvalError set in the meantime.
+      if (statusEl.className.indexOf('error') === -1 && txt.indexOf('fixing') === -1) {
         statusEl.className = 'status playing';
-        statusEl.textContent = fixAttempt > 0 ? 'Playing (fixed ' + fixAttempt + 'x)' : 'Playing';
+        statusEl.textContent = _fixAttempt > 0 ? ('Playing (fixed ' + _fixAttempt + 'x)') : 'Playing';
       }
-      btn.disabled = false;
-    }, 200);
+    }, 600);
+  } catch (e) {
+    if (statusEl) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Editor not responding';
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleEvalError(detail) {
+  var errMsg = (detail && detail.message) || 'unknown';
+  var statusEl = $('status');
+  if (_fixAttempt >= MAX_FIX_ATTEMPTS) {
+    if (statusEl) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Error: ' + errMsg.substring(0, 100);
+    }
+    return;
+  }
+  _fixAttempt++;
+  if (statusEl) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Error: ' + errMsg.substring(0, 80) + ' — fixing...';
   }
 
-  waitForEditor(function(ed) { evalAndRecover(ed, code); });
+  var apiKey = getApiKey();
+  var next = null;
+  if (apiKey) {
+    try { next = await fixWithLLM(_lastEvaluatedCode, errMsg, apiKey); } catch (_) { next = null; }
+  }
+  if (!next) {
+    next = tryFixFromError(_lastEvaluatedCode, errMsg);
+  }
+  if (next && next !== _lastEvaluatedCode) {
+    _lastEvaluatedCode = normalize(next);
+    try {
+      await iframeRpc('setCode', { code: _lastEvaluatedCode });
+      await iframeRpc('evaluate');
+    } catch (_) {
+      if (statusEl) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Editor not responding';
+      }
+    }
+  } else if (statusEl) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Error: ' + errMsg.substring(0, 100);
+  }
 }
 
 async function fixWithLLM(code, errorMsg, apiKey) {
@@ -1680,16 +1731,13 @@ async function fixWithLLM(code, errorMsg, apiKey) {
   }
 }
 
-function stopPlayback() {
+async function stopPlayback() {
   cancelInflight('generate');
   cancelInflight('refine');
   cancelInflight('edit');
   cancelInflight('fix');
-  var ed = getEditor();
-  if (ed) ed.stop();
-  var s = $('status');
-  s.className = 'status';
-  s.textContent = 'Stopped';
+  try { await iframeRpc('stop'); } catch (_) {}
+  _setStatus('status', 'Stopped');
 }
 
 // ---- UI Wiring ----
@@ -1826,13 +1874,15 @@ $('regenBtn').addEventListener('click', function() {
   doGenerate();
 });
 
-$('runBtn').addEventListener('click', function() {
-  var ed = getEditor();
-  if (ed) {
-    try { ed.evaluate(true); } catch(e) {}
-    var s = $('status');
-    s.className = 'status playing';
-    s.textContent = 'Playing';
+$('runBtn').addEventListener('click', async function() {
+  try {
+    var current = await iframeRpc('getCode');
+    _lastEvaluatedCode = normalize(current || '');
+    _fixAttempt = 0;
+    await iframeRpc('evaluate');
+    _setStatus('status playing', 'Playing');
+  } catch (e) {
+    _setStatus('status error', 'Editor not responding');
   }
 });
 
@@ -2180,9 +2230,8 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
   var hbtn = /** @type {HTMLButtonElement} */ (btn);
   hbtn.addEventListener('click', async function() {
     var direction = hbtn.dataset.dir || '';
-    var ed = getEditor();
-    if (!ed) return;
-    var currentCode = ed.code || '';
+    var currentCode = '';
+    try { currentCode = (await iframeRpc('getCode')) || ''; } catch (_) { return; }
     if (!currentCode.trim()) return;
 
       // Tone buttons: highlight active
@@ -2219,8 +2268,12 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       hbtn.classList.add(changed ? 'flash-ok' : 'flash-fail');
       setTimeout(function() { hbtn.classList.remove('flash-ok', 'flash-fail'); }, 300);
       if (changed) {
-        ed.setCode(result);
-        ed.evaluate(true);
+        _lastEvaluatedCode = normalize(result);
+        _fixAttempt = 0;
+        try {
+          await iframeRpc('setCode', { code: _lastEvaluatedCode });
+          await iframeRpc('evaluate');
+        } catch (_) {}
       }
       return;
     }
@@ -2270,9 +2323,8 @@ async function doEdit() {
   var instruction = editInput.value.trim();
   if (!instruction) return;
 
-  var ed = getEditor();
-  if (!ed) return;
-  var currentCode = ed.code || '';
+  var currentCode = '';
+  try { currentCode = (await iframeRpc('getCode')) || ''; } catch (_) { return; }
   if (!currentCode.trim()) return;
 
   var apiKey = getApiKey();
