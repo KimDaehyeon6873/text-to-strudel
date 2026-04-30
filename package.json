@@ -3,6 +3,14 @@
   "version": "1.0.0",
   "description": "Text-to-music generator (browser-only, no build).",
   "private": true,
+  "license": "AGPL-3.0-only",
+  "author": "DaehyeonKim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KimDaehyeon6873/text-to-strudel.git"
+  },
+  "homepage": "https://github.com/KimDaehyeon6873/text-to-strudel",
+  "bugs": "https://github.com/KimDaehyeon6873/text-to-strudel/issues",
   "type": "module",
   "scripts": {
     "test": "node --test 'test/**/*.test.mjs'",

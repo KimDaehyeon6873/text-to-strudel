@@ -313,9 +313,28 @@ Tests run via `vm.runInContext` with stubbed `document`, `localStorage`, `sessio
 
 ## License
 
-**AGPL-3.0**
+**AGPL-3.0-only** &middot; Copyright (C) 2026 DaehyeonKim &middot; [LICENSE](./LICENSE)
 
-Licensed under the GNU Affero General Public License v3.0 due to its dependency on `@strudel/repl`, which is AGPL-3.0. The library is loaded unmodified via CDN.
+Licensed under the GNU Affero General Public License v3.0 due to its dependency on [`@strudel/repl`](https://www.npmjs.com/package/@strudel/repl), which is AGPL-3.0. The library is loaded unmodified via CDN with an SRI integrity hash and pinned to `1.3.0`.
+
+### AGPL §13 — Remote Network Interaction
+
+If you fork this project and host a modified version anywhere users interact with it over a network (including GitHub Pages, Netlify, Vercel, your own server, or embedded inside another product), AGPL §13 obliges you to **prominently offer those users access to the corresponding source code of *your* version**. The footer of each theme already exposes a "source" link to this repository — keep that pattern (or equivalent) in any fork.
+
+### Third-Party Runtime Data
+
+Audio samples, drum-machine definitions, and webaudiofont data are fetched at runtime from external hosts (see the [Security Model](#security-model) allow-list). They are *not* bundled or redistributed by this project. Their licenses live with their original publishers — most are public-domain, CC0, or CC-BY:
+
+| Host | What | Upstream license |
+|:---|:---|:---|
+| `raw.githubusercontent.com/tidalcycles/Dirt-Samples` | TidalCycles drum samples | GPL-3.0 (per the upstream `LICENSE`) |
+| `raw.githubusercontent.com/felixroos/dough-samples` | drum-machine definitions | per upstream repo |
+| `raw.githubusercontent.com/tidalcycles/uzu-drumkit` | uzu drum kit | per upstream repo |
+| `felixroos.github.io/webaudiofontdata` | GM SoundFont samples | per upstream (mostly MIT/CC) |
+| `cdn.freesound.org` | freesound previews | per individual upload (CC-BY / CC0 / etc.) |
+| `shabda.ndre.gr` | speech synthesis | per upstream |
+
+When you redistribute *generated music* that contains these samples, the sample licenses apply to your redistribution — text-to-strudel does not grant any rights it does not own.
 
 ---
 

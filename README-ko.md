@@ -315,9 +315,28 @@ npm run typecheck  # JSDoc 어노테이션 기반 tsc --checkJs (0 errors)
 
 ## 라이선스
 
-**AGPL-3.0**
+**AGPL-3.0-only** &middot; Copyright (C) 2026 DaehyeonKim &middot; [LICENSE](./LICENSE)
 
-`@strudel/repl` (AGPL-3.0)에 의존하므로 GNU Affero General Public License v3.0. 라이브러리는 CDN으로 무수정 로드.
+[`@strudel/repl`](https://www.npmjs.com/package/@strudel/repl) (AGPL-3.0) 의존성으로 인해 GNU Affero General Public License v3.0. 라이브러리는 SRI integrity 해시 + `1.3.0` 핀으로 CDN에서 무수정 로드.
+
+### AGPL §13 — Remote Network Interaction
+
+이 프로젝트를 fork해서 사용자가 네트워크로 상호작용 가능한 형태로 호스팅(GitHub Pages, Netlify, Vercel, 자체 서버, 다른 제품에 임베드 포함)할 경우, AGPL §13은 **그 사용자들에게 본인 fork의 corresponding source 코드 접근 경로를 prominently 제공할 의무**를 부과합니다. 두 테마의 푸터에 이미 "source" 링크가 노출되어 있습니다 — fork에서도 동일 패턴(또는 동등 수단)을 유지하세요.
+
+### 런타임 외부 데이터
+
+오디오 샘플, 드럼머신 정의, webaudiofont 데이터는 런타임에 외부 호스트에서 fetch ([보안 모델](#보안-모델) allow-list 참고). 이 프로젝트가 *번들·재배포하지 않습니다*. 라이선스는 각 원저작자에게 귀속 — 대부분 public-domain, CC0, 또는 CC-BY:
+
+| 호스트 | 내용 | 원본 라이선스 |
+|:---|:---|:---|
+| `raw.githubusercontent.com/tidalcycles/Dirt-Samples` | TidalCycles 드럼 샘플 | GPL-3.0 (upstream `LICENSE` 기준) |
+| `raw.githubusercontent.com/felixroos/dough-samples` | 드럼머신 정의 | upstream 기준 |
+| `raw.githubusercontent.com/tidalcycles/uzu-drumkit` | uzu 드럼킷 | upstream 기준 |
+| `felixroos.github.io/webaudiofontdata` | GM SoundFont 샘플 | upstream 기준 (대부분 MIT/CC) |
+| `cdn.freesound.org` | freesound 미리듣기 | 업로드별 (CC-BY / CC0 등) |
+| `shabda.ndre.gr` | 음성 합성 | upstream 기준 |
+
+이 샘플들이 포함된 *생성된 음악*을 재배포할 경우 해당 샘플 라이선스가 재배포에 적용됩니다 — text-to-strudel은 자신이 보유하지 않은 권리를 부여하지 않습니다.
 
 ---
 
