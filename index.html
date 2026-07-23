@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';">
+<meta name="referrer" content="no-referrer">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -139,6 +141,33 @@
   .api-hint { font-size: .68rem; color: var(--txt-dim); margin-top: .2rem; }
   .api-hint.saved { color: var(--g-dim); }
   .api-hint.error { color: var(--red); }
+  .api-persist {
+    display: flex; align-items: center; gap: .55rem;
+    min-height: 44px; margin-top: .35rem;
+    color: var(--txt-dim); font-size: .68rem;
+    cursor: pointer; user-select: none;
+  }
+  .api-persist:hover { color: var(--txt); }
+  .api-persist input {
+    appearance: none; width: 20px; height: 20px; flex: 0 0 20px;
+    border: 1px solid var(--border-hi); border-radius: var(--r);
+    background: var(--surface); cursor: pointer;
+  }
+  .api-persist input:checked { border-color: var(--g-dim); background: var(--g-dim); }
+  .api-persist input:checked::after {
+    content: '✓'; display: grid; place-items: center; height: 100%;
+    color: var(--bg); font-weight: 700;
+  }
+  .api-persist input:focus-visible,
+  .api-save:focus-visible, .api-row select:focus-visible, .api-row input:focus-visible {
+    outline: 2px solid var(--g); outline-offset: 2px;
+  }
+  .api-mode {
+    margin-top: .15rem; color: var(--txt-dim); font-size: .66rem;
+    line-height: 1.45; overflow-wrap: anywhere;
+  }
+  .api-mode strong { color: var(--txt); }
+  .api-mode[data-mode="persist"] { color: var(--red); }
 
   /* ---- INPUT ---- */
   .prompt-input {
@@ -252,6 +281,30 @@
   .t-btn:disabled { opacity: .2; }
   .transport-spacer { flex: 1; }
 
+  /* ---- MUSICAL VARIATIONS ---- */
+  .variation-panel {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .2rem;
+    padding: .3rem 0;
+  }
+  .variation-label {
+    font-size: .66rem; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--txt-dim); margin-right: .15rem;
+  }
+  .variation-btn {
+    background: var(--g-glow); border: 1px solid var(--g-mute);
+    color: var(--g-dim); font-family: var(--mono);
+    font-size: .7rem; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    padding: .25rem .5rem; border-radius: var(--r);
+    cursor: pointer; transition: all .08s;
+  }
+  .variation-btn:hover {
+    color: var(--g); border-color: var(--g-dim);
+    box-shadow: inset 0 0 8px var(--g-glow);
+  }
+  .variation-btn:disabled { opacity: .2; cursor: wait; }
+
   /* ---- TWEAK ROWS ---- */
   .tweak-row { display: flex; flex-wrap: wrap; gap: .18rem; align-items: center; }
   .tweak-label {
@@ -354,6 +407,11 @@
   .status {
     font-size: .82rem; color: var(--txt-dim); min-height: 1em;
   }
+  .composition-meta {
+    min-height: 1em; margin-top: .12rem;
+    color: var(--g-dim); font-size: .68rem; line-height: 1.35;
+    letter-spacing: .03em;
+  }
   .status.playing { color: var(--g); }
   .status.error { color: var(--red); }
   @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -364,79 +422,11 @@
     animation: cursor-blink .8s step-end infinite;
   }
 
-  /* ---- EDITOR (right pane) ---- */
-  .editor-bar {
-    display: flex; align-items: center;
-    padding: .25rem .6rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    font-size: .68rem; font-weight: 700;
-    letter-spacing: .14em; text-transform: uppercase;
-    color: var(--txt-dim);
+  /* ---- EDITOR (sandboxed right pane) ---- */
+  #strudelFrame {
+    display: block; width: 100%; flex: 1;
+    min-height: 520px; border: 0; background: #020402;
   }
-  .editor-bar-hint {
-    margin-left: auto; font-weight: 400; opacity: .35;
-  }
-  strudel-editor {
-    display: block; flex: 1; min-height: 0; overflow-y: auto;
-  }
-
-  /* ---- CodeMirror theme override (matrix green on black) ---- */
-  .cm-editor {
-    background: #020402 !important;
-    font-size: .96rem !important;
-  }
-  .cm-editor .cm-scroller {
-    font-family: var(--mono) !important;
-  }
-  .cm-editor .cm-gutters {
-    background: #020402 !important;
-    border-right: 1px solid var(--border) !important;
-    color: var(--txt-dim) !important;
-  }
-  .cm-editor .cm-activeLineGutter,
-  .cm-editor .cm-activeLine {
-    background: rgba(0,224,96,.04) !important;
-  }
-  .cm-editor .cm-selectionBackground,
-  .cm-editor ::selection {
-    background: rgba(0,224,96,.15) !important;
-  }
-  .cm-editor .cm-cursor {
-    border-left-color: var(--g) !important;
-  }
-  /* Base text */
-  .cm-editor .cm-content { color: #609860 !important; }
-  /* Comments: dark muted green */
-  .cm-editor .ͼ13, .cm-editor .ͼm { color: #3a5a3a !important; }
-  /* Functions/keywords: bright green */
-  .cm-editor .ͼ14, .cm-editor .ͼ19 { color: #00e060 !important; }
-  /* Numbers: medium green */
-  .cm-editor .ͼz, .cm-editor .ͼd { color: #60c060 !important; }
-  /* Strings: bright warm green */
-  .cm-editor .ͼ11, .cm-editor .ͼe { color: #40c860 !important; }
-  /* Operators/variables: light green */
-  .cm-editor .ͼv, .cm-editor .ͼt, .cm-editor .ͼc { color: #80b880 !important; }
-  /* Properties: green-white */
-  .cm-editor .ͼ1c, .cm-editor .ͼ10, .cm-editor .ͼg { color: #90d090 !important; }
-  /* Punctuation: dim */
-  .cm-editor .ͼ16 { color: #406040 !important; }
-  /* Hide line numbers */
-  .cm-editor .cm-gutters { display: none !important; }
-  /* Override Strudel highlight/flash colors to green theme */
-  .cm-editor { --foreground: var(--g) !important; }
-  .cm-editor [style*="rgba(255,255,255"] {
-    background-color: rgba(0,224,96,.12) !important;
-    filter: none !important;
-  }
-  .cm-editor [style*="#00CA28"] {
-    background-color: rgba(0,224,96,.15) !important;
-  }
-  .cm-editor [style*="outline"] {
-    outline-color: var(--g) !important;
-  }
-  /* Mini-notation highlight background */
-  .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 900px) {
@@ -445,16 +435,36 @@
     .shell { grid-template-columns: 1fr; height: auto; overflow-x: hidden; width: 100%; }
     .panel { border-right: none; border-bottom: 1px solid var(--border); position: static; height: auto; overflow-y: visible; }
     .output { min-height: 300px; overflow-y: visible; overflow-x: hidden; width: 100%; max-width: 100%; }
-    strudel-editor { width: 100%; max-width: 100%; overflow-x: hidden; }
-    .cm-editor { max-width: 100% !important; width: 100% !important; }
-    .cm-editor .cm-scroller { overflow-x: auto !important; }
-    .cm-editor .cm-content,
-    .cm-editor .cm-line { white-space: pre-wrap !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+    #strudelFrame { width: 100%; max-width: 100%; min-height: 360px; }
   }
   @media (max-width: 500px) {
     .panel { padding: .7rem .5rem; }
-    .btn-generate { font-size: .74rem; }
-    .genre-btn { font-size: .68rem; padding: .12rem .3rem; }
+    .api-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .api-row select, .api-row input, .api-save {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+    }
+    .btn-generate { min-height: 44px; font-size: .74rem; }
+    .genre-btn, .t-btn, .variation-btn,
+    .edit-apply, .mixer-toggle, .ch-tag, .ch-mood {
+      min-height: 44px;
+    }
+    .genre-btn { font-size: .68rem; padding: .35rem .55rem; }
+    .variation-panel { gap: .35rem; }
+    .variation-label { width: 100%; }
+    .mixer-grid { grid-template-columns: minmax(0, 1fr); }
+    .mixer-ch { min-height: 44px; height: 44px; }
+    .mixer-ch .ch-label { width: auto; min-width: 0; flex: 1; }
+    .ch-minus, .ch-plus, .ch-toggle { min-width: 44px; width: 44px; height: 44px; }
+    .edit-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+    }
+    .edit-row .tweak-label, .edit-row .mixer-toggle { grid-column: 1 / -1; }
+    .edit-input { min-width: 0; min-height: 44px; }
+    .mixer-toggle { width: 100%; margin-left: 0; }
   }
 </style>
 </head>
@@ -470,29 +480,36 @@
     <details class="api" id="apiSettings">
       <summary>api</summary>
       <div class="api-row">
-        <select id="apiProvider"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select>
-        <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
+        <select id="apiProvider" aria-label="API provider"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select>
+        <input type="password" id="apiKey" aria-label="API key" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
         <button class="api-save" id="apiSave">save</button>
       </div>
       <div class="api-hint" id="apiHint">no key = algorithmic mode</div>
+      <label class="api-persist" for="apiPersist">
+        <input type="checkbox" id="apiPersist" aria-describedby="apiMode">
+        <span>Persist API key on this device</span>
+      </label>
+      <div class="api-mode" id="apiMode" data-mode="session" role="status" aria-live="polite">
+        <strong>Session only.</strong> The key stays in memory only and is cleared on reload or when this tab closes.
+      </div>
     </details>
 
     <div>
-      <div class="mod-label">input</div>
-      <textarea class="prompt-input" id="input" placeholder="> enter signal..." rows="2"></textarea>
+      <label class="mod-label" for="input">input</label>
+      <textarea class="prompt-input" id="input" placeholder="> scene + motion + feeling — 여름밤 라디오, 따뜻하지만 조금 쓸쓸하게" rows="2"></textarea>
     </div>
 
     <div>
       <div class="mod-label">genre</div>
-      <div class="genres" id="genres">
-        <button class="genre-btn active" data-genre="edm">EDM</button>
-        <button class="genre-btn" data-genre="jazz">Jazz</button>
-        <button class="genre-btn" data-genre="classical">Classical</button>
-        <button class="genre-btn" data-genre="blues">Blues</button>
-        <button class="genre-btn" data-genre="ambient">Ambient</button>
-        <button class="genre-btn" data-genre="lofi">Lo-fi</button>
-        <button class="genre-btn" data-genre="world">World</button>
-        <button class="genre-btn" data-genre="random">Random</button>
+      <div class="genres" id="genres" role="group" aria-label="Genre selection">
+        <button class="genre-btn active" data-genre="edm" aria-pressed="true">EDM</button>
+        <button class="genre-btn" data-genre="jazz" aria-pressed="false">Jazz</button>
+        <button class="genre-btn" data-genre="classical" aria-pressed="false">Classical</button>
+        <button class="genre-btn" data-genre="blues" aria-pressed="false">Blues</button>
+        <button class="genre-btn" data-genre="ambient" aria-pressed="false">Ambient</button>
+        <button class="genre-btn" data-genre="lofi" aria-pressed="false">Lo-fi</button>
+        <button class="genre-btn" data-genre="world" aria-pressed="false">World</button>
+        <button class="genre-btn" data-genre="random" aria-pressed="false">Random</button>
       </div>
       <label class="fusion-toggle" id="fusionToggle">
         <input type="checkbox" id="fusionCheck">
@@ -507,30 +524,37 @@
       <button class="t-btn t-play" id="runBtn">play</button>
       <button class="t-btn t-stop" id="stopBtn">stop</button>
       <span class="transport-spacer"></span>
-      <button class="t-btn t-regen" id="regenBtn">regen</button>
+      <button class="t-btn t-regen" id="regenBtn">new take</button>
+    </div>
+
+    <div class="variation-panel" id="variationPanel" style="display:none" aria-label="Musical variations">
+      <span class="variation-label">variations</span>
+      <button class="variation-btn" data-variation="melody" title="Create a new melody while keeping the rest" aria-label="Create a new melody">new melody</button>
+      <button class="variation-btn" data-variation="groove" title="Create a new groove while keeping the rest" aria-label="Create a new groove">new groove</button>
+      <button class="variation-btn" data-variation="arrangement" title="Create a new arrangement while keeping the musical idea" aria-label="Create a new arrangement">new arrangement</button>
     </div>
 
     <!-- MIXER: channel strips in 2-col grid, tone/mood below -->
-    <div class="mixer" id="algoMixer" style="display:none">
-      <div class="mod-label">mixer</div>
-      <div class="mixer-grid">
-        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" data-dir="slower">-</button><button class="refine-btn ch-plus" data-dir="faster">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" data-dir="quieter">-</button><button class="refine-btn ch-plus" data-dir="louder">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" data-dir="darker">-</button><button class="refine-btn ch-plus" data-dir="brighter">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" data-dir="less resonance">-</button><button class="refine-btn ch-plus" data-dir="more resonance">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" data-dir="less highpass">-</button><button class="refine-btn ch-plus" data-dir="more highpass">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" data-dir="lower">-</button><button class="refine-btn ch-plus" data-dir="higher">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" data-dir="drier">-</button><button class="refine-btn ch-plus" data-dir="more reverb">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" data-dir="less delay">-</button><button class="refine-btn ch-plus" data-dir="more delay">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" data-dir="less feedback">-</button><button class="refine-btn ch-plus" data-dir="more feedback">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" data-dir="sparser">-</button><button class="refine-btn ch-plus" data-dir="denser">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" data-dir="straighten">off</button><button class="refine-btn ch-toggle" data-dir="add swing">on</button></div>
-        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" data-dir="less distortion">-</button><button class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" data-dir="less crush">-</button><button class="refine-btn ch-plus" data-dir="more crush">+</button></div>
+    <div class="mixer" id="algoMixer" style="display:none" role="group" aria-label="Sound polish controls">
+      <div class="mod-label">sound polish</div>
+      <div class="mixer-grid" role="group" aria-label="Sound parameters">
+        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" aria-label="Decrease bpm" data-dir="slower">-</button><button class="refine-btn ch-plus" aria-label="Increase bpm" data-dir="faster">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" aria-label="Decrease gain" data-dir="quieter">-</button><button class="refine-btn ch-plus" aria-label="Increase gain" data-dir="louder">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" aria-label="Decrease cutoff" data-dir="darker">-</button><button class="refine-btn ch-plus" aria-label="Increase cutoff" data-dir="brighter">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" aria-label="Decrease resonance" data-dir="less resonance">-</button><button class="refine-btn ch-plus" aria-label="Increase resonance" data-dir="more resonance">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" aria-label="Decrease highpass" data-dir="less highpass">-</button><button class="refine-btn ch-plus" aria-label="Increase highpass" data-dir="more highpass">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" aria-label="Decrease octave" data-dir="lower">-</button><button class="refine-btn ch-plus" aria-label="Increase octave" data-dir="higher">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" aria-label="Decrease reverb" data-dir="drier">-</button><button class="refine-btn ch-plus" aria-label="Increase reverb" data-dir="more reverb">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" aria-label="Decrease delay" data-dir="less delay">-</button><button class="refine-btn ch-plus" aria-label="Increase delay" data-dir="more delay">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" aria-label="Decrease feedback" data-dir="less feedback">-</button><button class="refine-btn ch-plus" aria-label="Increase feedback" data-dir="more feedback">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" aria-label="Decrease density" data-dir="sparser">-</button><button class="refine-btn ch-plus" aria-label="Increase density" data-dir="denser">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" aria-label="Turn swing off" data-dir="straighten">off</button><button class="refine-btn ch-toggle" aria-label="Turn swing on" data-dir="add swing">on</button></div>
+        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" aria-label="Decrease distort" data-dir="less distortion">-</button><button class="refine-btn ch-plus" aria-label="Increase distort" data-dir="more distortion">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" aria-label="Decrease crush" data-dir="less crush">-</button><button class="refine-btn ch-plus" aria-label="Increase crush" data-dir="more crush">+</button></div>
       </div>
       <div class="mixer-divider"></div>
       <div class="mod-label">tone</div>
-      <div class="mixer-tags">
+      <div class="mixer-tags" role="group" aria-label="Tone">
         <button class="refine-btn ch-tag" data-dir="scale:major">major</button>
         <button class="refine-btn ch-tag" data-dir="scale:minor">minor</button>
         <button class="refine-btn ch-tag" data-dir="scale:dorian">dorian</button>
@@ -540,7 +564,7 @@
       </div>
       <div class="mixer-divider"></div>
       <div class="mod-label">mood</div>
-      <div class="mixer-tags">
+      <div class="mixer-tags" role="group" aria-label="Mood">
         <button class="refine-btn ch-mood" data-dir="make it darker and moodier">dark</button>
         <button class="refine-btn ch-mood" data-dir="make it euphoric and uplifting">euphoric</button>
         <button class="refine-btn ch-mood" data-dir="make it dreamy and floating">dreamy</button>
@@ -551,23 +575,23 @@
     <!-- LLM MODE: edit + mixer toggle -->
     <div class="edit-row" id="editRow" style="display:none">
       <span class="tweak-label">edit</span>
-      <input class="edit-input" id="editInput" type="text" placeholder="> describe change..." autocomplete="off">
+      <input class="edit-input" id="editInput" type="text" aria-label="Natural-language edit instructions" placeholder="> describe change..." autocomplete="off">
       <button class="edit-apply" id="editApply">apply</button>
-      <button class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls">mixer</button>
+      <button class="mixer-toggle" id="mixerToggle" title="Show or hide sound polish controls" aria-label="Show or hide sound polish controls">sound polish</button>
     </div>
 
     <!-- hidden compat anchor -->
     <div id="refineRow" style="display:none"></div>
 
-    <div class="status" id="status"></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="composition-meta" id="compositionMeta" aria-live="polite"></div>
   </div>
 
   <div class="output hidden" id="editorWrap">
-    <strudel-editor id="strudelEditor"></strudel-editor>
+    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" title="Strudel editor and player"></iframe>
   </div>
 
 </div>
-<script src="https://unpkg.com/@strudel/repl@latest"></script>
 <script src="app.js"></script>
 </body>
 </html>

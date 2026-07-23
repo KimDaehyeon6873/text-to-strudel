@@ -1,12 +1,34 @@
 // =====================================================
-//  STRUDEL MUSE - Text-to-Music Generator
+//  text-to-strudel - Text-to-Music Generator
 //  Analyzes text qualities (energy, brightness, weight,
-//  space, complexity) and maps them to genre-appropriate
-//  musical parameters. Same input + genre = same output.
+//  space, complexity, valence, tension) and maps them to
+//  genre-appropriate musical parameters. The same input,
+//  genre, and variation state produce the same output.
 // =====================================================
 
-// ---- Seed counter (for regeneration) ----
+// ---- Variation state (independent musical dimensions) ----
 var seedCounter = 0;
+var variationState = { harmony: 0, melody: 0, groove: 0, arrangement: 0 };
+var lastVariationFocus = 'base';
+var lastCompositionPlan = null;
+
+function resetVariationState() {
+  variationState = { harmony: 0, melody: 0, groove: 0, arrangement: 0 };
+  lastVariationFocus = 'base';
+}
+
+function advanceVariation(focus) {
+  seedCounter++;
+  lastVariationFocus = focus || 'all';
+  if (focus === 'melody' || focus === 'groove' || focus === 'arrangement') {
+    variationState[focus]++;
+    return;
+  }
+  variationState.harmony++;
+  variationState.melody++;
+  variationState.groove++;
+  variationState.arrangement++;
+}
 
 // ---- Seeded PRNG (deterministic from input + seed counter) ----
 function createRNG(seed) {
@@ -24,32 +46,76 @@ function createRNG(seed) {
 // ---- Text Analysis ----
 function clamp(v) { return Math.max(0, Math.min(1, v)); }
 
+var TEXT_MOOD_WORDS = {
+  bright: ['sun', 'light', 'gold', 'summer', 'smile', 'joy', 'hope', 'love', 'dance', '햇살', '빛', '여름', '미소', '기쁨', '희망', '사랑', '설렘'],
+  dark: ['night', 'shadow', 'rain', 'grief', 'lonely', 'cold', 'empty', 'winter', '밤', '그림자', '비', '슬픔', '외로', '차가', '공허', '겨울'],
+  intense: ['fire', 'rage', 'thunder', 'storm', 'run', 'rush', 'explode', 'fight', '불', '분노', '번개', '폭풍', '달려', '질주', '폭발', '격렬'],
+  calm: ['quiet', 'still', 'sleep', 'breathe', 'soft', 'peace', 'slow', '고요', '평온', '잠', '숨', '부드', '잔잔', '느리'],
+  heavy: ['stone', 'iron', 'gravity', 'deep', 'burden', '돌', '철', '중력', '깊', '무거', '짐'],
+  airy: ['cloud', 'sky', 'wind', 'float', 'open', '구름', '하늘', '바람', '떠', '넓'],
+};
+
+function countMoodWords(text, words) {
+  return words.reduce(function(total, word) {
+    return total + (text.indexOf(word) !== -1 ? 1 : 0);
+  }, 0);
+}
+
 function analyzeText(text) {
-  if (!text.trim()) return { energy: 0.5, brightness: 0.5, weight: 0.5, space: 0.3, complexity: 0.5 };
-  var lower = text.toLowerCase();
-  var chars = lower.replace(/[^a-z0-9]/g, '');
-  var vowels = (lower.match(/[aeiou]/g) || []).length;
-  var letters = (lower.match(/[a-z]/g) || []).length;
-  var words = text.trim().split(/\s+/).filter(Boolean);
+  var normalized = (text || '').normalize('NFKC').trim();
+  if (!normalized) {
+    return { energy: 0.5, brightness: 0.5, weight: 0.5, space: 0.3, complexity: 0.5, valence: 0.5, tension: 0.5 };
+  }
+
+  var lower = normalized.toLowerCase();
+  var glyphs = Array.from(lower);
+  var chars = glyphs.filter(function(ch) { return /[\p{L}\p{N}]/u.test(ch); });
+  var letters = glyphs.filter(function(ch) { return /\p{L}/u.test(ch); });
+  var latinLetters = lower.match(/[a-z]/g) || [];
+  var latinVowels = lower.match(/[aeiou]/g) || [];
+  var words = normalized.split(/\s+/).filter(Boolean);
   var uniqueChars = new Set(chars).size;
-  var avgWordLen = words.reduce(function(s, w) { return s + w.length; }, 0) / Math.max(1, words.length);
-  var punctuation = (text.match(/[!?.,:;\-()]/g) || []).length;
-  var uppercase = (text.match(/[A-Z]/g) || []).length;
+  var avgWordLen = words.reduce(function(sum, word) { return sum + Array.from(word).length; }, 0) / Math.max(1, words.length);
+  var punctuation = (normalized.match(/[!?.,:;\-()[\]…]/g) || []).length;
+  var uppercase = (normalized.match(/[A-Z]/g) || []).length;
+
+  var brightWords = countMoodWords(lower, TEXT_MOOD_WORDS.bright);
+  var darkWords = countMoodWords(lower, TEXT_MOOD_WORDS.dark);
+  var intenseWords = countMoodWords(lower, TEXT_MOOD_WORDS.intense);
+  var calmWords = countMoodWords(lower, TEXT_MOOD_WORDS.calm);
+  var heavyWords = countMoodWords(lower, TEXT_MOOD_WORDS.heavy);
+  var airyWords = countMoodWords(lower, TEXT_MOOD_WORDS.airy);
+
+  var structuralEnergy = clamp(
+    Math.min(1, words.length / 10) * 0.35 +
+    Math.min(1, uniqueChars / 18) * 0.35 +
+    Math.min(1, punctuation / 4) * 0.2 +
+    Math.min(1, uppercase / Math.max(1, letters.length) * 5) * 0.1
+  );
+  var semanticEnergy = clamp(0.45 + intenseWords * 0.28 - calmWords * 0.2);
+  var latinBrightness = latinLetters.length ? latinVowels.length / latinLetters.length : 0.5;
+  var semanticBrightness = clamp(0.5 + brightWords * 0.18 - darkWords * 0.16);
+  var density = chars.length / Math.max(1, glyphs.length);
+
   return {
-    energy: clamp((uniqueChars / 20) * 0.3 + (punctuation / Math.max(1, text.length)) * 3 + (uppercase / Math.max(1, text.length)) * 2 + Math.min(1, words.length / 8) * 0.3),
-    brightness: clamp(vowels / Math.max(1, letters) * 1.8),
-    weight: clamp(avgWordLen / 9),
-    space: clamp(1 - chars.length / Math.max(1, text.length) + (words.length < 3 ? 0.2 : 0)),
-    complexity: clamp(uniqueChars / Math.max(1, chars.length) * 1.2),
+    energy: clamp(structuralEnergy * 0.45 + semanticEnergy * 0.55),
+    brightness: clamp(latinBrightness * 0.35 + semanticBrightness * 0.65),
+    weight: clamp(avgWordLen / 9 + heavyWords * 0.15 - airyWords * 0.1),
+    space: clamp((1 - density) * 0.65 + (words.length < 4 ? 0.18 : 0) + calmWords * 0.08 + airyWords * 0.08),
+    complexity: clamp((uniqueChars / Math.max(4, chars.length)) * 0.65 + Math.min(1, words.length / 10) * 0.35),
+    valence: clamp(0.5 + brightWords * 0.18 - darkWords * 0.16),
+    tension: clamp(0.45 + intenseWords * 0.22 + punctuation * 0.04 - calmWords * 0.18),
   };
 }
 
 function describeMood(a) {
   var w = [];
-  if (a.brightness < 0.35) w.push('dark');
-  else if (a.brightness > 0.65) w.push('bright');
+  if (a.valence < 0.35) w.push('melancholic');
+  else if (a.brightness < 0.35) w.push('dark');
+  else if (a.valence > 0.65 || a.brightness > 0.65) w.push('bright');
   else w.push('warm');
-  if (a.energy > 0.65) w.push('driving');
+  if (a.tension > 0.68) w.push('tense');
+  else if (a.energy > 0.65) w.push('driving');
   else if (a.energy < 0.35) w.push('gentle');
   else w.push('steady');
   if (a.weight > 0.6) w.push('heavy');
@@ -222,539 +288,752 @@ var GENRES = {
   },
 };
 
-// ---- Melody Generation ----
+// ---- Shared Composition Plan Engine ----
 function pickFrom(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
-
-function generateMelody(rng, length, restChance, subGroupChance) {
-  // Build a motif that starts on a chord tone (0, 2, or 4)
-  var chordTones = [0, 2, 4];
-  var motifLen = rng() > 0.5 ? 3 : 4;
-  var motif = [pickFrom(rng, chordTones)];
-  for (var i = 1; i < motifLen; i++) {
-    var r = rng();
-    var step = r < 0.35 ? 1 : r < 0.55 ? -1 : r < 0.7 ? 2 : r < 0.82 ? -2 : r < 0.92 ? 3 : -3;
-    motif.push(Math.max(-2, Math.min(9, motif[motif.length - 1] + step)));
-  }
-
-  // Build melody using call-response structure:
-  // Call = motif, Response = variation of motif
-  var notes = [];
-  var isCall = true;
-  while (notes.length < length) {
-    var phrase;
-    if (isCall) {
-      // Call: original motif or slight transposition
-      if (rng() < 0.7) phrase = motif.slice();
-      else { var t = pickFrom(rng, [-2, -1, 1, 2]); phrase = motif.map(function(n) { return n + t; }); }
-    } else {
-      // Response: varied — reverse, invert, fragment, or rest
-      var v = rng();
-      if (v < 0.25) phrase = motif.slice().reverse();
-      else if (v < 0.45) { var ax = motif[0]; phrase = motif.map(function(n) { return ax - (n - ax); }); } // inversion
-      else if (v < 0.65) { var t2 = pickFrom(rng, [2, 3, 4, 5]); phrase = motif.map(function(n) { return n + t2; }); }
-      else if (v < 0.8) phrase = [motif[motif.length - 1], '~']; // fragment + rest
-      else phrase = ['~', motif[0]]; // rest + pickup
-    }
-    isCall = !isCall;
-
-    for (var j = 0; j < phrase.length; j++) {
-      if (notes.length >= length) break;
-      var note = phrase[j];
-      if (note === '~') { notes.push('~'); continue; }
-      // Anchor: at positions 0, 3, 6, 9 (every 3rd), prefer chord tones
-      var pos = notes.length % length;
-      if (pos % 3 === 0 && rng() < 0.6) note = pickFrom(rng, chordTones);
-      notes.push(rng() < restChance ? '~' : Math.max(-3, Math.min(11, note)));
-    }
-  }
-
-  // Format with sub-groups and occasional elongation (@)
-  var parts = [];
-  var idx = 0;
-  var ns = notes.slice(0, length);
-  while (idx < ns.length) {
-    if (idx + 1 < ns.length && rng() < subGroupChance && ns[idx] !== '~' && ns[idx + 1] !== '~') {
-      parts.push('[' + ns[idx] + ' ' + ns[idx + 1] + ']');
-      idx += 2;
-    } else if (ns[idx] !== '~' && rng() < 0.12) {
-      // occasional elongation for phrasing
-      parts.push(ns[idx] + '@2');
-      idx++;
-    } else {
-      parts.push(String(ns[idx]));
-      idx++;
-    }
-  }
-  return parts.join(' ');
-}
-
-// ---- Pattern Helpers ----
-
-// Walking bass: root + passing tones, octave jumps
-function genBass(rng, prog, energy) {
-  var walkingPatterns = [
-    function(r) { return r + ' ' + (r+4) + ' ' + r + ' ' + (r+2); },  // root-5th-root-3rd
-    function(r) { return r + ' ' + (r+2) + ' ' + (r+4) + ' ' + (r+2); },  // ascending walk
-    function(r) { return r + ' ' + r + ' [' + (r-3) + ' ' + (r+4) + '] ' + r; },  // octave drop
-    function(r) { return r + ' [~ ' + r + '] ' + (r+4) + ' [' + (r+2) + ' ~]'; },  // syncopated
-    function(r) { return r + '*4'; },  // driving root
-    function(r) { return r + ' ~ ' + (r+4) + ' ~'; },  // sparse
-    function(r) { return '[' + r + ' ' + (r+2) + '] ' + (r+4) + ' ' + r + ' ~'; },  // walking with rest
-    function(r) { return r + ' ' + (r-1) + ' ' + r + ' ' + (r+4); },  // chromatic approach
-  ];
-  var pool;
-  if (energy > 0.65) pool = walkingPatterns.slice(0, 4);
-  else if (energy > 0.35) pool = walkingPatterns.slice(2, 7);
-  else pool = walkingPatterns.slice(4, 8);
-  var rhythm = pickFrom(rng, pool);
-  return '<' + prog.map(rhythm).join(' ') + '>';
-}
-
-// Chords: varied voicings — triads, sus, add, power chords
-function genChords(rng, prog) {
-  var voicings = [
-    function(r) { return '[' + r + ',' + (r+2) + ',' + (r+4) + ']'; },  // triad
-    function(r) { return '[' + r + ',' + (r+4) + ',' + (r+7) + ']'; },  // wide voicing
-    function(r) { return '[' + r + ',' + (r+3) + ',' + (r+4) + ']'; },  // sus4
-    function(r) { return '[' + r + ',' + (r+2) + ',' + (r+4) + ',' + (r+6) + ']'; },  // 7th
-    function(r) { return '[' + r + ',' + (r+4) + ']'; },  // power (root+5th)
-    function(r) { return '[' + r + ',' + (r+1) + ',' + (r+4) + ']'; },  // add9
-  ];
-  var v = pickFrom(rng, voicings);
-  return '<' + prog.map(v).join(' ') + '>';
-}
-
-// Arp: varied patterns with inversions
-function genArp(rng, prog) {
-  var patterns = [
-    function(r) { return '[' + r + ' ' + (r+2) + ' ' + (r+4) + ' ' + (r+2) + ']'; },
-    function(r) { return '[' + r + ' ' + (r+4) + ' ' + (r+2) + ' ' + (r+4) + ']'; },
-    function(r) { return '[' + (r+4) + ' ' + (r+2) + ' ' + r + ' ' + (r+2) + ']'; },
-    function(r) { return '[' + r + ' ' + (r+2) + ' ' + (r+4) + ' ' + (r+6) + ']'; },
-    function(r) { return '[' + r + ' ~ ' + (r+4) + ' ' + (r+2) + ']'; },  // gapped
-    function(r) { return '[' + (r+4) + ' ' + (r+4) + ' ' + (r+2) + ' ' + r + ']'; },  // descending with repeat
-  ];
-  return '<' + prog.map(pickFrom(rng, patterns)).join(' ') + '>*2';
-}
-
-function genAddPattern(rng, analysis) {
-  var a = Math.round((analysis.brightness - 0.5) * 6);
-  var b = Math.round((analysis.energy - 0.5) * 4);
-  var c = Math.round((analysis.weight - 0.5) * -4);
-  // sometimes use sub-groups in the add pattern too
-  if (rng() > 0.6) return '0 ' + a + ' ' + b + ' ' + c;
-  return '<0 ' + a + ' ' + b + ' ' + c + '>';
-}
-
-function genDrumGains(rng, analysis) {
-  var kG = (0.55 + analysis.energy * 0.35).toFixed(2);
-  // varied hat dynamics
-  var hatPatterns = [
-    '[.3 .12 .2 .12]*4',
-    '[.3 .15 .25 .15]*4',
-    '[.35 .1 .2 .15]*4',
-    '[.25 .15]*8',
-    '.2 [.3 .15]*2 .25 [.3 .1]*2',
-  ];
-  var hat = pickFrom(rng, hatPatterns);
-  var snareG = (0.55 + analysis.energy * 0.15).toFixed(2);
-  return kG + ', ~ ' + snareG + ' ~ ' + snareG + ', ' + hat + ', [~ .18]*4';
-}
-
-// Evocative comment words based on analysis
-function genComment(rng, role, analysis) {
-  var pool = {
-    drums: { high: ['pulse', 'engine', 'heartbeat', 'drive'], low: ['breath', 'whisper', 'pulse'] },
-    bass: { high: ['foundation', 'undertow', 'weight', 'root'], low: ['murmur', 'shadow', 'ground'] },
-    lead: { high: ['voice', 'cry', 'signal', 'thread'], low: ['drift', 'trace', 'thought', 'glow'] },
-    chords: { high: ['wash', 'color', 'fabric', 'harmonic field'], low: ['haze', 'cloud', 'mist', 'warmth'] },
-    pad: { high: ['atmosphere', 'expanse', 'horizon'], low: ['fog', 'glow', 'stillness'] },
-    arp: { high: ['shimmer', 'scatter', 'cascade'], low: ['glint', 'reflection', 'dew'] },
+function copyVariationState(source) {
+  source = source || {};
+  return {
+    harmony: Number(source.harmony) || 0,
+    melody: Number(source.melody) || 0,
+    groove: Number(source.groove) || 0,
+    arrangement: Number(source.arrangement) || 0,
   };
-  var words = (pool[role] || pool.lead)[analysis.energy > 0.5 ? 'high' : 'low'];
-  return '// ' + pickFrom(rng, words);
 }
 
-// ---- Artist-Inspired Techniques (applied probabilistically) ----
-var TECHNIQUES = {
-  // .off() for time-shifted melodic copy
-  off: function(rng, a) {
-    var offset = pickFrom(rng, ['1/8', '1/16', '3/16']);
-    var interval = pickFrom(rng, [2, 4, 5, 7]);
-    return '.off(' + offset + ', x=>x.add(' + interval + ').gain(.25))';
-  },
-  // .superimpose() for detuning / unison width
-  detune: function() {
-    return '.superimpose(x=>x.add(.05))';
-  },
-  // .jux(rev) for stereo width
-  juxRev: function() {
-    return '.jux(rev)';
-  },
-  // .echoWith() for rhythmic echoes (Underground Plumber style)
-  echoWith: function(rng) {
-    var count = pickFrom(rng, [3, 4]);
-    var time = pickFrom(rng, ['1/8', '1/4', '1/6']);
-    return '.echoWith(' + count + ', ' + time + ', (x,i)=>x.add(i*7).gain(1/(i+1)))';
-  },
-  // .echo() for space
-  echo: function(rng) {
-    var count = pickFrom(rng, [3, 4]);
-    var time = pickFrom(rng, ['1/8', '1/6']);
-    return '.echo(' + count + ', ' + time + ', .5)';
-  },
-  // euclidean struct (Festival of Fingers style)
-  euclid: function(rng) {
-    var hits = pickFrom(rng, [3, 5, 7]);
-    var total = pickFrom(rng, [8, 16]);
-    return '.struct("x(' + hits + ',' + total + ')")';
-  },
-  // .degradeBy() for organic feel
-  degrade: function(rng, a) {
-    var amount = (0.1 + a.space * 0.3).toFixed(2);
-    return '.degradeBy(' + amount + ')';
-  },
-  // filter automation with perlin (Melting Submarine style)
-  perlinFilter: function(rng, a) {
-    var lo = Math.round(300 + a.weight * 400);
-    var hi = Math.round(1500 + a.brightness * 3000);
-    return '.lpf(perlin.range(' + lo + ',' + hi + ').slow(8))';
-  },
-  // .sometimes for probabilistic variation
-  sometimes: function(rng) {
-    var fn = pickFrom(rng, ['rev', 'fast(2)', 'add(7)']);
-    return '.sometimes(x=>x.' + fn + ')';
-  },
-  // fake sidechain via patterned gain
-  fakeSidechain: function() {
-    return '.gain("[.2 1@3]*2")';
-  },
-  // .layer() for parallel harmonic processing
-  scaleLayer: function(rng) {
-    var offsets = pickFrom(rng, [
-      '0,<2 [4,6] [5,7]>/4',
-      '0,<4 [2,6]>/4',
-      '0,7',
-    ]);
-    return '.layer(scaleTranspose("' + offsets + '"))';
-  },
+var NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+var NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+var NOTE_INDEX = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
+
+function transposeNote(note, semitones) {
+  var index = NOTE_INDEX[note];
+  if (typeof index !== 'number') index = 0;
+  var names = note.indexOf('b') !== -1 ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP;
+  return names[(index + semitones % 12 + 12) % 12];
+}
+
+function harmonyProfile(name, scale, degrees, brightness, tension, phraseBars, formLength) {
+  return {
+    name: name,
+    scale: scale,
+    degrees: degrees,
+    brightness: brightness,
+    tension: tension,
+    harmonicBars: degrees.length,
+    phraseBars: phraseBars || (degrees.length === 12 ? 12 : 8),
+    formLength: formLength || (degrees.length === 12 ? 24 : 16),
+  };
+}
+
+var HARMONY_PROFILES = {
+  edm: [
+    harmonyProfile('midnight lift', 'minor', [[0,'m'],[8,''],[3,''],[10,'']], .35, .55),
+    harmonyProfile('dorian ascent', 'dorian', [[0,'m7'],[5,''],[10,''],[7,'m7']], .58, .42),
+    harmonyProfile('open-sky release', 'major', [[0,''],[9,'m'],[5,''],[7,'7']], .82, .32),
+    harmonyProfile('neon tension', 'phrygian', [[0,'m'],[1,''],[10,''],[7,'dim7']], .22, .82),
+  ],
+  jazz: [
+    harmonyProfile('ii–V–I turnaround', 'major', [[2,'m7'],[7,'7'],[0,'^7'],[9,'7']], .68, .48),
+    harmonyProfile('minor turnaround', 'melodic:minor', [[2,'m7b5'],[7,'7alt'],[0,'m9'],[8,'^7']], .34, .72),
+    harmonyProfile('modal bridge', 'dorian', [[0,'m9'],[5,'13'],[10,'^7'],[7,'7alt']], .52, .58),
+  ],
+  classical: [
+    harmonyProfile('authentic cadence', 'major', [[0,''],[5,''],[7,'7'],[0,'']], .72, .34),
+    harmonyProfile('minor lament', 'harmonic:minor', [[0,'m'],[5,'m'],[7,'7'],[0,'m']], .25, .68),
+    harmonyProfile('deceptive cadence', 'minor', [[0,'m'],[5,'m'],[7,'7'],[8,'']], .38, .62),
+  ],
+  blues: [
+    harmonyProfile('twelve-bar shuffle', 'minor:blues', [[0,'7'],[0,'7'],[0,'7'],[0,'7'],[5,'7'],[5,'7'],[0,'7'],[0,'7'],[7,'7'],[5,'7'],[0,'7'],[7,'7']], .42, .58, 12, 24),
+    harmonyProfile('twelve-bar slow burn', 'major:blues', [[0,'7'],[0,'7'],[0,'7'],[0,'7'],[5,'9'],[5,'9'],[0,'7'],[0,'7'],[7,'9'],[5,'9'],[0,'7'],[7,'7']], .58, .5, 12, 24),
+  ],
+  ambient: [
+    harmonyProfile('suspended horizon', 'lydian', [[0,'^7'],[2,''],[7,'sus2'],[5,'^7']], .8, .24, 8, 16),
+    harmonyProfile('slow orbit', 'dorian', [[0,'m9'],[5,'sus2'],[10,'^7'],[0,'m9']], .48, .32, 8, 16),
+    harmonyProfile('distant weather', 'minor:pentatonic', [[0,'m7'],[8,'^7'],[5,'sus2'],[10,'']], .3, .56, 8, 16),
+  ],
+  lofi: [
+    harmonyProfile('worn photograph', 'minor', [[0,'m9'],[8,'^7'],[3,'^7'],[5,'m7']], .38, .42),
+    harmonyProfile('sunlit tape', 'major', [[0,'^7'],[4,'m7'],[9,'m7'],[5,'^7']], .74, .28),
+    harmonyProfile('rainy window', 'dorian', [[0,'m7'],[5,'9'],[10,'^7'],[7,'m7']], .48, .46),
+  ],
+  world: [
+    harmonyProfile('modal drone', 'phrygian:dominant', [[0,'sus2'],[0,'sus2'],[1,''],[0,'sus2']], .48, .66),
+    harmonyProfile('open fifths', 'hirajoshi', [[0,'sus2'],[0,'sus2'],[5,'sus2'],[0,'sus2']], .6, .32),
+    harmonyProfile('caravan cadence', 'harmonic:minor', [[0,'m'],[1,''],[7,'7'],[0,'m']], .34, .7),
+  ],
 };
 
-// Pick N techniques based on text analysis
-function pickTechniques(rng, a, genreName) {
-  // weight techniques by analysis
-  var pool = [];
-  if (a.space > 0.4) pool.push('echo', 'juxRev');
-  if (a.energy > 0.5) pool.push('off', 'echoWith', 'euclid');
-  if (a.complexity > 0.5) pool.push('scaleLayer', 'sometimes');
-  if (a.brightness > 0.5) pool.push('detune');
-  if (a.weight > 0.4) pool.push('perlinFilter', 'fakeSidechain');
-  pool.push('degrade'); // always available
-  // pick 1-3 techniques
-  var count = 1 + Math.floor(a.complexity * 2);
-  var picked = [];
-  while (picked.length < count && pool.length > 0) {
-    var idx = Math.floor(rng() * pool.length);
-    picked.push(pool.splice(idx, 1)[0]);
-  }
-  return picked;
-}
+var SCALE_HARMONY_TEMPLATES = {
+  major: [[0,''],[9,'m'],[5,''],[7,'7']],
+  minor: [[0,'m'],[8,''],[3,''],[10,'']],
+  dorian: [[0,'m7'],[5,'7'],[10,''],[0,'m7']],
+  phrygian: [[0,'m'],[1,''],[10,''],[0,'m']],
+  lydian: [[0,'^7'],[2,''],[7,'^7'],[0,'^7']],
+  'minor:pentatonic': [[0,'m7'],[10,''],[5,''],[0,'m7']],
+};
 
-// ---- Random & Fusion Genre Builders ----
+var FORMS_16 = [
+  {
+    name: 'intro · A · break · peak · release', length: 16,
+    masks: {
+      drums: '<0@2 1@6 0@2 1@4 0@2>', bass: '<0@2 1@12 0@2>', harmony: '<1@8 0@2 1@4 0@2>',
+      lead: '<0@2 1@6 0@2 1@4 0@2>', accent: '<0@6 1@2 0@4 1@2 0@2>', texture: '<1@2 0@6 1@2 0@4 1@2>',
+    },
+  },
+  {
+    name: 'hush · lift · answer · release', length: 16,
+    masks: {
+      drums: '<0@2 1@4 0@2 1@6 0@2>', bass: '<0@2 1@6 0@2 1@4 0@2>', harmony: '<1@6 0@2 1@6 0@2>',
+      lead: '<0@4 1@4 0@2 1@4 0@2>', accent: '<0@2 1@2 0@6 1@4 0@2>', texture: '<1@4 0@4 1@4 0@4>',
+    },
+  },
+];
+
+var FORMS_AMBIENT = [
+  {
+    name: 'fade · bloom · drift · dissolve', length: 16,
+    masks: {
+      drums: '<0@16>', bass: '<1@6 0@2 1@6 0@2>', harmony: '<1@7 0@1 1@6 0@2>',
+      lead: '<0@2 1@6 0@2 1@4 0@2>', accent: '<0@5 1@3 0@4 1@2 0@2>', texture: '<1@4 0@2 1@8 0@2>',
+    },
+  },
+  {
+    name: 'stillness · current · clearing', length: 16,
+    masks: {
+      drums: '<0@16>', bass: '<0@2 1@5 0@1 1@6 0@2>', harmony: '<1@6 0@2 1@6 0@2>',
+      lead: '<0@4 1@4 0@2 1@4 0@2>', accent: '<0@6 1@2 0@4 1@2 0@2>', texture: '<1@6 0@2 1@6 0@2>',
+    },
+  },
+];
+
+var FORMS_BLUES = [
+  {
+    name: 'count-in · chorus A · chorus B · tag', length: 24,
+    masks: {
+      drums: '<0@1 1@10 0@1 1@11 0@1>', bass: '<0@1 1@10 0@1 1@11 0@1>', harmony: '<1@11 0@1 1@11 0@1>',
+      lead: '<0@2 1@8 0@3 1@9 0@2>', accent: '<0@5 1@4 0@8 1@4 0@3>', texture: '<0@12 1@10 0@2>',
+    },
+  },
+  {
+    name: 'riff · vocal space · solo · turnaround', length: 24,
+    masks: {
+      drums: '<1@11 0@1 1@11 0@1>', bass: '<1@11 0@1 1@11 0@1>', harmony: '<1@10 0@2 1@10 0@2>',
+      lead: '<0@1 1@7 0@4 0@2 1@8 0@2>', accent: '<0@8 1@3 0@5 1@5 0@3>', texture: '<0@12 1@8 0@4>',
+    },
+  },
+];
+
 var BASE_GENRE_NAMES = ['edm', 'jazz', 'classical', 'blues', 'ambient', 'lofi', 'world'];
 
 function buildRandomGenre(rng) {
-  var g1 = GENRES[pickFrom(rng, BASE_GENRE_NAMES)];
-  var g2 = GENRES[pickFrom(rng, BASE_GENRE_NAMES)];
-  var g3 = GENRES[pickFrom(rng, BASE_GENRE_NAMES)];
-  // pull scale from g1, sounds from g2, drums from g3, etc
-  var s1 = g1.scales || (g1.subgenres ? pickFrom(rng, g1.subgenres).scales : ['minor']);
-  var s2 = g2.sounds || (g2.subgenres ? pickFrom(rng, g2.subgenres).sounds : { lead: 'sawtooth', bass: 'sine', chord: 'sawtooth', arp: 'triangle' });
+  var scaleGenreName = pickFrom(rng, BASE_GENRE_NAMES);
+  var soundGenreName = pickFrom(rng, BASE_GENRE_NAMES);
+  var grooveGenreName = pickFrom(rng, BASE_GENRE_NAMES);
+  var scaleGenre = GENRES[scaleGenreName];
+  var soundGenre = GENRES[soundGenreName];
+  var grooveGenre = GENRES[grooveGenreName];
+  var soundPool = soundGenre.sounds || (soundGenre.subgenres ? pickFrom(rng, soundGenre.subgenres).sounds : GENRES.edm.sounds);
   return {
-    label: 'Random (' + g1.label + ' scale + ' + g2.label + ' sound + ' + g3.label + ' rhythm)',
-    tempoRange: [Math.min(g1.tempoRange[0], g2.tempoRange[0]), Math.max(g1.tempoRange[1], g2.tempoRange[1])],
-    scales: s1,
-    keys: g1.keys || ['C', 'D', 'E', 'F', 'G', 'A'],
-    octaves: g2.octaves,
-    sounds: s2,
-    bank: g3.bank || g1.bank || 'RolandTR808',
-    drums: g3.drums || g1.drums,
-    progressions: g1.progressions,
+    label: 'Random (' + scaleGenre.label + ' harmony + ' + soundGenre.label + ' color + ' + grooveGenre.label + ' groove)',
+    tempoRange: scaleGenre.tempoRange,
+    keys: scaleGenre.keys || ['C', 'D', 'E', 'F', 'G', 'A'],
+    octaves: soundGenre.octaves,
+    sounds: soundPool,
+    bank: grooveGenre.bank || scaleGenre.bank || ['RolandTR808'],
+    drums: grooveGenre.drums || scaleGenre.drums,
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
+    harmonyGenre: scaleGenreName,
   };
 }
 
 function buildFusionGenre(rng, genreNames) {
-  // Accept array of genre names (2+) and blend them
   if (!genreNames || genreNames.length < 2) {
-    // fallback: pick 2 random genres
-    var i1 = Math.floor(rng() * BASE_GENRE_NAMES.length);
-    var i2 = (i1 + 1 + Math.floor(rng() * (BASE_GENRE_NAMES.length - 1))) % BASE_GENRE_NAMES.length;
-    genreNames = [BASE_GENRE_NAMES[i1], BASE_GENRE_NAMES[i2]];
+    var first = Math.floor(rng() * BASE_GENRE_NAMES.length);
+    var second = (first + 1 + Math.floor(rng() * (BASE_GENRE_NAMES.length - 1))) % BASE_GENRE_NAMES.length;
+    genreNames = [BASE_GENRE_NAMES[first], BASE_GENRE_NAMES[second]];
   }
-  var gs = genreNames.map(function(n) { return GENRES[n]; }).filter(Boolean);
-  if (gs.length < 2) gs.push(GENRES.edm); // safety
-
-  // blend: collect all scales, average tempos, pick sounds round-robin
-  var allScales = [];
-  var allKeys = [];
-  var allProgs = [];
-  var tempoLo = 0, tempoHi = 0;
-  var drums = null, bank = null;
-
-  gs.forEach(function(g) {
-    var sc = g.scales || (g.subgenres ? pickFrom(rng, g.subgenres).scales : []);
-    allScales = allScales.concat(sc);
-    allKeys = allKeys.concat(g.keys || []);
-    allProgs = allProgs.concat(g.progressions || []);
-    tempoLo += g.tempoRange[0];
-    tempoHi += g.tempoRange[1];
-    if (!drums && g.drums) drums = g.drums;
-    if (!bank && g.bank) bank = g.bank;
+  var validNames = genreNames.filter(function(name) { return GENRES[name]; });
+  if (validNames.length < 2) validNames = ['edm', 'ambient'];
+  var genres = validNames.map(function(name) { return GENRES[name]; });
+  var tempoLow = 0;
+  var tempoHigh = 0;
+  var bank = null;
+  var drums = null;
+  var soundPools = [];
+  genres.forEach(function(genre) {
+    tempoLow += genre.tempoRange[0];
+    tempoHigh += genre.tempoRange[1];
+    if (!bank && genre.bank) bank = genre.bank;
+    if (!drums && genre.drums) drums = genre.drums;
+    soundPools.push(genre.sounds || (genre.subgenres ? pickFrom(rng, genre.subgenres).sounds : GENRES.edm.sounds));
   });
+  function sampleSound(pool) { return Array.isArray(pool) ? pickFrom(rng, pool) : pool; }
+  var sampled = soundPools.map(sampleSound);
+  return {
+    label: 'Fusion (' + validNames.map(function(name) { return GENRES[name].label; }).join(' × ') + ')',
+    tempoRange: [Math.round(tempoLow / genres.length), Math.round(tempoHigh / genres.length)],
+    keys: GENRES[validNames[0]].keys || ['C', 'D', 'E', 'F', 'G', 'A'],
+    octaves: pickFrom(rng, genres).octaves,
+    sounds: [{
+      lead: sampled[0].lead || 'triangle',
+      bass: sampled[Math.min(1, sampled.length - 1)].bass || 'sine',
+      chord: sampled[sampled.length - 1].chord || 'gm_electric_piano_1',
+      arp: sampled[0].arp || sampled[sampled.length - 1].lead || 'sine',
+    }],
+    bank: bank || ['RolandTR808'],
+    drums: drums,
+    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
+    harmonyGenre: validNames[0],
+  };
+}
 
-  // pick sounds from different genres for each role
-  function getSounds(g) { return g.sounds || (g.subgenres ? pickFrom(rng, g.subgenres).sounds : {}); }
-  var sndPool = gs.map(getSounds);
-  var lead = sndPool[0].lead || 'sawtooth';
-  var bass = sndPool[Math.min(1, sndPool.length - 1)].bass || 'sine';
-  var chord = sndPool[Math.min(2, sndPool.length - 1)].chord || 'sawtooth';
-  var arp = sndPool[sndPool.length - 1].arp || 'triangle';
+function chooseHarmonyProfile(genreName, analysis, rng, variationIndex) {
+  var profiles = HARMONY_PROFILES[genreName] || HARMONY_PROFILES.edm;
+  var bestIndex = 0;
+  var bestScore = Infinity;
+  profiles.forEach(function(profile, index) {
+    var score = Math.abs(profile.brightness - analysis.brightness) + Math.abs(profile.tension - analysis.tension) * .85 + rng() * .12;
+    if (score < bestScore) { bestScore = score; bestIndex = index; }
+  });
+  return profiles[(bestIndex + (variationIndex || 0)) % profiles.length];
+}
+
+function buildHarmonySymbols(key, degrees) {
+  return degrees.map(function(spec) { return transposeNote(key, spec[0]) + spec[1]; });
+}
+
+function buildGenericHarmonyDegrees(scale, harmonicBars) {
+  var template = SCALE_HARMONY_TEMPLATES[scale] || SCALE_HARMONY_TEMPLATES.minor;
+  if (harmonicBars === 12) {
+    var quality = (scale === 'minor' || scale === 'dorian' || scale === 'phrygian' || scale === 'minor:pentatonic') ? 'm7' : '7';
+    var turnaround = [0,0,0,0,5,5,0,0,7,5,0,7];
+    return turnaround.map(function(degree) { return [degree, quality]; });
+  }
+  var result = [];
+  for (var i = 0; i < harmonicBars; i++) result.push(template[i % template.length].slice());
+  return result;
+}
+
+function makeBar(notes) { return '[' + notes.join(' ') + ']'; }
+
+function generateChordAwarePhrase(rng, phraseBars, analysis, variationIndex) {
+  var motifPool = [
+    [0,1,2,1], [0,2,1,2], [1,0,2,1], [0,1,3,2], [2,1,0,1],
+  ];
+  var baseMotifIndex = Math.floor(rng() * motifPool.length);
+  var motif = motifPool[(baseMotifIndex + (variationIndex || 0)) % motifPool.length].slice();
+  var leadBars = [];
+  var counterBars = [];
+  for (var bar = 0; bar < phraseBars; bar++) {
+    var section = phraseBars === 12 ? Math.floor(bar / 4) : Math.floor(bar / Math.max(1, phraseBars / 2));
+    var notes = motif.slice();
+    if (section === 1) {
+      notes = notes.map(function(note, index) { return index % 2 ? Math.max(0, Math.min(3, note + 1)) : note; });
+    } else if (section >= 2) {
+      notes = motif.slice().reverse().map(function(note) { return Math.max(0, Math.min(3, 2 - (note - 1))); });
+    }
+    /** @type {Array<number|string>} */
+    var renderedNotes = notes;
+    if (bar % 2 === 1) renderedNotes = [notes[0], '~', notes[2], notes[1]];
+    if (analysis.energy < .42) renderedNotes = [notes[0] + '@2', '~', notes[2], '~'];
+    else if (analysis.energy > .7 && rng() < .5) renderedNotes = ['[' + notes[0] + ' ' + notes[1] + ']', notes[2], notes[1], notes[3]];
+    if (bar === phraseBars - 1) renderedNotes = [2, 1, '0@2'];
+    leadBars.push(makeBar(renderedNotes));
+
+    /** @type {Array<number|string>} */
+    var counter = bar === phraseBars - 1
+      ? ['~', '~', 0, '~']
+      : (bar % 2 === 0 ? ['~', '~', 2, '~'] : ['~', 1 + '@2', '~']);
+    counterBars.push(makeBar(counter));
+  }
+  return {
+    motif: motif,
+    lead: '<' + leadBars.join(' ') + '>',
+    counter: '<' + counterBars.join(' ') + '>',
+  };
+}
+
+function generateBassPattern(rng, harmonicBars, energy) {
+  var patterns = energy > .65
+    ? [[0,0,1,0],[0,1,0,2],[0,0,2,1],[0,1,2,0]]
+    : energy < .35
+      ? [[0,'~',1,'~'],[0,'~','0@2'],[0,'~',2,'~']]
+      : [[0,0,1,'~'],[0,'~',1,0],[0,0,2,1],[0,'~',1,'~']];
+  var bars = [];
+  for (var i = 0; i < harmonicBars; i++) {
+    var notes = pickFrom(rng, patterns).slice();
+    if (i === harmonicBars - 1) notes = [0, 1, '0@2'];
+    bars.push(makeBar(notes));
+  }
+  return '<' + bars.join(' ') + '>';
+}
+
+function genDrumGains(rng, analysis) {
+  var kick = (0.52 + analysis.energy * .28).toFixed(2);
+  var snare = (0.46 + analysis.energy * .16).toFixed(2);
+  var hats = pickFrom(rng, ['[.28 .12 .2 .12]*4', '[.3 .14 .24 .12]*4', '[.25 .12]*8']);
+  return kick + ', ~ ' + snare + ' ~ ' + snare + ', ' + hats + ', [~ .16]*4';
+}
+
+function chooseForm(genreName, rng, variationIndex) {
+  var forms = genreName === 'blues' ? FORMS_BLUES : (genreName === 'ambient' ? FORMS_AMBIENT : FORMS_16);
+  var baseIndex = Math.floor(rng() * forms.length);
+  return forms[(baseIndex + (variationIndex || 0)) % forms.length];
+}
+
+function resolveGenrePlan(genreName, harmonyRng) {
+  var genre;
+  var resolvedName = genreName;
+  var subLabel = '';
+  if (genreName === 'random') {
+    genre = buildRandomGenre(harmonyRng);
+    resolvedName = 'random';
+  } else if (genreName.indexOf('fusion:') === 0) {
+    genre = buildFusionGenre(harmonyRng, genreName.replace('fusion:', '').split('+'));
+    resolvedName = 'fusion';
+  } else if (genreName === 'fusion') {
+    genre = buildFusionGenre(harmonyRng);
+    resolvedName = 'fusion';
+  } else {
+    genre = GENRES[genreName] || GENRES.edm;
+  }
+
+  var soundPool = genre.sounds;
+  var keyPool = genre.keys;
+  if (genreName === 'world') {
+    var sub = pickFrom(harmonyRng, genre.subgenres);
+    soundPool = sub.sounds;
+    keyPool = sub.keys;
+    subLabel = ' · ' + sub.name;
+  }
+  return { genre: genre, resolvedName: resolvedName, soundPool: soundPool, keyPool: keyPool, subLabel: subLabel };
+}
+
+function ensureLeadFx(fx, analysis) {
+  var joined = fx.join('');
+  if (joined.indexOf('.lpf(') === -1) fx.push('.lpf(' + Math.round(2200 + analysis.brightness * 3600) + ')');
+  if (joined.indexOf('.lpq(') === -1) fx.push('.lpq(2)');
+  if (joined.indexOf('.hpf(') === -1) fx.push('.hpf(20)');
+  if (joined.indexOf('.shape(') === -1) fx.push('.shape(0)');
+  if (joined.indexOf('.crush(') === -1) fx.push('.crush(16)');
+  if (joined.indexOf('.delay(') === -1) fx.push('.delay(.12)');
+  if (joined.indexOf('.delayfeedback(') === -1) fx.push('.delayfeedback(.22)');
+  if (joined.indexOf('.room(') === -1) fx.push('.room(' + (0.18 + analysis.space * .42).toFixed(2) + ')');
+  if (joined.indexOf('.gain(') === -1) fx.push('.gain(.36)');
+  return fx;
+}
+
+function createCompositionPlan(text, genreName, variations) {
+  var normalizedText = (text || '').normalize('NFKC').trim();
+  var state = copyVariationState(variations || variationState);
+  var seedBase = normalizedText.toLowerCase() + ':' + genreName;
+  var harmonyRng = createRNG(seedBase + ':harmony:' + state.harmony);
+  var melodyRng = createRNG(seedBase + ':melody-base');
+  var grooveRng = createRNG(seedBase + ':groove:' + state.groove);
+  var arrangementRng = createRNG(seedBase + ':arrangement:' + state.arrangement);
+  var analysis = analyzeText(normalizedText);
+  var resolved = resolveGenrePlan(genreName, harmonyRng);
+  var genre = resolved.genre;
+  var harmonyGenre = genre.harmonyGenre || (resolved.resolvedName === 'random' || resolved.resolvedName === 'fusion' ? 'edm' : resolved.resolvedName);
+  var identityRng = createRNG(seedBase + ':harmony-identity');
+  var profiles = HARMONY_PROFILES[harmonyGenre] || HARMONY_PROFILES.edm;
+  var profile = chooseHarmonyProfile(harmonyGenre, analysis, identityRng, state.harmony);
+  var keyPool = resolved.keyPool || ['C','D','E','F','G','A'];
+  var baseKeyIndex = Math.floor(identityRng() * keyPool.length);
+  var keyCycle = Math.floor(state.harmony / profiles.length);
+  var key = keyPool[(baseKeyIndex + keyCycle) % keyPool.length];
+  var harmonyDegrees = profile.degrees.map(function(spec) { return spec.slice(); });
+  var harmonySymbols = buildHarmonySymbols(key, harmonyDegrees);
+  var tempoPosition = clamp(.12 + analysis.energy * .76 + (harmonyRng() - .5) * .12);
+  var tempo = Math.round(genre.tempoRange[0] + tempoPosition * (genre.tempoRange[1] - genre.tempoRange[0]));
+  var bank = Array.isArray(genre.bank) ? pickFrom(arrangementRng, genre.bank) : genre.bank;
+  var sounds = Array.isArray(resolved.soundPool) ? pickFrom(arrangementRng, resolved.soundPool) : resolved.soundPool;
+  sounds = sounds || { lead: 'triangle', bass: 'sine', chord: 'gm_electric_piano_1', arp: 'sine' };
+  var formGenre = harmonyGenre === 'blues' ? 'blues' : (harmonyGenre === 'ambient' ? 'ambient' : resolved.resolvedName);
+  var form = chooseForm(formGenre, createRNG(seedBase + ':form-base'), state.arrangement);
+  var phrase = generateChordAwarePhrase(melodyRng, profile.phraseBars, analysis, state.melody);
+  var bass = generateBassPattern(createRNG(seedBase + ':bass:' + state.harmony), profile.harmonicBars, analysis.energy);
+  var drums = null;
+  if (genre.drums && genre.drums.length) {
+    var grooveBaseRng = createRNG(seedBase + ':groove-base');
+    var drumIndex = (Math.floor(grooveBaseRng() * genre.drums.length) + state.groove) % genre.drums.length;
+    drums = genre.drums[drumIndex];
+  }
+  var chordRhythms = harmonyGenre === 'ambient' ? ['x(2,8,-1)', 'x(3,8,-1)'] : ['x(3,8,-1)', 'x(4,8,-1)', 'x(5,8,-1)'];
+  var chordRhythm = pickFrom(harmonyRng, chordRhythms);
+  var accentChoices = harmonyGenre === 'ambient' || harmonyGenre === 'classical' || harmonyGenre === 'edm' ? ['arp','counter'] : ['counter','none'];
+  var accentRole = pickFrom(arrangementRng, accentChoices);
+  var includePerc = Boolean(drums && bank && analysis.energy > .48 && arrangementRng() > .28);
+  var includeTexture = Boolean(harmonyGenre === 'ambient' || analysis.space > .45 || arrangementRng() > .72);
+  var room = (0.16 + analysis.space * .46).toFixed(2);
+  var lpfLow = Math.round(450 + analysis.weight * 450);
+  var lpfHigh = Math.round(2600 + analysis.brightness * 3600);
+  var filterSpeed = 4 + Math.round(analysis.space * 8);
+  var genreFx = genre.leadFx ? genre : {
+    leadFx: function() { return ['.lpf(sine.range('+lpfLow+','+lpfHigh+').slow('+filterSpeed+'))', '.decay(.16).sustain(.38)', '.room('+room+').gain(.38)']; },
+    bassFx: function() { return ['.lpf('+Math.round(180+analysis.brightness*180)+').decay(.14).sustain(.32).gain(.48)']; },
+    chordFx: function() { return ['.decay(.2).sustain(.38)', '.room('+room+').gain(.26)']; },
+  };
+  var leadFx = ensureLeadFx(genreFx.leadFx(arrangementRng, analysis, room, lpfLow, lpfHigh, filterSpeed).slice(), analysis);
+  var bassFx = genreFx.bassFx(arrangementRng, analysis, room).slice();
+  var chordFx = genreFx.chordFx(arrangementRng, analysis, room).filter(function(fx) { return fx.indexOf('.struct(') === -1; });
+  var leadTechnique = pickFrom(arrangementRng, [
+    '', '.every(4, x=>x.rev())', '.every(8, x=>x.fast(2))',
+    analysis.space > .4 ? '.jux(rev)' : '', analysis.energy > .62 ? '.off(1/8, x=>x.gain(.18))' : '',
+  ]);
+  var octaves = genre.octaves || { lead: 5, bass: 2, chord: 4, arp: 6 };
+  var leadRegister = Math.max(3, Math.min(7, octaves.lead || 5));
+  var accentRegister = Math.max(4, Math.min(7, octaves.arp || leadRegister + 1));
 
   return {
-    label: 'Fusion (' + genreNames.map(function(n) { return (GENRES[n] || {}).label || n; }).join(' x ') + ')',
-    tempoRange: [Math.round(tempoLo / gs.length), Math.round(tempoHi / gs.length)],
-    scales: allScales,
-    keys: allKeys.length ? allKeys : ['C', 'D', 'E', 'F', 'G', 'A'],
-    octaves: pickFrom(rng, gs).octaves,
-    sounds: { lead: lead, bass: bass, chord: chord, arp: arp },
-    bank: Array.isArray(bank) ? bank : (bank ? [bank] : ['RolandTR808']),
-    drums: drums,
-    progressions: allProgs,
-    layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
+    source: 'algorithmic', text: normalizedText, genreName: genreName, resolvedGenreName: resolved.resolvedName,
+    genreLabel: genre.label + resolved.subLabel, harmonyGenre: harmonyGenre, analysis: analysis, variations: state,
+    key: key, scale: profile.scale, tempo: tempo, profileName: profile.name,
+    harmony: { degrees: harmonyDegrees, symbols: harmonySymbols, harmonicBars: profile.harmonicBars, phraseBars: profile.phraseBars },
+    form: form, sounds: sounds, bank: bank, drums: drums, drumGains: genDrumGains(grooveRng, analysis),
+    chordRhythm: chordRhythm, phrase: phrase, bassPattern: bass, accentRole: accentRole,
+    includePerc: includePerc, includeTexture: includeTexture, room: room,
+    leadFx: leadFx, bassFx: bassFx, chordFx: chordFx, leadTechnique: leadTechnique,
+    registers: {
+      harmony: Math.max(2, Math.min(6, octaves.chord || 4)),
+      bass: Math.max(1, Math.min(4, octaves.bass || 2)),
+      lead: leadRegister,
+      accent: accentRegister,
+    },
   };
 }
 
-// ---- Main Code Generator ----
-function generateCode(text, genreName) {
-  var rng = createRNG(text.toLowerCase().trim() + ':' + genreName + ':' + seedCounter);
-  var a = analyzeText(text);
-  var g, resolvedGenreName = genreName;
+var GENERATED_ARRANGEMENT_END = '// --- generated arrangement end ---';
 
-  if (genreName === 'random') {
-    g = buildRandomGenre(rng);
-  } else if (genreName.indexOf('fusion:') === 0) {
-    var fusionParts = genreName.replace('fusion:', '').split('+');
-    g = buildFusionGenre(rng, fusionParts);
-    resolvedGenreName = 'fusion';
-  } else if (genreName === 'fusion') {
-    g = buildFusionGenre(rng);
-    resolvedGenreName = 'fusion';
-  } else {
-    g = GENRES[genreName];
-  }
+function scaleAnchor(key, octave) { return key.toLowerCase() + octave; }
+function safeCommentText(text) { return String(text || '').replace(/\s+/g, ' ').replace(/"/g, "'").trim(); }
 
-  var scales, keys, soundPool, subLabel = '';
-  if (genreName === 'world') {
-    var sub = pickFrom(rng, g.subgenres);
-    scales = sub.scales; keys = sub.keys; soundPool = sub.sounds;
-    subLabel = ' (' + sub.name + ')';
-  } else {
-    scales = g.scales; keys = g.keys; soundPool = g.sounds;
-  }
-
-  // pick from sound pool (array of options)
-  var sounds = Array.isArray(soundPool) ? pickFrom(rng, soundPool) : soundPool;
-  var bank = Array.isArray(g.bank) ? pickFrom(rng, g.bank) : g.bank;
-
-  var key = pickFrom(rng, keys);
-  var scaleName = pickFrom(rng, scales);
-  var tempo = Math.round(g.tempoRange[0] + rng() * (g.tempoRange[1] - g.tempoRange[0]));
-  var prog = pickFrom(rng, g.progressions);
-  var melLen = resolvedGenreName === 'ambient' ? 6 : resolvedGenreName === 'classical' ? 12 : 8;
-  var melody = generateMelody(rng, melLen, a.space * 0.3, a.energy * 0.4);
-  var addPat = genAddPattern(rng, a);
-  var oct = g.octaves;
-  var room = (0.15 + a.space * 0.5).toFixed(2);
-  var lpfLow = Math.round(400 + a.weight * 500);
-  var lpfHigh = Math.round(2500 + a.brightness * 4000);
-  var filterSpeed = 2 + Math.round(a.space * 6);
-  function sc(o) { return '"' + key + o + ':' + scaleName + '"'; }
-
-  // pick artist-inspired techniques
-  var techniques = pickTechniques(rng, a, resolvedGenreName);
-  var techNames = techniques.join(', ');
-
-  // resolve genre-specific fx (or build default for random/fusion)
-  var gFx = g.leadFx ? g : {
-    leadFx: function(r2,a2,rm) { return ['.lpf(sine.range('+lpfLow+','+lpfHigh+').slow('+filterSpeed+'))','.decay(.15).sustain(.4)','.room('+rm+').gain(.4)']; },
-    bassFx: function(r2,a2,rm) { return ['.lpf('+Math.round(200+a.brightness*200)+').decay(.12).sustain(.3).room('+rm+').gain(.5)']; },
-    chordFx: function(r2,a2,rm) { var fx = []; if(a2.energy>0.5) fx.push('.struct("[~ x]*'+pickFrom(r2,[2,4])+'")'); fx.push('.decay(.15).sustain(.3)','.room('+rm+').gain(.28)'); return fx; },
-  };
-
-  // Generate arrangement masks — layers enter at different times
-  var totalCycles = 16 + Math.round(a.complexity * 16); // 16-32 cycles before full repeat
-  var masks = {
-    drums: null,
-    bass: null,
-    lead: null,
-    chords: null,
-    arp: null,
-  };
-  if (rng() < 0.65) {
-    // staggered entry: drums first, then bass, then lead, then chords
-    var d_in = 0;
-    var b_in = 2 + Math.floor(rng() * 4);  // bass enters 2-5 cycles in
-    var l_in = b_in + 2 + Math.floor(rng() * 4); // lead enters after bass
-    var c_in = Math.floor(rng() * 4); // chords can enter early or late
-    masks.bass = '"<0@' + b_in + ' 1@' + (totalCycles - b_in) + '>"';
-    masks.lead = '"<0@' + l_in + ' 1@' + (totalCycles - l_in) + '>"';
-    if (rng() < 0.4) masks.arp = '"<0@' + (l_in + 2) + ' 1@' + (totalCycles - l_in - 2) + '>"';
-  }
-
-  // Generate .every() variation for lead
-  var everyFx = '';
-  if (rng() < 0.5) {
-    var everyN = pickFrom(rng, [3, 4, 6, 8]);
-    var everyFn = pickFrom(rng, ['rev', 'fast(2)', 'add(' + pickFrom(rng, [2, 5, 7]) + ')']);
-    everyFx = '.every(' + everyN + ', x=>x.' + everyFn + ')';
-  }
-
+function renderCompositionPlan(plan) {
+  var a = plan.analysis;
   var L = [];
-  L.push('// "' + text + '" -> ' + g.label + subLabel);
-  L.push('// ' + key + ' ' + scaleName.replace(/:/g, ' ') + ' @ ' + tempo + ' BPM');
+  var layers = [];
+  L.push('// "' + safeCommentText(plan.text) + '" -> ' + plan.genreLabel);
+  L.push('// identity: ' + plan.key + ' ' + plan.scale.replace(/:/g, ' ') + ' · ' + plan.profileName + ' · ' + plan.tempo + ' BPM');
   L.push('// mood: ' + describeMood(a));
-  if (techNames) L.push('// techniques: ' + techNames);
+  L.push('// form: ' + plan.form.name + ' (' + plan.form.length + ' cycles)');
+  L.push('// variation: H' + plan.variations.harmony + ' M' + plan.variations.melody + ' G' + plan.variations.groove + ' A' + plan.variations.arrangement);
   L.push('');
-  L.push('setcpm(' + tempo + '/4)');
+  L.push('setcpm(' + plan.tempo + '/4)');
+  L.push('');
+  L.push('const harmony = chord("<' + plan.harmony.symbols.join(' ') + '>").dict("ireal")');
   L.push('');
 
-  // DRUMS
-  if (g.layers.indexOf('drums') !== -1 && g.drums) {
-    var d = pickFrom(rng, g.drums);
-    var dp = [d.k, d.s, d.h, d.x].filter(Boolean).join(', ');
-    L.push(genComment(rng, 'drums', a));
-    L.push('$: s("' + dp + '")');
-    L.push('.bank("' + bank + '")');
-    L.push('.gain("' + genDrumGains(rng, a) + '")');
-    if (resolvedGenreName === 'lofi') L.push('.lpf(' + Math.round(2000 + a.brightness * 2000) + ')');
-    if (techniques.indexOf('fakeSidechain') !== -1) L.push(TECHNIQUES.fakeSidechain());
-    // filter fade-in on drums for intro feel
-    if (masks.bass && rng() < 0.5) L.push('.lpf(sine.range(800,' + Math.round(4000 + a.brightness * 4000) + ').slow(' + totalCycles + '))');
+  function addLayer(role, lines) {
+    layers.push(role);
+    L.push('// ' + role);
+    lines.forEach(function(line) { if (line) L.push(line); });
     L.push('');
   }
 
-  // BASS
-  if (g.layers.indexOf('bass') !== -1) {
-    L.push(genComment(rng, 'bass', a));
-    L.push('$: n("' + genBass(rng, prog, a.energy) + '")');
-    L.push('.scale(' + sc(oct.bass) + ').s("' + sounds.bass + '")');
-    gFx.bassFx(rng, a, room).forEach(function(fx) { L.push(fx); });
-    if (masks.bass) L.push('.mask(' + masks.bass + ')');
-    L.push('');
+  if (plan.drums && plan.bank) {
+    var drumPattern = [plan.drums.k, plan.drums.s, plan.drums.h, plan.drums.x].filter(Boolean).join(', ');
+    addLayer('drums · pulse and backbeat', [
+      '$: s("' + drumPattern + '")', '.bank("' + plan.bank + '")', '.gain("' + plan.drumGains + '")',
+      plan.harmonyGenre === 'lofi' ? '.lpf(' + Math.round(2100 + a.brightness * 1700) + ')' : '',
+      (plan.harmonyGenre === 'jazz' || plan.harmonyGenre === 'blues' || plan.harmonyGenre === 'lofi') ? '.swing(4)' : '',
+      '.orbit(1)', '.mask("' + plan.form.masks.drums + '")',
+    ]);
   }
 
-  // LEAD
-  if (g.layers.indexOf('lead') !== -1) {
-    L.push(genComment(rng, 'lead', a));
-    L.push('$: n("' + melody + '".add("' + addPat + '"))');
-    L.push('.scale(' + sc(oct.lead) + ').s("' + sounds.lead + '")');
-    gFx.leadFx(rng, a, room, lpfLow, lpfHigh, filterSpeed).forEach(function(fx) { L.push(fx); });
-    if (everyFx) L.push(everyFx);
-    // artist-inspired techniques on lead
-    techniques.forEach(function(t) {
-      if (t === 'off' || t === 'detune' || t === 'juxRev' || t === 'echoWith' ||
-          t === 'echo' || t === 'degrade' || t === 'sometimes') {
-        L.push(TECHNIQUES[t](rng, a));
+  addLayer('bass · roots that follow harmony', [
+    '$: n("' + plan.bassPattern + '")', '.set(harmony).mode("root:g' + plan.registers.bass + '").voicing()',
+    '.s("' + plan.sounds.bass + '")',
+  ].concat(plan.bassFx).concat(['.orbit(2)', '.mask("' + plan.form.masks.bass + '")']));
+
+  addLayer('harmony · voice-led progression', [
+    '$: harmony.anchor("c' + plan.registers.harmony + '").voicing()', '.struct("' + plan.chordRhythm + '")',
+    '.s("' + plan.sounds.chord + '")',
+  ].concat(plan.chordFx).concat(['.orbit(3)', '.mask("' + plan.form.masks.harmony + '")']));
+
+  addLayer('lead · motif, answer, resolution', [
+    '$: harmony.n("' + plan.phrase.lead + '")', '.anchor("' + scaleAnchor(plan.key, plan.registers.lead) + '").voicing()',
+    '.s("' + plan.sounds.lead + '")',
+  ].concat(plan.leadFx).concat([plan.leadTechnique, '.orbit(4)', '.mask("' + plan.form.masks.lead + '")']));
+
+  if (plan.accentRole === 'arp') {
+    addLayer('accent · harmony-derived arpeggio', [
+      '$: harmony.n("[0 1 2 1]*2")', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
+      '.s("' + (plan.sounds.arp || plan.sounds.lead || 'sine') + '")', '.decay(.08).sustain(0)', '.delay(.18).delayfeedback(.28)',
+      '.room(' + Math.min(.65, .22 + a.space * .35).toFixed(2) + ').gain(.14)', '.orbit(5)', '.mask("' + plan.form.masks.accent + '")',
+    ]);
+  } else if (plan.accentRole === 'counter') {
+    addLayer('accent · answer in the lead gaps', [
+      '$: harmony.n("' + plan.phrase.counter + '")', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
+      '.s("' + (plan.sounds.arp || 'sine') + '")', '.attack(.04).release(.35)', '.gain(.13).room(' + plan.room + ')',
+      '.late(1/8)', '.orbit(5)', '.mask("' + plan.form.masks.accent + '")',
+    ]);
+  }
+
+  if (plan.includePerc && plan.bank) {
+    var percussion = ['[~ rim]*4', 'rim [~ rim] ~ rim', '[~ perc]*4', '[~ cb]*4'];
+    var percRng = createRNG(plan.text.toLowerCase() + ':' + plan.genreName + ':perc:' + plan.variations.groove);
+    addLayer('percussion · offbeat detail', [
+      '$: s("' + pickFrom(percRng, percussion) + '")', '.bank("' + plan.bank + '")',
+      '.gain(' + (.13 + a.energy * .12).toFixed(2) + ')', '.orbit(1)', '.mask("' + plan.form.masks.accent + '")',
+    ]);
+  }
+
+  if (plan.includeTexture) {
+    var textureRng = createRNG(plan.text.toLowerCase() + ':' + plan.genreName + ':texture:' + plan.variations.arrangement);
+    addLayer('texture · air around the arrangement', [
+      '$: s("' + pickFrom(textureRng, ['pink','brown','white']) + '")', '.lpf(' + Math.round(320 + a.brightness * 720) + ')',
+      '.gain(sine.range(.02,' + (.045 + a.weight * .045).toFixed(2) + ').slow(' + Math.round(10 + a.space * 12) + '))',
+      '.room(' + (.42 + a.space * .34).toFixed(2) + ')', '.orbit(6)', '.mask("' + plan.form.masks.texture + '")',
+    ]);
+  }
+
+  L.push(GENERATED_ARRANGEMENT_END);
+  plan.layerRoles = layers;
+  return L.join('\n').trim();
+}
+
+function generateCode(text, genreName, variations) {
+  var plan = createCompositionPlan(text, genreName, variations || variationState);
+  lastCompositionPlan = plan;
+  return renderCompositionPlan(plan);
+}
+
+var MUSIC_LAYER_NAMES = ['drums', 'bass', 'harmony', 'lead', 'accent', 'percussion', 'texture'];
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findExactLine(code, line, fromIndex) {
+  var expression = new RegExp('^' + escapeRegExp(line) + '\\r?$', 'gm');
+  expression.lastIndex = fromIndex || 0;
+  var match = expression.exec(code);
+  return match ? { start: match.index, end: match.index + match[0].length } : null;
+}
+
+function findLastExactLine(code, line) {
+  var expression = new RegExp('^' + escapeRegExp(line) + '\\r?$', 'gm');
+  var match;
+  var last = null;
+  while ((match = expression.exec(code))) {
+    last = { start: match.index, end: match.index + match[0].length };
+  }
+  return last;
+}
+
+function findLayerBounds(code, role) {
+  var generatedEnd = findLastExactLine(code, GENERATED_ARRANGEMENT_END);
+  if (!generatedEnd) return null;
+  var harmonyExpression = /^const harmony = chord\("<[^"\r\n]+>"\)\.dict\("ireal"\)$/gm;
+  var harmonyMatch;
+  var generatedStart = -1;
+  while ((harmonyMatch = harmonyExpression.exec(code)) && harmonyMatch.index < generatedEnd.start) {
+    generatedStart = harmonyMatch.index;
+  }
+  if (generatedStart === -1) return null;
+  var markerExpression = new RegExp('^// ' + escapeRegExp(role) + ' ·[^\\r\\n]*$', 'gm');
+  markerExpression.lastIndex = generatedStart;
+  var marker = markerExpression.exec(code);
+  if (!marker || marker.index >= generatedEnd.start) return null;
+  var nextLayerExpression = /^\/\/ (?:drums|bass|harmony|lead|accent|percussion|texture) ·[^\r\n]*$/gm;
+  nextLayerExpression.lastIndex = marker.index + marker[0].length;
+  var next = nextLayerExpression.exec(code);
+  var end = next ? next.index : code.length;
+  end = Math.min(end, generatedEnd.start);
+  return { start: marker.index, end: end };
+}
+
+function getLayerBlock(code, role) {
+  var bounds = findLayerBounds(code, role);
+  return bounds ? code.slice(bounds.start, bounds.end).trim() : '';
+}
+
+function setLayerBlock(code, role, block) {
+  var bounds = findLayerBounds(code, role);
+  var replacement = block ? block.trim() : '';
+  if (!bounds && replacement) {
+    var generatedEnd = findLastExactLine(code, GENERATED_ARRANGEMENT_END);
+    if (generatedEnd) {
+      return code.slice(0, generatedEnd.start).trimEnd() + '\n\n' + replacement + '\n\n' + code.slice(generatedEnd.start);
+    }
+    return code.trimEnd() + '\n\n' + replacement;
+  }
+  if (!bounds) return code;
+  return code.slice(0, bounds.start) + (replacement ? replacement + '\n' : '') + code.slice(bounds.end);
+}
+
+function transformLayerBlock(code, role, transform) {
+  var block = getLayerBlock(code, role);
+  return block ? setLayerBlock(code, role, transform(block)) : code;
+}
+
+function replaceQuotedCall(block, expression, value) {
+  return block.replace(expression, function(match, before, after) {
+    return before + value + after;
+  });
+}
+
+function updatePlanComments(code, plan) {
+  return code
+    .replace(/^\/\/ form:.*$/m, '// form: ' + plan.form.name + ' (' + plan.form.length + ' cycles)')
+    .replace(/^\/\/ variation:.*$/m, '// variation: H' + plan.variations.harmony + ' M' + plan.variations.melody +
+      ' G' + plan.variations.groove + ' A' + plan.variations.arrangement);
+}
+
+function patchLayerMask(code, role, mask) {
+  return transformLayerBlock(code, role, function(block) {
+    if (/\.mask\("[^"]*"\)/.test(block)) {
+      return replaceQuotedCall(block, /(\.mask\(")[^"]*("\))/, mask);
+    }
+    return block.trimEnd() + '\n.mask("' + mask + '")';
+  });
+}
+
+function generateFocusedVariationCode(focus, currentCode) {
+  if (!lastCompositionPlan || !currentCode) return currentCode;
+  var currentPlan = lastCompositionPlan;
+  var candidate = createCompositionPlan(currentPlan.text, currentPlan.genreName, variationState);
+  var code = currentCode;
+
+  if (focus === 'melody') {
+    code = transformLayerBlock(code, 'lead', function(block) {
+      return replaceQuotedCall(block, /(\$: harmony\.n\(")[^"]*("\))/, candidate.phrase.lead);
+    });
+    code = transformLayerBlock(code, 'accent', function(block) {
+      if (block.indexOf('answer in the lead gaps') === -1) return block;
+      return replaceQuotedCall(block, /(\$: harmony\.n\(")[^"]*("\))/, candidate.phrase.counter);
+    });
+    currentPlan.phrase = candidate.phrase;
+    currentPlan.variations = candidate.variations;
+    return updatePlanComments(code, currentPlan);
+  }
+
+  if (focus === 'groove') {
+    if (candidate.drums) {
+      var drumPattern = [candidate.drums.k, candidate.drums.s, candidate.drums.h, candidate.drums.x].filter(Boolean).join(', ');
+      code = transformLayerBlock(code, 'drums', function(block) {
+        block = replaceQuotedCall(block, /(\$: s\(")[^"]*("\))/, drumPattern);
+        return replaceQuotedCall(block, /(\.gain\(")[^"]*("\))/, candidate.drumGains);
+      });
+      var candidateCode = renderCompositionPlan(candidate);
+      var candidatePerc = getLayerBlock(candidateCode, 'percussion');
+      if (candidatePerc && getLayerBlock(code, 'percussion')) {
+        var nextPercPattern = (candidatePerc.match(/\$: s\("([^"]*)"\)/) || [])[1];
+        if (nextPercPattern) {
+          code = transformLayerBlock(code, 'percussion', function(block) {
+            return replaceQuotedCall(block, /(\$: s\(")[^"]*("\))/, nextPercPattern);
+          });
+        }
+      }
+    }
+    currentPlan.drums = candidate.drums;
+    currentPlan.drumGains = candidate.drumGains;
+    currentPlan.variations = candidate.variations;
+    return updatePlanComments(code, currentPlan);
+  }
+
+  if (focus === 'arrangement') {
+    var currentBaselineCode = renderCompositionPlan(currentPlan);
+    var preserved = ['analysis', 'key', 'scale', 'tempo', 'profileName', 'harmony', 'phrase', 'bassPattern', 'drums', 'drumGains', 'registers', 'room'];
+    preserved.forEach(function(field) { candidate[field] = currentPlan[field]; });
+    var candidateCode = renderCompositionPlan(candidate);
+
+    code = transformLayerBlock(code, 'drums', function(block) {
+      return candidate.bank
+        ? replaceQuotedCall(block, /(\.bank\(")[^"]*("\))/, candidate.bank)
+        : block;
+    });
+    ['bass', 'harmony', 'lead'].forEach(function(role) {
+      var sound = role === 'bass' ? candidate.sounds.bass : (role === 'harmony' ? candidate.sounds.chord : candidate.sounds.lead);
+      code = transformLayerBlock(code, role, function(block) {
+        return replaceQuotedCall(block, /(\.s\(")[^"]*("\))/, sound);
+      });
+    });
+    code = transformLayerBlock(code, 'harmony', function(block) {
+      return replaceQuotedCall(block, /(\.struct\(")[^"]*("\))/, candidate.chordRhythm);
+    });
+    code = transformLayerBlock(code, 'lead', function(block) {
+      if (currentPlan.leadTechnique) block = block.replace('\n' + currentPlan.leadTechnique, '');
+      if (candidate.leadTechnique && block.indexOf(candidate.leadTechnique) === -1) {
+        block = block.replace(/\n\.orbit\(4\)/, '\n' + candidate.leadTechnique + '\n.orbit(4)');
+      }
+      return block;
+    });
+
+    ['accent', 'percussion', 'texture'].forEach(function(role) {
+      var currentBlock = getLayerBlock(code, role);
+      var baselineBlock = getLayerBlock(currentBaselineCode, role);
+      var candidateBlock = getLayerBlock(candidateCode, role);
+      if (!currentBlock && candidateBlock) {
+        code = setLayerBlock(code, role, candidateBlock);
+      } else if (currentBlock === baselineBlock) {
+        code = setLayerBlock(code, role, candidateBlock);
       }
     });
-    if (masks.lead) L.push('.mask(' + masks.lead + ')');
-    L.push('');
-  }
-
-  // CHORDS / PAD
-  if (g.layers.indexOf('chords') !== -1 || g.layers.indexOf('pad') !== -1) {
-    var isPad = g.layers.indexOf('pad') !== -1;
-    L.push(genComment(rng, isPad ? 'pad' : 'chords', a));
-    L.push('$: n("' + genChords(rng, prog) + '")');
-    L.push('.scale(' + sc(oct.chord) + ').s("' + sounds.chord + '")');
-    gFx.chordFx(rng, a, room).forEach(function(fx) { L.push(fx); });
-    // chord-appropriate techniques
-    techniques.forEach(function(t) {
-      if (t === 'euclid') L.push(TECHNIQUES[t](rng, a));
-      if (t === 'perlinFilter') L.push(TECHNIQUES[t](rng, a));
-      if (t === 'scaleLayer') L.push(TECHNIQUES[t](rng));
+    MUSIC_LAYER_NAMES.forEach(function(role) {
+      var maskRole = role === 'percussion' ? 'accent' : role;
+      if (candidate.form.masks[maskRole]) code = patchLayerMask(code, role, candidate.form.masks[maskRole]);
     });
-    // breathing degradation for organic feel
-    if (rng() < 0.35) L.push('.degradeBy(sine.range(0,' + (0.15 + a.space * 0.25).toFixed(2) + ').slow(' + Math.round(8 + a.space * 16) + '))');
-    L.push('');
+    lastCompositionPlan = candidate;
+    return updatePlanComments(code, candidate);
   }
 
-  // ARP
-  if (g.layers.indexOf('arp') !== -1 && sounds.arp) {
-    L.push(genComment(rng, 'arp', a));
-    L.push('$: n("' + genArp(rng, prog) + '")');
-    L.push('.scale(' + sc(oct.arp) + ').s("' + sounds.arp + '")');
-    if (resolvedGenreName === 'ambient') {
-      L.push('.attack(.1).release(.6)');
-      L.push('.delay(.5).delayfeedback(.55)');
-      L.push('.room(' + (0.6 + a.space * 0.3).toFixed(2) + ').gain(.12)');
-      L.push('.pan(sine.range(.2,.8).slow(5))');
-    } else {
-      L.push('.decay(.06).sustain(0)');
-      L.push('.delay(.3).delayfeedback(.4)');
-      L.push('.gain(.18).pan(sine.range(.25,.75))');
-    }
-    if (masks.arp) L.push('.mask(' + masks.arp + ')');
-    L.push('');
-  }
-
-  // PERCUSSION (separate from drums — rim, perc, shaker patterns)
-  if (g.layers.indexOf('perc') !== -1 && bank) {
-    var percPatterns = [
-      'rim*4', '[~ rim]*4', 'rim [~ rim] ~ rim', '[~ rim]*2',
-      '[~ perc]*4', 'perc [~ perc] ~ perc', '[~ cb]*4', 'rim*8',
-    ];
-    L.push(genComment(rng, 'drums', a));
-    L.push('$: s("' + pickFrom(rng, percPatterns) + '")');
-    L.push('.bank("' + (Array.isArray(bank) ? pickFrom(rng, bank) : bank) + '")');
-    L.push('.gain(' + (0.15 + a.energy * 0.15).toFixed(2) + ')');
-    if (rng() < 0.4) L.push('.pan(sine.range(.3,.7).slow(3))');
-    if (rng() < 0.3) L.push('.degradeBy(' + (0.2 + a.space * 0.3).toFixed(2) + ')');
-    if (masks.bass) L.push('.mask(' + masks.bass + ')');
-    L.push('');
-  }
-
-  // COUNTERMELODY (second melodic voice, offset from lead)
-  if (g.layers.indexOf('countermelody') !== -1) {
-    var counterMel = generateMelody(rng, Math.max(4, melLen - 2), a.space * 0.4, a.energy * 0.3);
-    L.push(genComment(rng, 'lead', a));
-    L.push('$: n("' + counterMel + '".add("<' + genAddPattern(rng, a) + '>"))');
-    L.push('.scale(' + sc(oct.lead > 3 ? oct.lead + 1 : oct.lead) + ').s("' + pickFrom(rng, ['triangle', 'sine', sounds.lead]) + '")');
-    L.push('.decay(.12).sustain(.2)');
-    L.push('.delay(.3).delayfeedback(.4)');
-    L.push('.gain(' + (0.12 + a.brightness * 0.12).toFixed(2) + ')');
-    L.push('.room(' + room + ')');
-    if (rng() < 0.5) L.push('.degradeBy(' + (0.2 + a.space * 0.2).toFixed(2) + ')');
-    if (masks.lead) L.push('.mask(' + masks.lead + ')');
-    L.push('');
-  }
-
-  // TEXTURE (filtered noise / atmosphere)
-  if (g.layers.indexOf('texture') !== -1 && rng() < 0.65) {
-    var noiseTypes = ['pink', 'white', 'brown'];
-    var noiseType = pickFrom(rng, noiseTypes);
-    L.push(genComment(rng, 'pad', a));
-    L.push('$: s("' + noiseType + '")');
-    L.push('.lpf(' + Math.round(300 + a.brightness * 800) + ')');
-    L.push('.gain(sine.range(' + (0.02).toFixed(2) + ',' + (0.06 + a.weight * 0.06).toFixed(2) + ').slow(' + Math.round(8 + a.space * 16) + '))');
-    L.push('.room(' + (0.4 + a.space * 0.4).toFixed(2) + ')');
-    if (masks.lead) L.push('.mask(' + masks.lead + ')');
-    L.push('');
-  }
-
-  return L.join('\n');
+  return currentCode;
 }
+
+function applyToneToPlan(plan, scale) {
+  if (!plan) return null;
+  var target = scale === 'pentatonic' ? 'minor:pentatonic' : scale;
+  var degrees = buildGenericHarmonyDegrees(target, plan.harmony.harmonicBars);
+  plan.scale = target;
+  plan.profileName = target.replace(/:/g, ' ') + ' reharmonization';
+  plan.harmony.degrees = degrees;
+  plan.harmony.symbols = buildHarmonySymbols(plan.key, degrees);
+  return plan;
+}
+
+function replaceHarmonyAndIdentity(code, plan) {
+  return code
+    .replace(/const harmony = chord\("<[^\"]+>"\)\.dict\("ireal"\)/, 'const harmony = chord("<' + plan.harmony.symbols.join(' ') + '>").dict("ireal")')
+    .replace(/^\/\/ identity:.*$/m, '// identity: ' + plan.key + ' ' + plan.scale.replace(/:/g, ' ') + ' · ' + plan.profileName + ' · ' + plan.tempo + ' BPM');
+}
+
+function shiftPlanRegisters(code, delta) {
+  if (!lastCompositionPlan) return code;
+  var registers = lastCompositionPlan.registers;
+  registers.harmony = Math.max(2, Math.min(6, registers.harmony + delta));
+  registers.bass = Math.max(1, Math.min(4, registers.bass + delta));
+  registers.lead = Math.max(3, Math.min(7, registers.lead + delta));
+  registers.accent = Math.max(4, Math.min(7, registers.accent + delta));
+  var melodicAnchorIndex = 0;
+  return code
+    .replace(/anchor\("c\d"\)/, 'anchor("c' + registers.harmony + '")')
+    .replace(/mode\("root:g\d"\)/, 'mode("root:g' + registers.bass + '")')
+    .replace(/(\$: harmony\.n\("[^"]+"\)\n\.anchor\(")([a-g](?:#|b)?)\d("\)\.voicing\(\))/g, function(match, before, note, after) {
+      var octave = melodicAnchorIndex++ === 0 ? registers.lead : registers.accent;
+      return before + note + octave + after;
+    });
+}
+
+// Explicit test boundary: pure music APIs above this marker are dependency-free.
+if (typeof globalThis !== 'undefined') {
+  globalThis.__TTS_MUSIC_TEST__ = {
+    analyzeText: analyzeText,
+    describeMood: describeMood,
+    createCompositionPlan: createCompositionPlan,
+    renderCompositionPlan: renderCompositionPlan,
+    generateCode: generateCode,
+    generateFocusedVariationCode: generateFocusedVariationCode,
+    applyToneToPlan: applyToneToPlan,
+    buildGenericHarmonyDegrees: buildGenericHarmonyDegrees,
+    replaceHarmonyAndIdentity: replaceHarmonyAndIdentity,
+    HARMONY_PROFILES: HARMONY_PROFILES,
+    FORMS_16: FORMS_16,
+    FORMS_AMBIENT: FORMS_AMBIENT,
+    FORMS_BLUES: FORMS_BLUES,
+  };
+}
+// ---- Music Engine End ----
+
 
 // ---- Claude API Integration ----
 var STRUDEL_SYSTEM_PROMPT = `You generate Strudel live-coding music. Strudel is a browser-based JavaScript port of Tidal Cycles for algorithmic music composition.
@@ -783,14 +1062,16 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
 - Output ONLY valid Strudel code. No markdown, no explanation, no prose outside comments.
 - Use $: prefix for each parallel pattern layer.
 - Start with setcpm(BPM/4).
-- Aim for 6-12 $: layers. Each gets a poetic // comment.
+- Aim for 4-7 purposeful $: layers. Each gets a poetic // comment.
   You can split or combine as the music demands. Some options:
   - Drums as 1 combined layer OR split into kick / snare / hats (more control for arrangement)
   - Lead + counter-melody as separate layers, or .layer() to split one pattern into parallel voices
   - Separate texture/noise layer (filtered pink/white/brown noise for atmosphere)
   - Percussion layer (rim, perc, shaker — separate from drums for independent control)
   Advanced technique (use when it fits, not required):
-  - Shared harmonic context: const chords = chord("..."); then multiple $: layers reference it
+  - Shared harmonic context is REQUIRED for tonal music: const harmony = chord("...").dict("ireal")
+    Chords use harmony.voicing(), bass uses .set(harmony).mode("root:g2").voicing(),
+    and melodic chord tones use harmony.n(...).anchor(...).voicing().
   - Shared FX: const fx = x => x.s('saw').cutoff(1200); then .apply(fx) on multiple layers
   - .layer() from one source: melody.layer(x=>x.scaleTranspose(0), x=>x.scaleTranspose(2).early(1/8))
   Do what serves the music. 5 well-crafted layers beat 12 empty ones.
@@ -834,7 +1115,8 @@ When shifting the mood of a piece, adjust these parameters together:
 5. Scale choice is your most important creative decision. It sets the entire emotional world. Never default to C minor + sawtooth + TR909. Every choice needs a REASON tied to the input.
 6. Surprise: at least one unexpected element — unusual sound, non-aligned rhythm, technique used for a non-obvious reason.
 7. ARRANGEMENT: use .mask() so layers enter at different times. Example: .mask("<0@4 1@28>") on bass, .mask("<0@8 1@24>") on lead.
-8. VARIATION: use .every(N, fn) on at least one layer. Example: .every(4, x=>x.rev()). Music that never changes is dead.
+8. VARIATION: keep the harmony and core motif stable, then vary one phrase-level detail with .every(N, fn).
+   Do not add unrelated randomness to every layer. Hierarchy and recognition matter more than novelty.
 9. TEXTURE: .degradeBy(sine.range(0, 0.3).slow(16)) on pads/chords for organic breathing.
 10. MOVEMENT: .lpf(sine.range(lo, hi).slow(N)) on drums or bass for build/release.
 11. MINI-NOTATION SYNTAX: () is ONLY for euclidean rhythms x(k,n). For grouping use []. WRONG: .struct("x(~ x x ~)"). RIGHT: .struct("[~ x x ~]"). WRONG: "<0 2 4 6>7". RIGHT: "<0 2 4 6>".add(7).
@@ -845,15 +1127,184 @@ When shifting the mood of a piece, adjust these parameters together:
 16. BASS DENSITY: In EDM/blues/jazz, bass should play multiple notes per cycle. WRONG: n("<0 3 5 7>") = 1 note per cycle = too slow. RIGHT: n("<[0 0 3 0] [5 5 7 5]>") or n("0 3 5 7") = 4 notes per cycle.
 17. TRIADS not power chords: [0,2,4] = root+3rd+5th (triad). [0,4,7] = root+5th+octave (power chord, empty). Use [root, root+2, root+4] for scale-degree triads.`;
 
+var API_KEY_NS = 'tts_api_key_';
+var API_PERSIST_NS = 'tts_persist_';
+var API_VERIFIED_AT_NS = 'tts_verified_at_';
+var API_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+var API_KEYS_MEMORY = Object.create(null);
+var REQUEST_TIMEOUT_MS = 60000;
+var VERIFY_TIMEOUT_MS = 10000;
+
+// Legacy releases always wrote keys to localStorage. Keep those keys exactly
+// where they are and truthfully mark them persisted; never silently relabel
+// disk-backed data as session-only.
+(function migrateApiState() {
+  ['gemini', 'openai', 'claude'].forEach(function(provider) {
+    var legacyKey = localStorage.getItem(API_KEY_NS + provider);
+    if (legacyKey && localStorage.getItem(API_PERSIST_NS + provider) === null) {
+      localStorage.setItem(API_PERSIST_NS + provider, '1');
+    }
+    var oldVerified = localStorage.getItem('tts_verified_' + provider);
+    if (oldVerified === '1' && !localStorage.getItem(API_VERIFIED_AT_NS + provider)) {
+      localStorage.setItem(API_VERIFIED_AT_NS + provider, String(Date.now()));
+    }
+    if (oldVerified !== null) localStorage.removeItem('tts_verified_' + provider);
+  });
+})();
+
 function getApiKey(provider) {
   var p = provider || getProvider();
-  return localStorage.getItem('tts_api_key_' + p) || '';
+  return API_KEYS_MEMORY[p] || localStorage.getItem(API_KEY_NS + p) || '';
 }
 
-function saveApiKey(key, provider) {
+function getApiKeyPersist(provider) {
   var p = provider || getProvider();
-  if (key) localStorage.setItem('tts_api_key_' + p, key);
-  else localStorage.removeItem('tts_api_key_' + p);
+  return localStorage.getItem(API_PERSIST_NS + p) === '1';
+}
+
+function saveApiKey(key, provider, persist) {
+  var p = provider || getProvider();
+  if (!key) {
+    delete API_KEYS_MEMORY[p];
+    localStorage.removeItem(API_KEY_NS + p);
+    localStorage.removeItem(API_PERSIST_NS + p);
+    return;
+  }
+  if (persist === true) {
+    delete API_KEYS_MEMORY[p];
+    localStorage.setItem(API_KEY_NS + p, key);
+    localStorage.setItem(API_PERSIST_NS + p, '1');
+  } else {
+    API_KEYS_MEMORY[p] = key;
+    localStorage.removeItem(API_KEY_NS + p);
+    localStorage.removeItem(API_PERSIST_NS + p);
+  }
+}
+
+function verificationKey(provider) {
+  return API_VERIFIED_AT_NS + provider;
+}
+
+function isVerified(provider) {
+  var timestamp = parseInt(localStorage.getItem(verificationKey(provider)) || '0', 10);
+  return timestamp > 0 && Date.now() - timestamp < API_VERIFY_TTL_MS;
+}
+
+function setVerified(provider, verified) {
+  if (verified) localStorage.setItem(verificationKey(provider), String(Date.now()));
+  else localStorage.removeItem(verificationKey(provider));
+  localStorage.removeItem('tts_verified_' + provider);
+}
+
+async function fetchWithTimeout(url, options, timeoutMs, externalSignal) {
+  var controller = new AbortController();
+  function abortFromExternal() { controller.abort(); }
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else if (typeof externalSignal.addEventListener === 'function') {
+      externalSignal.addEventListener('abort', abortFromExternal, { once: true });
+    }
+  }
+  var timer = setTimeout(function() { controller.abort(); }, timeoutMs || REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timer);
+    if (externalSignal && typeof externalSignal.removeEventListener === 'function') {
+      externalSignal.removeEventListener('abort', abortFromExternal);
+    }
+  }
+}
+
+async function readJsonResponse(response, providerLabel) {
+  var data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    throw new Error(providerLabel + ': malformed JSON response');
+  }
+  if (!response.ok || (data && data.error)) {
+    var detail = data && data.error &&
+      (typeof data.error === 'string' ? data.error : data.error.message);
+    throw new Error(detail || (providerLabel + ': HTTP ' + response.status));
+  }
+  return data;
+}
+
+async function callLLM(options) {
+  var provider = options.provider;
+  var label = provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Claude';
+  var response;
+  if (provider === 'gemini') {
+    response = await fetchWithTimeout(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + encodeURIComponent(options.apiKey),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: options.system }] },
+          contents: [{ parts: [{ text: options.user }] }],
+          generationConfig: {
+            temperature: options.temperature == null ? 1.0 : options.temperature,
+            topP: options.topP,
+            maxOutputTokens: options.maxTokens || 2048,
+          },
+        }) },
+      options.timeoutMs || REQUEST_TIMEOUT_MS, options.signal
+    );
+    var geminiData = await readJsonResponse(response, label);
+    var candidate = geminiData && geminiData.candidates && geminiData.candidates[0];
+    var geminiText = candidate && candidate.content && candidate.content.parts &&
+      candidate.content.parts[0] && candidate.content.parts[0].text;
+    if (typeof geminiText !== 'string' || !geminiText.trim()) {
+      throw new Error(label + ': empty or malformed response');
+    }
+    return geminiText;
+  }
+  if (provider === 'openai') {
+    response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + options.apiKey },
+      body: JSON.stringify({
+        model: 'gpt-5.4-nano',
+        reasoning: { effort: 'none' },
+        temperature: options.temperature == null ? 0.7 : options.temperature,
+        max_tokens: options.maxTokens || 2048,
+        messages: [
+          { role: 'system', content: options.system },
+          { role: 'user', content: options.user },
+        ],
+      }),
+    }, options.timeoutMs || REQUEST_TIMEOUT_MS, options.signal);
+    var openAIData = await readJsonResponse(response, label);
+    var openAIText = openAIData && openAIData.choices && openAIData.choices[0] &&
+      openAIData.choices[0].message && openAIData.choices[0].message.content;
+    if (typeof openAIText !== 'string' || !openAIText.trim()) {
+      throw new Error(label + ': empty or malformed response');
+    }
+    return openAIText;
+  }
+  response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': options.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: options.maxTokens || 2048,
+      temperature: options.temperature == null ? 0.7 : options.temperature,
+      system: options.system,
+      messages: [{ role: 'user', content: options.user }],
+    }),
+  }, options.timeoutMs || REQUEST_TIMEOUT_MS, options.signal);
+  var claudeData = await readJsonResponse(response, label);
+  var claudeText = claudeData && claudeData.content && claudeData.content[0] &&
+    claudeData.content[0].text;
+  if (typeof claudeText !== 'string' || !claudeText.trim()) {
+    throw new Error(label + ': empty or malformed response');
+  }
+  return claudeText;
 }
 
 // ---- Full Strudel Component Reference ----
@@ -1022,14 +1473,17 @@ MELODY & HARMONY:
 RHYTHM & TIME:
 
   9. Phasing — two tempos creating gradual drift
-    note("c d e f g a b c5")*[8,8.1]
+    stack(
+      note("c d e f g a b c5").fast(8),
+      note("c d e f g a b c5").fast(8.1)
+    )
     // plays at two imperceptibly different speeds = phase shift
 
   10. Nested .off() for recursive rhythmic complexity
     s("bd sd [rim bd] sd, [~ hh]*4")
-      .off(2/16, x=>x.speed(1.5).gain(.25)
-      .off(3/16, y=>y.vowel("<a e i o>*8")))
-    // second off is INSIDE first — creates layered echoes
+      .off(2/16, x=>x.speed(1.5).gain(.25))
+      .off(3/16, x=>x.vowel("<a e i o>*8").gain(.2))
+    // two restrained, independently timed echoes
 
   11. .every() with patterned offset for syncopation
     .every(2, early("<.25 .125 .5>"))
@@ -1167,90 +1621,48 @@ function buildVariationPrompt(text, genre) {
   return userPrompt;
 }
 
-async function generateWithAI(text, genre, apiKey) {
+async function generateWithAI(text, genre, apiKey, signal) {
   var provider = getProvider();
-  if (provider === 'gemini') return generateWithGemini(text, genre, apiKey);
-  if (provider === 'openai') return generateWithOpenAI(text, genre, apiKey);
-  return generateWithClaude(text, genre, apiKey);
+  if (provider === 'gemini') return generateWithGemini(text, genre, apiKey, signal);
+  if (provider === 'openai') return generateWithOpenAI(text, genre, apiKey, signal);
+  return generateWithClaude(text, genre, apiKey, signal);
 }
 
-async function generateWithClaude(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  var temperature = Math.min(1.2, 0.9 + seedCounter * 0.05);
-
-  var response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      temperature: temperature,
-      system: STRUDEL_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
+async function generateWithClaude(text, genre, apiKey, signal) {
+  var textResult = await callLLM({
+    provider: 'claude', apiKey: apiKey, system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre),
+    temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
+    signal: signal,
   });
-
-  var data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return validateAndFix(stripFences(data.content[0].text));
+  return validateAndFix(stripFences(textResult));
 }
 
-async function generateWithGemini(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  // Gemini 3+: temperature < 1.0 causes looping/degraded performance.
-  // Keep at 1.0 (default) for generation, use topP for variation instead.
-  var response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] },
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: 1.0,
-          topP: Math.min(0.99, 0.9 + seedCounter * 0.02),
-          maxOutputTokens: 2048,
-        },
-      }),
-    }
-  );
-
-  var data = await response.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (!data.candidates || !data.candidates[0]) throw new Error('No response from Gemini');
-  return validateAndFix(stripFences(data.candidates[0].content.parts[0].text));
-}
-
-async function generateWithOpenAI(text, genre, apiKey) {
-  var userPrompt = buildVariationPrompt(text, genre);
-  // GPT-5.4 nano: temperature only works with reasoning effort "none".
-  var response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey,
-    },
-    body: JSON.stringify({
-      model: 'gpt-5.4-nano',
-      reasoning: { effort: 'none' },
-      temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
-      max_tokens: 2048,
-      messages: [
-        { role: 'system', content: STRUDEL_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
+async function generateWithGemini(text, genre, apiKey, signal) {
+  var textResult = await callLLM({
+    provider: 'gemini', apiKey: apiKey, system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre), temperature: 1.0,
+    topP: Math.min(0.99, 0.9 + seedCounter * 0.02),
+    signal: signal,
   });
+  return validateAndFix(stripFences(textResult));
+}
 
-  var data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return validateAndFix(stripFences(data.choices[0].message.content));
+async function generateWithOpenAI(text, genre, apiKey, signal) {
+  var textResult = await callLLM({
+    provider: 'openai', apiKey: apiKey, system: STRUDEL_SYSTEM_PROMPT,
+    user: buildVariationPrompt(text, genre),
+    temperature: Math.min(1.2, 0.9 + seedCounter * 0.05),
+    signal: signal,
+  });
+  return validateAndFix(stripFences(textResult));
+}
+
+function validateAndFix(code) {
+  var cleaned = normalize(stripFences(String(code || ''))).trim();
+  if (!cleaned) throw new Error('The model returned empty Strudel code');
+  if (!/\bsetcp[ms]\s*\(/.test(cleaned)) cleaned = 'setcpm(90/4)\n\n' + cleaned;
+  return cleaned;
 }
 
 // ---- Pre-evaluation normalization (silent, non-functional fixes only) ----
@@ -1318,163 +1730,468 @@ function stripFences(code) {
   return code.replace(/^```[\w]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
 }
 
-// ---- Editor Integration (strudel-editor web component) ----
-var editorEl = document.getElementById('strudelEditor');
+// ---- Editor Integration (sandboxed iframe + one-time MessagePort RPC) ----
+var EDITOR_RPC_TIMEOUT_MS = 5000;
+var EDITOR_READY_TIMEOUT_MS = 20000;
+var EDITOR_MAX_PAYLOAD_BYTES = 256 * 1024;
+/** @type {HTMLIFrameElement|null} */
+var editorFrame = /** @type {HTMLIFrameElement|null} */ (document.getElementById('strudelFrame'));
 
-function getEditor() {
-  return editorEl && editorEl.editor ? editorEl.editor : null;
+function EditorPort(frame) {
+  this.frame = frame;
+  this.frameLoaded = !frame || !frame.getAttribute || !frame.getAttribute('src');
+  this.hostSession = null;
+  this.port = null;
+  this.initialized = false;
+  this.isReady = false;
+  this.requestSeq = 0;
+  this.revision = 0;
+  this.activeRevision = 0;
+  this.connectionEpoch = 0;
+  this.pending = new Map();
+  this.readyWaiters = [];
+  this.queue = Promise.resolve();
+  this.evalErrorHandler = null;
 }
+
+function editorMessageBytes(value) {
+  var serialized;
+  try { serialized = JSON.stringify(value); } catch (_) { return Infinity; }
+  return typeof TextEncoder !== 'undefined'
+    ? new TextEncoder().encode(serialized).byteLength
+    : serialized.length;
+}
+
+function editorTextBytes(value) {
+  return typeof TextEncoder !== 'undefined'
+    ? new TextEncoder().encode(value).byteLength
+    : value.length;
+}
+
+function hasExactKeys(value, expected) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  return Object.keys(value).sort().join(',') === expected.slice().sort().join(',');
+}
+
+EditorPort.prototype._failReady = function(error) {
+  var waiters = this.readyWaiters.splice(0);
+  waiters.forEach(function(waiter) { waiter.reject(error); });
+};
+
+EditorPort.prototype._resetConnection = function(error) {
+  this.connectionEpoch++;
+  this.initialized = false;
+  this.isReady = false;
+  if (this.port) {
+    try { this.port.onmessage = null; this.port.close(); } catch (_) {}
+  }
+  this.port = null;
+  this.pending.forEach(function(pending) {
+    clearTimeout(pending.timer);
+    pending.reject(error);
+  });
+  this.pending.clear();
+  this._failReady(error);
+};
+
+EditorPort.prototype.initialize = function(force) {
+  if (!this.frameLoaded) return;
+  if (!this.frame || !this.frame.contentWindow || typeof MessageChannel === 'undefined') return;
+  if (this.initialized && !force) return;
+  if (this.initialized || this.port) {
+    this._resetConnection(new Error('Editor connection reloaded'));
+  }
+  this.initialized = true;
+  var channel = new MessageChannel();
+  var self = this;
+  var activePort = channel.port1;
+  this.port = activePort;
+  activePort.onmessage = function(event) {
+    if (self.port === activePort) self._onPortMessage(event.data || {});
+  };
+  if (typeof activePort.start === 'function') activePort.start();
+  try {
+    this.frame.contentWindow.postMessage({ type: 'strudel:init' }, '*', [channel.port2]);
+  } catch (error) {
+    this._resetConnection(error);
+  }
+};
+
+EditorPort.prototype._rejectProtocolMessage = function(message, reason) {
+  // Invalid capability traffic is ignored. The matching request remains
+  // pending until an exact response arrives or its bounded deadline expires.
+  return;
+};
+
+EditorPort.prototype._onPortMessage = function(message) {
+  if (message && message.type === 'ready') {
+    if (!hasExactKeys(message, ['type'])) return;
+    this.isReady = true;
+    var waiters = this.readyWaiters.splice(0);
+    waiters.forEach(function(waiter) { waiter.resolve(); });
+    return;
+  }
+  if (message && message.type === 'error') {
+    if (!hasExactKeys(message, ['type', 'kind', 'revision', 'error']) ||
+        message.kind !== 'initialization' || typeof message.error !== 'string' ||
+        editorTextBytes(message.error) > 4096) return;
+    this._failReady(new Error(message.error));
+    return;
+  }
+  if (message && message.type === 'event') {
+    if (!hasExactKeys(message, ['type', 'name', 'revision', 'detail']) ||
+        message.name !== 'evalError' || !Number.isSafeInteger(message.revision) ||
+        !hasExactKeys(message.detail, ['message']) || typeof message.detail.message !== 'string' ||
+        editorTextBytes(message.detail.message) > 4096) return;
+    if (message.revision !== this.activeRevision) return;
+    if (this.evalErrorHandler) this.evalErrorHandler(message.detail);
+    return;
+  }
+  if (!message || message.type !== 'result') return;
+  var baseKeys = ['type', 'id', 'command', 'revision', 'ok'];
+  var keys = message.ok === true
+    ? (message.command === 'getCode' ? baseKeys.concat('result') : baseKeys)
+    : baseKeys.concat('error');
+  if (!hasExactKeys(message, keys) ||
+      typeof message.id !== 'string' ||
+      typeof message.command !== 'string' || !Number.isSafeInteger(message.revision) ||
+      typeof message.ok !== 'boolean') {
+    this._rejectProtocolMessage(message, 'schema');
+    return;
+  }
+  if (message.ok && message.command === 'getCode' &&
+      (typeof message.result !== 'string' || editorTextBytes(message.result) > EDITOR_MAX_PAYLOAD_BYTES)) {
+    this._rejectProtocolMessage(message, 'result');
+    return;
+  }
+  if (!message.ok && (typeof message.error !== 'string' || editorTextBytes(message.error) > 4096)) {
+    this._rejectProtocolMessage(message, 'error');
+    return;
+  }
+  var pending = this.pending.get(String(message.id));
+  if (!pending) return;
+  if (message.revision !== pending.revision || message.command !== pending.command) {
+    this._rejectProtocolMessage(message, 'identity');
+    return;
+  }
+  clearTimeout(pending.timer);
+  this.pending.delete(String(message.id));
+  if (message.ok) pending.resolve(message.result);
+  else pending.reject(new Error(message.error));
+};
+
+EditorPort.prototype._waitUntilReady = function(deadline) {
+  if (this.isReady) return Promise.resolve();
+  this.initialize(false);
+  var self = this;
+  return new Promise(function(resolve, reject) {
+    var remaining = deadline - Date.now();
+    if (remaining <= 0) return reject(new Error('Editor readiness timeout'));
+    var waiter = { resolve: resolve, reject: reject };
+    self.readyWaiters.push(waiter);
+    var timer = setTimeout(function() {
+      var index = self.readyWaiters.indexOf(waiter);
+      if (index !== -1) self.readyWaiters.splice(index, 1);
+      reject(new Error('Editor readiness timeout'));
+    }, remaining);
+    var originalResolve = waiter.resolve;
+    waiter.resolve = function() { clearTimeout(timer); originalResolve(undefined); };
+    var originalReject = waiter.reject;
+    waiter.reject = function(error) { clearTimeout(timer); originalReject(error); };
+  });
+};
+
+EditorPort.prototype._validatePayload = function(payload) {
+  if (editorMessageBytes(payload == null ? null : payload) > EDITOR_MAX_PAYLOAD_BYTES) {
+    throw new Error('Editor payload exceeds 256 KiB');
+  }
+};
+
+EditorPort.prototype._sendCommand = function(command, payload, revision, deadline, expectedConnection) {
+  var self = this;
+  return this._waitUntilReady(deadline).then(function() {
+    if (self.connectionEpoch !== expectedConnection) throw new Error('Editor connection changed');
+    var remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error('Editor command timeout: ' + command);
+    if (!self.port) throw new Error('Editor port unavailable');
+    return new Promise(function(resolve, reject) {
+      var id = String(++self.requestSeq);
+      var timer = setTimeout(function() {
+        self.pending.delete(id);
+        reject(new Error('Editor command timeout: ' + command));
+      }, remaining);
+      self.pending.set(id, {
+        resolve: resolve, reject: reject, timer: timer,
+        revision: revision, command: command,
+      });
+      try {
+        self.port.postMessage({
+          type: 'command', id: id, command: command,
+          revision: revision, payload: payload == null ? null : payload,
+        });
+      } catch (error) {
+        clearTimeout(timer);
+        self.pending.delete(id);
+        reject(error);
+      }
+    });
+  });
+};
+
+EditorPort.prototype._enqueue = function(work, deadline, expectedConnection) {
+  var self = this;
+  var operation = function() {
+    if (Date.now() >= deadline) throw new Error('Editor transaction timeout');
+    if (self.connectionEpoch !== expectedConnection) throw new Error('Editor connection changed');
+    return work();
+  };
+  var result = this.queue.catch(function() {}).then(operation);
+  this.queue = result.catch(function() {});
+  return result;
+};
+
+EditorPort.prototype._command = function(command, payload, revision) {
+  try { this._validatePayload(payload); }
+  catch (error) { return Promise.reject(error); }
+  var waitingForFirstReady = !this.isReady;
+  var readinessDeadline = Date.now() +
+    (waitingForFirstReady ? EDITOR_READY_TIMEOUT_MS : EDITOR_RPC_TIMEOUT_MS);
+  var transactionDeadline = readinessDeadline +
+    (waitingForFirstReady ? EDITOR_RPC_TIMEOUT_MS : 0);
+  var expectedConnection = this.connectionEpoch;
+  var self = this;
+  return this._enqueue(async function() {
+    self.activeRevision = revision;
+    await self._waitUntilReady(readinessDeadline);
+    var rpcDeadline = Math.min(transactionDeadline, Date.now() + EDITOR_RPC_TIMEOUT_MS);
+    return self._sendCommand(command, payload, revision, rpcDeadline, expectedConnection);
+  }, transactionDeadline, expectedConnection);
+};
+
+EditorPort.prototype.ready = function() {
+  return this._waitUntilReady(Date.now() + EDITOR_READY_TIMEOUT_MS);
+};
+EditorPort.prototype.getCode = function() {
+  return this._command('getCode', null, this.activeRevision).then(function(result) {
+    if (typeof result === 'string') return result;
+    throw new Error('Editor returned malformed code');
+  });
+};
+EditorPort.prototype.setCode = function(code) {
+  this.revision++;
+  return this._command('setCode', { code: String(code) }, this.revision);
+};
+EditorPort.prototype.evaluate = function() {
+  return this._command('evaluate', null, this.activeRevision);
+};
+EditorPort.prototype.replaceAndEvaluate = function(code) {
+  this.revision++;
+  var revision = this.revision;
+  var payload = { code: String(code) };
+  try { this._validatePayload(payload); }
+  catch (error) { return Promise.reject(error); }
+  var waitingForFirstReady = !this.isReady;
+  var readinessDeadline = Date.now() +
+    (waitingForFirstReady ? EDITOR_READY_TIMEOUT_MS : EDITOR_RPC_TIMEOUT_MS);
+  var transactionDeadline = readinessDeadline +
+    (waitingForFirstReady ? EDITOR_RPC_TIMEOUT_MS : 0);
+  var expectedConnection = this.connectionEpoch;
+  var self = this;
+  return this._enqueue(async function() {
+    self.activeRevision = revision;
+    await self._waitUntilReady(readinessDeadline);
+    var rpcDeadline = Math.min(transactionDeadline, Date.now() + EDITOR_RPC_TIMEOUT_MS);
+    await self._sendCommand('setCode', payload, revision, rpcDeadline, expectedConnection);
+    return self._sendCommand('evaluate', null, revision, rpcDeadline, expectedConnection);
+  }, transactionDeadline, expectedConnection);
+};
+EditorPort.prototype.stop = function() {
+  return this._command('stop', null, this.activeRevision);
+};
+
+var editorPort = new EditorPort(editorFrame);
+if (editorFrame && typeof editorFrame.addEventListener === 'function') {
+  editorFrame.addEventListener('load', function() {
+    editorPort.frameLoaded = true;
+    if (!editorFrame.getAttribute || !editorFrame.getAttribute('src')) {
+      editorPort.initialize(editorPort.initialized);
+    }
+  });
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('message', function(event) {
+    if (!editorFrame || event.source !== editorFrame.contentWindow) return;
+    var message = event.data || {};
+    if (hasExactKeys(message, ['type', 'session']) &&
+        message.type === 'strudel:bootstrap' &&
+        typeof message.session === 'string' &&
+        /^[a-f0-9]{32}$/.test(message.session)) {
+      editorPort.frameLoaded = true;
+      if (editorPort.hostSession === message.session) {
+        editorPort.initialize(false);
+        return;
+      }
+      var replacingSession = editorPort.hostSession !== null;
+      editorPort.hostSession = message.session;
+      editorPort.initialize(replacingSession || editorPort.initialized);
+    }
+  });
+}
+if (editorFrame && editorFrame.contentWindow &&
+    (!editorFrame.getAttribute || !editorFrame.getAttribute('src'))) {
+  editorPort.initialize(false);
+}
+
+function getEditor() { return editorPort; }
+function getEditorCode() { return editorPort.getCode(); }
 
 var MAX_FIX_ATTEMPTS = 3;
+var editorFixAttempt = 0;
+var lastEvaluatedCode = '';
+var operationEpoch = 0;
+var operationController = null;
+var focusedActionEpoch = 0;
+var focusedActionQueue = Promise.resolve();
+var playbackStopped = false;
 
-function setCodeAndPlay(code) {
-  code = normalize(code);
-  var statusEl = document.getElementById('status');
-  var btn = document.getElementById('playBtn');
-  btn.disabled = true;
-  statusEl.className = 'status';
-  statusEl.textContent = 'Loading editor...';
-  var fixAttempt = 0;
-
-  function waitForEditor(cb) {
-    var ed = getEditor();
-    if (ed) return cb(ed);
-    setTimeout(function() { waitForEditor(cb); }, 200);
-  }
-
-  function evalAndRecover(ed, currentCode) {
-    ed.setCode(currentCode);
-    statusEl.textContent = fixAttempt > 0
-      ? 'Fix attempt ' + fixAttempt + '/' + MAX_FIX_ATTEMPTS + '...'
-      : 'Evaluating...';
-
-    setTimeout(function() {
-      try {
-        ed.evaluate(true);
-      } catch(e) { /* editor handles internally */ }
-
-      // check for errors after evaluation
-      setTimeout(function() {
-        var error = null;
-        try {
-          var repl = ed.repl || (editorEl && editorEl.repl);
-          if (repl && repl.state && repl.state.evalError) {
-            error = repl.state.evalError;
-          }
-        } catch(e) {}
-
-        // also check for errors via the editor's visual state
-        if (!error) {
-          var errorEl = editorEl.querySelector && editorEl.querySelector('.error-message, [class*="error"]');
-          if (errorEl && errorEl.textContent) error = errorEl.textContent;
-        }
-
-        if (error && fixAttempt < MAX_FIX_ATTEMPTS) {
-          fixAttempt++;
-          var errMsg = typeof error === 'string' ? error : (error.message || String(error));
-          statusEl.className = 'status error';
-          statusEl.textContent = 'Error: ' + errMsg.substring(0, 80) + ' — fixing...';
-
-          // Try LLM fix if API key available
-          var apiKey = getApiKey();
-          if (apiKey) {
-            fixWithLLM(currentCode, errMsg, apiKey).then(function(fixedCode) {
-              if (fixedCode && fixedCode !== currentCode) {
-                evalAndRecover(ed, normalize(fixedCode));
-              } else {
-                // LLM couldn't fix — try algorithmic
-                var algoFix = tryFixFromError(currentCode, errMsg);
-                if (algoFix && algoFix !== currentCode) {
-                  evalAndRecover(ed, algoFix);
-                } else {
-                  showPlaying(statusEl, btn);
-                }
-              }
-            }).catch(function() {
-              var algoFix = tryFixFromError(currentCode, errMsg);
-              if (algoFix && algoFix !== currentCode) {
-                evalAndRecover(ed, algoFix);
-              } else {
-                showPlaying(statusEl, btn);
-              }
-            });
-            return;
-          }
-
-          // No API key — algorithmic fix only
-          var algoFix = tryFixFromError(currentCode, errMsg);
-          if (algoFix && algoFix !== currentCode) {
-            evalAndRecover(ed, algoFix);
-            return;
-          }
-        }
-
-        showPlaying(statusEl, btn);
-      }, 300);
-    }, 150);
-  }
-
-  function showPlaying(statusEl, btn) {
-    // Final error check — if still broken after all fix attempts, show error
-    setTimeout(function() {
-      var ed = getEditor();
-      var finalErr = null;
-      try {
-        if (ed && ed.repl && ed.repl.state) {
-          finalErr = ed.repl.state.evalError || ed.repl.state.error;
-        }
-      } catch(e) {}
-      if (finalErr) {
-        var msg = typeof finalErr === 'string' ? finalErr : (finalErr.message || String(finalErr));
-        statusEl.className = 'status error';
-        statusEl.textContent = 'Error: ' + msg.substring(0, 100);
-      } else {
-        statusEl.className = 'status playing';
-        statusEl.textContent = fixAttempt > 0 ? 'Playing (fixed ' + fixAttempt + 'x)' : 'Playing';
-      }
-      btn.disabled = false;
-    }, 200);
-  }
-
-  waitForEditor(function(ed) { evalAndRecover(ed, code); });
+function releaseOperationLocks() {
+  var playButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('playBtn'));
+  var regenButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('regenBtn'));
+  var editButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('editApply'));
+  if (playButton) playButton.disabled = false;
+  if (regenButton) regenButton.disabled = false;
+  if (editButton) editButton.disabled = false;
 }
+
+function beginExclusiveOperation() {
+  releaseOperationLocks();
+  operationEpoch++;
+  focusedActionEpoch++;
+  if (operationController) {
+    try { operationController.abort(); } catch (_) {}
+  }
+  operationController = new AbortController();
+  return { kind: 'exclusive', epoch: operationEpoch, signal: operationController.signal };
+}
+
+function invalidateExclusiveOperation() {
+  releaseOperationLocks();
+  operationEpoch++;
+  focusedActionEpoch++;
+  if (operationController) {
+    try { operationController.abort(); } catch (_) {}
+  }
+  operationController = null;
+}
+
+function isOperationCurrent(operation) {
+  if (!operation) return true;
+  if (operation.kind === 'focused') return operation.epoch === focusedActionEpoch;
+  return operation.epoch === operationEpoch &&
+    !(operation.signal && operation.signal.aborted);
+}
+
+function isAbortError(error) {
+  return error && (error.name === 'AbortError' || /abort/i.test(String(error.message || error)));
+}
+
+function setEditorStatus(className, text) {
+  var status = document.getElementById('status');
+  if (!status) return;
+  status.className = className;
+  status.textContent = text;
+}
+
+async function setCodeAndPlay(code, operation) {
+  if (!isOperationCurrent(operation)) return false;
+  code = normalize(code);
+  updateMixerAvailability(code);
+  lastEvaluatedCode = code;
+  editorFixAttempt = 0;
+  playbackStopped = false;
+  var btn = /** @type {HTMLButtonElement|null} */ (document.getElementById('playBtn'));
+  if (btn) btn.disabled = true;
+  setEditorStatus('status', 'Loading editor...');
+  try {
+    setEditorStatus('status', 'Evaluating...');
+    await editorPort.replaceAndEvaluate(code);
+    if (!isOperationCurrent(operation)) return false;
+    setEditorStatus('status playing', 'Playing');
+    return true;
+  } catch (error) {
+    if (isOperationCurrent(operation)) {
+      setEditorStatus('status error', 'Editor error: ' + error.message.substring(0, 100));
+    }
+    return false;
+  } finally {
+    if (btn && isOperationCurrent(operation)) btn.disabled = false;
+  }
+}
+
+editorPort.evalErrorHandler = async function(detail) {
+  if (playbackStopped) return;
+  var fixOperation = { kind: 'exclusive', epoch: operationEpoch,
+    signal: operationController && operationController.signal };
+  var sourceRevision = editorPort.activeRevision;
+  var sourceCode = lastEvaluatedCode;
+  var errorMessage = typeof detail === 'string' ? detail :
+    ((detail && (detail.message || detail.error)) || 'unknown error');
+  if (editorFixAttempt >= MAX_FIX_ATTEMPTS) {
+    setEditorStatus('status error', 'Error: ' + String(errorMessage).substring(0, 100));
+    return;
+  }
+  editorFixAttempt++;
+  setEditorStatus('status error', 'Error: ' + String(errorMessage).substring(0, 80) + ' — fixing...');
+  var fixedCode = null;
+  var apiKey = getApiKey();
+  if (apiKey) {
+    try { fixedCode = await fixWithLLM(sourceCode, String(errorMessage), apiKey, fixOperation.signal); }
+    catch (_) { fixedCode = null; }
+  }
+  if (!isOperationCurrent(fixOperation) || playbackStopped ||
+      editorPort.activeRevision !== sourceRevision) return;
+  var liveCode;
+  try { liveCode = await getEditorCode(); } catch (_) { return; }
+  if (!isOperationCurrent(fixOperation) || liveCode !== sourceCode) return;
+  if (!fixedCode) fixedCode = tryFixFromError(sourceCode, String(errorMessage));
+  if (!fixedCode || fixedCode === sourceCode) {
+    setEditorStatus('status error', 'Error: ' + String(errorMessage).substring(0, 100));
+    return;
+  }
+  lastEvaluatedCode = normalize(fixedCode);
+  try {
+    await editorPort.replaceAndEvaluate(lastEvaluatedCode);
+    setEditorStatus('status playing', 'Playing (fixed ' + editorFixAttempt + 'x)');
+  } catch (error) {
+    setEditorStatus('status error', 'Editor error: ' + error.message.substring(0, 100));
+  }
+};
 
 // ---- LLM error fix: send code + error → get fixed code ----
-async function fixWithLLM(code, errorMsg, apiKey) {
+async function fixWithLLM(code, errorMsg, apiKey, signal) {
   var prompt = 'This Strudel code has an error:\n\n' + code + '\n\nError: ' + errorMsg + '\n\nFix ONLY the error. Return the complete fixed code. No explanation.';
-  var provider = getProvider();
-
-  var fixSystem = 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.';
-  if (provider === 'gemini') {
-    var resp = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: fixSystem }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-    var data = await resp.json();
-    if (data.error || !data.candidates) return null;
-    return stripFences(data.candidates[0].content.parts[0].text);
-  } else if (provider === 'openai') {
-    var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: fixSystem }, { role: 'user', content: prompt }] }) });
-    var data = await resp.json();
-    if (data.error || !data.choices) return null;
-    return stripFences(data.choices[0].message.content);
-  } else {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: fixSystem, messages: [{ role: 'user', content: prompt }] }) });
-    var data = await resp.json();
-    if (data.error || !data.content) return null;
-    return stripFences(data.content[0].text);
+  try {
+    var result = await callLLM({
+      provider: getProvider(), apiKey: apiKey,
+      system: 'You fix Strudel live-coding errors. Output ONLY the fixed code, no explanation.',
+      user: prompt, temperature: getProvider() === 'gemini' ? 1.0 : 0.2,
+      signal: signal,
+    });
+    return stripFences(result);
+  } catch (_) {
+    return null;
   }
 }
 
-function stopPlayback() {
-  var ed = getEditor();
-  if (ed) ed.stop();
-  document.getElementById('status').className = 'status';
-  document.getElementById('status').textContent = 'Stopped';
+async function stopPlayback() {
+  invalidateExclusiveOperation();
+  playbackStopped = true;
+  try { await editorPort.stop(); } catch (_) {}
+  setEditorStatus('status', 'Stopped');
+  var playButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('playBtn'));
+  var regenButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('regenBtn'));
+  if (playButton) playButton.disabled = false;
+  if (regenButton) regenButton.disabled = false;
 }
 
 // ---- UI Wiring ----
@@ -1483,22 +2200,26 @@ var fusionMode = false;
 var fusionGenres = [];
 var lastInput = '';
 
-var genreBtns = document.querySelectorAll('.genre-btn');
-var fusionCheck = document.getElementById('fusionCheck');
+var genreBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.genre-btn'));
+var fusionCheck = /** @type {HTMLInputElement} */ (document.getElementById('fusionCheck'));
 
 function updateGenreUI() {
   genreBtns.forEach(function(b) {
+    var pressed = false;
     if (fusionMode) {
       b.classList.remove('active');
       if (fusionGenres.indexOf(b.dataset.genre) !== -1) {
         b.classList.add('fusion-pick');
+        pressed = true;
       } else {
         b.classList.remove('fusion-pick');
       }
     } else {
       b.classList.remove('fusion-pick');
-      b.classList.toggle('active', b.dataset.genre === selectedGenre);
+      pressed = b.dataset.genre === selectedGenre;
+      b.classList.toggle('active', pressed);
     }
+    b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
   });
 }
 
@@ -1512,6 +2233,7 @@ fusionCheck.addEventListener('change', function() {
     fusionGenres = [];
   }
   seedCounter = 0;
+  resetVariationState();
   updateGenreUI();
 });
 
@@ -1534,6 +2256,7 @@ genreBtns.forEach(function(btn) {
     }
 
     seedCounter = 0;
+    resetVariationState();
     updateGenreUI();
   });
 });
@@ -1544,17 +2267,51 @@ function getEffectiveGenre() {
   return selectedGenre;
 }
 
+function updateCompositionMeta(plan, mode) {
+  var meta = document.getElementById('compositionMeta');
+  if (!meta) return;
+  if (!plan) {
+    meta.textContent = mode === 'ai'
+      ? 'AI take ' + (seedCounter + 1) + ' · use Edit for focused musical changes'
+      : '';
+    return;
+  }
+  updateVariationAvailability(plan);
+  var focus = lastVariationFocus === 'base' ? 'original' : lastVariationFocus.replace('all', 'new take');
+  meta.textContent = 'Take ' + (seedCounter + 1) + ' · ' + plan.key + ' ' + plan.scale.replace(/:/g, ' ') +
+    ' · ' + plan.tempo + ' BPM · ' + plan.profileName + ' · ' + focus;
+}
+
+function updateVariationAvailability(plan) {
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.variation-btn')).forEach(function(btn) {
+    var available = Boolean(plan && (btn.dataset.variation !== 'groove' || plan.drums));
+    btn.disabled = !available;
+    btn.setAttribute('aria-disabled', available ? 'false' : 'true');
+  });
+}
+
+function setAlgorithmControlsVisible(visible) {
+  var variations = document.getElementById('variationPanel');
+  if (variations) variations.style.display = visible ? 'flex' : 'none';
+  if (!visible) document.getElementById('algoMixer').style.display = 'none';
+}
+
 // shared generate function
 async function doGenerate() {
-  var text = document.getElementById('input').value.trim();
+  var text = /** @type {HTMLInputElement} */ (document.getElementById('input')).value.trim();
   if (!text) {
     document.getElementById('status').className = 'status error';
     document.getElementById('status').textContent = 'Type something first';
     return;
   }
+  var operation = beginExclusiveOperation();
 
   // reset seed when input text changes
-  if (text !== lastInput) { seedCounter = 0; lastInput = text; }
+  if (text !== lastInput) {
+    seedCounter = 0;
+    resetVariationState();
+    lastInput = text;
+  }
 
   var genre = getEffectiveGenre();
   var apiKey = getApiKey();
@@ -1565,55 +2322,145 @@ async function doGenerate() {
   // Show controls based on API key
   if (getApiKey()) {
     document.getElementById('editRow').style.display = 'flex';
+    setAlgorithmControlsVisible(false);
     // mixer hidden by default in LLM mode, toggled by mixer button
   } else {
     document.getElementById('algoMixer').style.display = 'flex';
+    setAlgorithmControlsVisible(true);
   }
 
   if (apiKey) {
     // ---- Claude/Gemini creative mode ----
-    document.getElementById('playBtn').disabled = true;
-    document.getElementById('regenBtn').disabled = true;
+    var triggeringRevision = editorPort.activeRevision;
+    var triggeringCode = null;
+    try { triggeringCode = await getEditorCode(); } catch (_) {}
+    if (!isOperationCurrent(operation)) return;
+    lastCompositionPlan = null;
+    updateCompositionMeta(null, 'ai');
+    /** @type {HTMLButtonElement} */ (document.getElementById('playBtn')).disabled = true;
+    /** @type {HTMLButtonElement} */ (document.getElementById('regenBtn')).disabled = true;
     statusEl.className = 'status';
     var prov = getProvider();
     var temp = prov === 'gemini' ? Math.min(1.5, 0.9 + seedCounter * 0.08) : Math.min(1.2, 0.9 + seedCounter * 0.05);
     statusEl.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' is composing... (seed ' + seedCounter + ', temp ' + temp.toFixed(2) + ')';
     try {
-      var code = await generateWithAI(text, genre, apiKey);
-      setCodeAndPlay(code);
+      var code = await generateWithAI(text, genre, apiKey, operation.signal);
+      if (!isOperationCurrent(operation) || editorPort.activeRevision !== triggeringRevision) return;
+      if (triggeringCode !== null) {
+        var liveCode = await getEditorCode();
+        if (!isOperationCurrent(operation) || liveCode !== triggeringCode) return;
+      }
+      await setCodeAndPlay(code, operation);
     } catch (e) {
+      if (!isOperationCurrent(operation) || isAbortError(e)) return;
+      if (editorPort.activeRevision !== triggeringRevision) return;
+      if (triggeringCode !== null) {
+        try {
+          var fallbackLiveCode = await getEditorCode();
+          if (!isOperationCurrent(operation) || fallbackLiveCode !== triggeringCode) return;
+        } catch (_) { return; }
+      }
       statusEl.className = 'status error';
       statusEl.textContent = 'API error: ' + e.message + ' — falling back to algorithm';
       var fallback = generateCode(text, genre);
-      setCodeAndPlay(fallback);
+      updateCompositionMeta(lastCompositionPlan, 'algorithmic');
+      updateMixerAvailability(fallback);
+      setAlgorithmControlsVisible(true);
+      document.getElementById('algoMixer').style.display = 'flex';
+      await setCodeAndPlay(fallback, operation);
     } finally {
-      document.getElementById('playBtn').disabled = false;
-      document.getElementById('regenBtn').disabled = false;
+      if (isOperationCurrent(operation)) {
+        /** @type {HTMLButtonElement} */ (document.getElementById('playBtn')).disabled = false;
+        /** @type {HTMLButtonElement} */ (document.getElementById('regenBtn')).disabled = false;
+      }
     }
   } else {
     // ---- Algorithmic mode ----
     statusEl.textContent = 'Algorithmic mode (seed ' + seedCounter + ')';
-    var code = generateCode(text, genre);
-    setCodeAndPlay(code);
+    var algorithmCode = generateCode(text, genre);
+    updateCompositionMeta(lastCompositionPlan, 'algorithmic');
+    updateMixerAvailability(algorithmCode);
+    await setCodeAndPlay(algorithmCode, operation);
   }
 }
 
+async function doFocusedVariation(focus, operation) {
+  if (!operation) {
+    var queuedState = copyVariationState(variationState);
+    var queuedOperation = { kind: 'focused', epoch: focusedActionEpoch };
+    focusedActionQueue = focusedActionQueue.catch(function() {}).then(async function() {
+      if (!isOperationCurrent(queuedOperation)) return;
+      variationState = copyVariationState(queuedState);
+      await doFocusedVariation(focus, queuedOperation);
+    });
+    return focusedActionQueue;
+  }
+  if (!isOperationCurrent(operation)) return;
+  var text = /** @type {HTMLInputElement} */ (document.getElementById('input')).value.trim();
+  var genre = getEffectiveGenre();
+  if (!lastCompositionPlan || lastCompositionPlan.source !== 'algorithmic' ||
+      lastCompositionPlan.text !== text.normalize('NFKC') || lastCompositionPlan.genreName !== genre) {
+    await doGenerate();
+    return;
+  }
+  var currentCode;
+  try { currentCode = await getEditorCode(); }
+  catch (_) { await doGenerate(); return; }
+  if (!isOperationCurrent(operation)) return;
+  var code = generateFocusedVariationCode(focus, currentCode);
+  updateCompositionMeta(lastCompositionPlan, 'algorithmic');
+  updateMixerAvailability(code);
+  await setCodeAndPlay(code, operation);
+}
+
 document.getElementById('playBtn').addEventListener('click', function() {
-  seedCounter = 0; // Generate = fresh start
+  seedCounter = 0;
+  resetVariationState();
   doGenerate();
 });
 
 document.getElementById('regenBtn').addEventListener('click', function() {
-  seedCounter++; // Regenerate = increment seed
+  if (getApiKey()) {
+    seedCounter++;
+    lastVariationFocus = 'all';
+  } else {
+    advanceVariation('all');
+  }
   doGenerate();
 });
 
-document.getElementById('runBtn').addEventListener('click', function() {
-  var ed = getEditor();
-  if (ed) {
-    try { ed.evaluate(true); } catch(e) {}
+/** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.variation-btn')).forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (!lastCompositionPlan || lastCompositionPlan.source !== 'algorithmic') return;
+    operationEpoch++;
+    releaseOperationLocks();
+    if (operationController) {
+      try { operationController.abort(); } catch (_) {}
+      operationController = null;
+    }
+    var action = { kind: 'focused', epoch: focusedActionEpoch };
+    var focus = btn.dataset.variation;
+    focusedActionQueue = focusedActionQueue.catch(function() {}).then(async function() {
+      if (!isOperationCurrent(action)) return;
+      advanceVariation(focus);
+      await doFocusedVariation(focus, action);
+    });
+  });
+});
+
+document.getElementById('runBtn').addEventListener('click', async function() {
+  var operation = beginExclusiveOperation();
+  try {
+    var currentCode = normalize(await getEditorCode());
+    if (!isOperationCurrent(operation)) return;
+    lastEvaluatedCode = currentCode;
+    playbackStopped = false;
+    await editorPort.evaluate();
+    if (!isOperationCurrent(operation)) return;
     document.getElementById('status').className = 'status playing';
     document.getElementById('status').textContent = 'Playing';
+  } catch (_) {
+    setEditorStatus('status error', 'Editor not responding');
   }
 });
 
@@ -1621,26 +2468,41 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
 // ---- API Key UI ----
 (function() {
-  var keyInput = document.getElementById('apiKey');
-  var provSelect = document.getElementById('apiProvider');
+  var keyInput = /** @type {HTMLInputElement} */ (document.getElementById('apiKey'));
+  var provSelect = /** @type {HTMLSelectElement} */ (document.getElementById('apiProvider'));
   var hint = document.getElementById('apiHint');
 
-  var apiDetails = document.getElementById('apiSettings');
+  var apiDetails = /** @type {HTMLDetailsElement} */ (document.getElementById('apiSettings'));
+  var persistInput = /** @type {HTMLInputElement|null} */ (document.getElementById('apiPersist'));
+  var apiMode = document.getElementById('apiMode');
 
   function setApiState(state) {
     apiDetails.classList.remove('verified', 'invalid', 'no-key');
     apiDetails.classList.add(state);
   }
 
-  // verified status stored per provider: tts_verified_claude, tts_verified_gemini
-  function isVerified(prov) { return localStorage.getItem('tts_verified_' + prov) === '1'; }
-  function setVerified(prov, v) { localStorage.setItem('tts_verified_' + prov, v ? '1' : '0'); }
+  function updateStorageCopy() {
+    if (!persistInput || !apiMode) return;
+    var committedPersist = getApiKeyPersist(provSelect.value);
+    var pendingPersist = persistInput.checked && !committedPersist;
+    apiMode.textContent = committedPersist
+      ? 'Persisted on this device in plaintext localStorage. Use only on a trusted profile.'
+      : pendingPersist
+        ? 'Pending persistence. Press Save to verify and store this key on this device.'
+        : 'Session only. Held in memory and cleared when this page is closed or reloaded.';
+    apiMode.setAttribute('data-mode', committedPersist ? 'persist' : pendingPersist ? 'pending' : 'session');
+  }
 
   function refreshProviderUI() {
     var prov = provSelect.value;
     keyInput.placeholder = prov === 'gemini' ? 'AIza...' : prov === 'openai' ? 'sk-...' : 'sk-ant-...';
     var key = getApiKey(prov);
     keyInput.value = key;
+    if (persistInput) {
+      persistInput.checked = getApiKeyPersist(prov);
+      persistInput.setAttribute('data-confirmed', persistInput.checked ? '1' : '0');
+    }
+    updateStorageCopy();
     if (key && isVerified(prov)) {
       hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' creative mode active.';
       hint.className = 'api-hint saved';
@@ -1670,15 +2532,34 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
   async function doSaveKey() {
     var key = keyInput.value.trim();
     var prov = provSelect.value;
+    var persist = !!(persistInput && persistInput.checked);
 
     if (!key) {
       saveApiKey('', prov);
       setVerified(prov, false);
       saveProvider(prov);
+      if (persistInput) {
+        persistInput.checked = getApiKeyPersist(prov);
+        persistInput.setAttribute('data-confirmed', '0');
+      }
+      updateStorageCopy();
       hint.textContent = 'Cleared. Algorithmic mode.';
       hint.className = 'api-hint';
       setApiState('no-key');
       return;
+    }
+
+    if (persist && !getApiKeyPersist(prov) &&
+        persistInput.getAttribute('data-confirmed') !== '1') {
+      var persistenceConfirmed = typeof window.confirm === 'function' && window.confirm(
+        'Persist this API key in plaintext localStorage on this device?'
+      );
+      if (!persistenceConfirmed) {
+        persistInput.checked = false;
+        updateStorageCopy();
+        return;
+      }
+      persistInput.setAttribute('data-confirmed', '1');
     }
 
     hint.textContent = 'Verifying...';
@@ -1686,29 +2567,33 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
     try {
       if (prov === 'gemini') {
-        var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        var resp = await fetchWithTimeout(
+          'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key),
+          {}, VERIFY_TIMEOUT_MS);
+        var data = await readJsonResponse(resp, 'Gemini');
+        if (!data || !Array.isArray(data.models)) throw new Error('Gemini: malformed models response');
       } else if (prov === 'openai') {
-        var resp = await fetch('https://api.openai.com/v1/models', {
+        var resp = await fetchWithTimeout('https://api.openai.com/v1/models', {
           headers: { 'Authorization': 'Bearer ' + key },
-        });
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        }, VERIFY_TIMEOUT_MS);
+        var data = await readJsonResponse(resp, 'OpenAI');
+        if (!data || !Array.isArray(data.data)) throw new Error('OpenAI: malformed models response');
       } else {
-        var resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
-        });
-        var data = await resp.json();
-        if (data.error && data.error.type === 'authentication_error') throw new Error('Invalid API key');
+        var resp = await fetchWithTimeout('https://api.anthropic.com/v1/models', {
+          headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true' },
+        }, VERIFY_TIMEOUT_MS);
+        var data = await readJsonResponse(resp, 'Claude');
+        if (!data || !Array.isArray(data.data)) throw new Error('Claude: malformed models response');
       }
 
-      saveApiKey(key, prov);
+      saveApiKey(key, prov, persist);
       setVerified(prov, true);
       saveProvider(prov);
-      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') + ' verified.';
+      if (persistInput) persistInput.checked = getApiKeyPersist(prov);
+      updateStorageCopy();
+      hint.textContent = (prov === 'gemini' ? 'Gemini' : prov === 'openai' ? 'OpenAI' : 'Claude') +
+        ' verified' + (persist ? ' (persisted).' : ' (session only).');
       hint.className = 'api-hint saved';
       setApiState('verified');
     } catch (e) {
@@ -1721,6 +2606,26 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
   document.getElementById('apiSave').addEventListener('click', doSaveKey);
 
+  if (persistInput) {
+    persistInput.addEventListener('change', function() {
+      if (persistInput.checked && !getApiKeyPersist(provSelect.value)) {
+        var confirmed = typeof window.confirm === 'function' && window.confirm(
+          'Persist this API key in plaintext localStorage on this device?'
+        );
+        if (!confirmed) persistInput.checked = false;
+        else persistInput.setAttribute('data-confirmed', '1');
+      }
+      if (!persistInput.checked) {
+        persistInput.setAttribute('data-confirmed', '0');
+        if (getApiKeyPersist(provSelect.value)) {
+          var persistedKey = getApiKey(provSelect.value);
+          saveApiKey(persistedKey, provSelect.value, false);
+        }
+      }
+      updateStorageCopy();
+    });
+  }
+
   // Enter in key input triggers save
   keyInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); doSaveKey(); }
@@ -1728,23 +2633,43 @@ document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
   // Click outside closes details
   document.addEventListener('click', function(e) {
-    if (apiDetails.open && !apiDetails.contains(e.target)) {
+    if (apiDetails.open && !apiDetails.contains(/** @type {Node|null} */ (e.target))) {
       apiDetails.open = false;
     }
   });
 })();
 
 // ---- Algorithmic Refine: modify existing code values ----
+function adjustCutoff(code, factor) {
+  var changed = code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(match, cutoff) {
+    var next = factor > 1
+      ? Math.min(12000, Math.round(parseInt(cutoff) * factor))
+      : Math.max(100, Math.round(parseInt(cutoff) * factor));
+    return '.lpf(' + next + ')';
+  });
+  return changed.replace(/\.lpf\s*\(\s*sine\.range\(\s*(\d+)\s*,\s*(\d+)\s*\)/g, function(match, low, high) {
+    var nextLow = factor > 1 ? Math.min(10000, Math.round(parseInt(low) * factor)) : Math.max(100, Math.round(parseInt(low) * factor));
+    var nextHigh = factor > 1 ? Math.min(12000, Math.round(parseInt(high) * factor)) : Math.max(nextLow + 100, Math.round(parseInt(high) * factor));
+    return '.lpf(sine.range(' + nextLow + ',' + nextHigh + ')';
+  });
+}
+
+function changeTempo(code, delta) {
+  return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(match, bpm) {
+    var next = Math.max(40, Math.min(400, parseInt(bpm) + delta));
+    if (lastCompositionPlan) lastCompositionPlan.tempo = next;
+    return 'setcpm(' + next + '/4)';
+  }).replace(/(\/\/ identity:.* · )\d+( BPM)/, function(match, before, after) {
+    return before + (lastCompositionPlan ? lastCompositionPlan.tempo : match.match(/\d+/)[0]) + after;
+  });
+}
+
 function algoRefine(code, direction) {
   switch (direction) {
     case 'faster':
-      return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
-        return 'setcpm(' + Math.min(400, parseInt(bpm) + 8) + '/4)';
-      });
+      return changeTempo(code, 8);
     case 'slower':
-      return code.replace(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/, function(m, bpm) {
-        return 'setcpm(' + Math.max(40, parseInt(bpm) - 8) + '/4)';
-      });
+      return changeTempo(code, -8);
     case 'louder':
       return code.replace(/\.gain\s*\(\s*([\d.]+)\s*\)/g, function(m, g) {
         return '.gain(' + Math.min(1, (parseFloat(g) * 1.15)).toFixed(2) + ')';
@@ -1754,13 +2679,9 @@ function algoRefine(code, direction) {
         return '.gain(' + Math.max(0.05, (parseFloat(g) * 0.85)).toFixed(2) + ')';
       });
     case 'brighter':
-      return code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.lpf(' + Math.min(12000, Math.round(parseInt(f) * 1.4)) + ')';
-      });
+      return adjustCutoff(code, 1.4);
     case 'darker':
-      return code.replace(/\.lpf\s*\(\s*(\d+)\s*\)/g, function(m, f) {
-        return '.lpf(' + Math.max(100, Math.round(parseInt(f) * 0.6)) + ')';
-      });
+      return adjustCutoff(code, .6);
     case 'more reverb':
       return code.replace(/\.room\s*\(\s*([\d.]+)\s*\)/g, function(m, r) {
         return '.room(' + Math.min(1, (parseFloat(r) + 0.15)).toFixed(2) + ')';
@@ -1771,13 +2692,9 @@ function algoRefine(code, direction) {
       });
     // ---- PITCH ----
     case 'higher':
-      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
-        return '.scale("' + key + Math.min(7, parseInt(oct) + 1) + ':' + sc + '")';
-      });
+      return shiftPlanRegisters(code, 1);
     case 'lower':
-      return code.replace(/\.scale\s*\(\s*"(\w+)(\d+):([^"]+)"\s*\)/g, function(m, key, oct, sc) {
-        return '.scale("' + key + Math.max(1, parseInt(oct) - 1) + ':' + sc + '")';
-      });
+      return shiftPlanRegisters(code, -1);
     // ---- DENSITY ----
     case 'denser':
       return code.replace(/\.struct\s*\(\s*"x\((\d+),(\d+)/g, function(m, k, n) {
@@ -1788,12 +2705,15 @@ function algoRefine(code, direction) {
         return '.struct("x(' + Math.max(1, parseInt(k) - 1) + ',' + n;
       });
     // ---- SCALE CHANGE ----
-    case 'scale:major': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1major');
-    case 'scale:minor': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor');
-    case 'scale:dorian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1dorian');
-    case 'scale:phrygian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1phrygian');
-    case 'scale:lydian': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1lydian');
-    case 'scale:pentatonic': return code.replace(/(\.scale\s*\(\s*"\w+\d+:)[^"]+/g, '$1minor:pentatonic');
+    case 'scale:major':
+    case 'scale:minor':
+    case 'scale:dorian':
+    case 'scale:phrygian':
+    case 'scale:lydian':
+    case 'scale:pentatonic':
+      if (!lastCompositionPlan) return code;
+      applyToneToPlan(lastCompositionPlan, direction.replace('scale:', ''));
+      return replaceHarmonyAndIdentity(code, lastCompositionPlan);
     // ---- FILTER: resonance & highpass ----
     case 'more resonance':
       return code.replace(/\.lpq\s*\(\s*([\d.]+)\s*\)/g, function(m, q) {
@@ -1830,11 +2750,15 @@ function algoRefine(code, direction) {
       });
     case 'more distortion':
       return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
-        return '.shape(' + Math.min(1, (parseFloat(s) + 0.15)).toFixed(2) + ')';
+        var current = parseFloat(s);
+        var next = Math.min(1, current + 0.15);
+        return next === current ? m : '.shape(' + next.toFixed(2) + ')';
       });
     case 'less distortion':
       return code.replace(/\.shape\s*\(\s*([\d.]+)\s*\)/g, function(m, s) {
-        return '.shape(' + Math.max(0, (parseFloat(s) - 0.15)).toFixed(2) + ')';
+        var current = parseFloat(s);
+        var next = Math.max(0, current - 0.15);
+        return next === current ? m : '.shape(' + next.toFixed(2) + ')';
       });
     case 'more crush':
       return code.replace(/\.crush\s*\(\s*(\d+)\s*\)/g, function(m, c) {
@@ -1845,16 +2769,75 @@ function algoRefine(code, direction) {
         return '.crush(' + Math.min(16, parseInt(c) + 1) + ')';  // higher = less crushed
       });
     case 'add swing':
-      // Add .swing(0.15) after .bank() or after first s() call
-      if (code.indexOf('.swing(') === -1) {
-        return code.replace(/(\.bank\s*\([^)]*\))/, '$1.swing(0.15)');
-      }
-      return code;
+      if (code.indexOf('.swing(') !== -1 || code.indexOf('.bank(') === -1) return code;
+      return code.replace(/(\.bank\s*\([^)]*\))/g, '$1\n.swing(4)');
     case 'straighten':
       return code.replace(/\.swing\s*\([^)]*\)/g, '');
     default:
       return code;
   }
+}
+
+function canRefineDirection(code, direction) {
+  var tempoMatch = code.match(/setcpm\s*\(\s*(\d+)\s*\/\s*4\s*\)/);
+  if (direction === 'faster') return Boolean(tempoMatch && parseInt(tempoMatch[1]) < 400);
+  if (direction === 'slower') return Boolean(tempoMatch && parseInt(tempoMatch[1]) > 40);
+  if (direction === 'higher') return Boolean(lastCompositionPlan && (
+    lastCompositionPlan.registers.harmony < 6 || lastCompositionPlan.registers.lead < 7
+  ));
+  if (direction === 'lower') return Boolean(lastCompositionPlan && (
+    lastCompositionPlan.registers.harmony > 2 || lastCompositionPlan.registers.lead > 3
+  ));
+  if (direction.indexOf('scale:') === 0) {
+    if (!lastCompositionPlan) return false;
+    var target = direction.replace('scale:', '').replace('pentatonic', 'minor:pentatonic');
+    return lastCompositionPlan.scale !== target || lastCompositionPlan.profileName.indexOf('reharmonization') === -1;
+  }
+  if (direction === 'add swing') return code.indexOf('.bank(') !== -1 && code.indexOf('.swing(') === -1;
+  if (direction === 'straighten') return code.indexOf('.swing(') !== -1;
+  if (direction.indexOf('make it') === 0) {
+    var moodSteps = [];
+    if (direction.indexOf('dark') !== -1 || direction.indexOf('moodi') !== -1) {
+      moodSteps = ['slower', 'darker', 'lower', 'scale:minor'];
+    } else if (direction.indexOf('euphoric') !== -1 || direction.indexOf('uplift') !== -1) {
+      moodSteps = ['faster', 'brighter', 'louder', 'scale:lydian', 'more reverb'];
+    } else if (direction.indexOf('dreamy') !== -1 || direction.indexOf('float') !== -1) {
+      moodSteps = ['slower', 'darker', 'more reverb', 'more delay', 'scale:pentatonic'];
+    } else if (direction.indexOf('aggressive') !== -1 || direction.indexOf('intense') !== -1) {
+      moodSteps = ['faster', 'louder', 'more distortion', 'denser', 'more resonance', 'scale:phrygian'];
+    }
+    return moodSteps.some(function(step) { return canRefineDirection(code, step); });
+  }
+  return algoRefine(code, direction) !== code;
+}
+
+function updateMixerAvailability(code) {
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.refine-btn')).forEach(function(btn) {
+    var available = canRefineDirection(code, btn.dataset.dir || '');
+    btn.disabled = !available;
+    btn.setAttribute('aria-disabled', available ? 'false' : 'true');
+  });
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.mixer-ch')).forEach(function(row) {
+    var controls = Array.from(/** @type {NodeListOf<HTMLButtonElement>} */ (row.querySelectorAll('.refine-btn')));
+    row.style.opacity = controls.length && controls.every(function(btn) { return btn.disabled; }) ? '.35' : '';
+  });
+}
+
+function applyMoodRefinement(code, direction) {
+  var result = code;
+  if (direction.indexOf('dark') !== -1 || direction.indexOf('moodi') !== -1) {
+    result = algoRefine(algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'lower'), 'scale:minor');
+  } else if (direction.indexOf('euphoric') !== -1 || direction.indexOf('uplift') !== -1) {
+    result = algoRefine(algoRefine(algoRefine(algoRefine(result, 'faster'), 'brighter'), 'louder'), 'scale:lydian');
+    result = algoRefine(result, 'more reverb');
+  } else if (direction.indexOf('dreamy') !== -1 || direction.indexOf('float') !== -1) {
+    result = algoRefine(algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb'), 'more delay');
+    result = algoRefine(result, 'scale:pentatonic');
+  } else if (direction.indexOf('aggressive') !== -1 || direction.indexOf('intense') !== -1) {
+    result = algoRefine(algoRefine(algoRefine(algoRefine(result, 'faster'), 'louder'), 'more distortion'), 'denser');
+    result = algoRefine(algoRefine(result, 'more resonance'), 'scale:phrygian');
+  }
+  return result;
 }
 
 // ---- Refine & Mood Buttons ----
@@ -1881,13 +2864,14 @@ function setupRepeat(btn) {
 }
 document.querySelectorAll('.ch-minus, .ch-plus, .ch-toggle').forEach(setupRepeat);
 
-document.querySelectorAll('.refine-btn').forEach(function(btn) {
+/** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.refine-btn')).forEach(function(btn) {
   btn.addEventListener('click', async function() {
     var direction = btn.dataset.dir;
-    var ed = getEditor();
-    if (!ed) return;
-    var currentCode = ed.code || '';
+    var currentCode;
+    try { currentCode = await getEditorCode(); } catch (_) { return; }
     if (!currentCode.trim()) return;
+    var operation = beginExclusiveOperation();
+    var triggeringRevision = editorPort.activeRevision;
 
     // Tone buttons: highlight active
     if (direction.indexOf('scale:') === 0) {
@@ -1905,17 +2889,7 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       // algorithmic refine
       var result;
       if (isMoodDirection) {
-        result = currentCode;
-        if (direction.indexOf('dark') !== -1 || direction.indexOf('moodi') !== -1) {
-          result = algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb');
-        } else if (direction.indexOf('euphoric') !== -1 || direction.indexOf('uplift') !== -1) {
-          result = algoRefine(algoRefine(algoRefine(result, 'faster'), 'brighter'), 'louder');
-        } else if (direction.indexOf('dreamy') !== -1 || direction.indexOf('float') !== -1) {
-          result = algoRefine(algoRefine(algoRefine(result, 'slower'), 'darker'), 'more reverb');
-          result = algoRefine(result, 'more reverb');
-        } else if (direction.indexOf('aggressive') !== -1 || direction.indexOf('intense') !== -1) {
-          result = algoRefine(algoRefine(algoRefine(result, 'faster'), 'brighter'), 'louder');
-        }
+        result = applyMoodRefinement(currentCode, direction);
       } else {
         result = algoRefine(currentCode, direction);
       }
@@ -1923,9 +2897,11 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
       btn.classList.add(changed ? 'flash-ok' : 'flash-fail');
       setTimeout(function() { btn.classList.remove('flash-ok', 'flash-fail'); }, 300);
       if (changed) {
-        ed.setCode(result);
-        ed.evaluate(true);
+        await setCodeAndPlay(result, operation);
+        if (!isOperationCurrent(operation)) return;
+        updateCompositionMeta(lastCompositionPlan, lastCompositionPlan ? 'algorithmic' : 'ai');
       }
+      updateMixerAvailability(result);
       return;
     }
 
@@ -1933,41 +2909,30 @@ document.querySelectorAll('.refine-btn').forEach(function(btn) {
     var statusEl = document.getElementById('status');
     statusEl.className = 'status';
     statusEl.textContent = 'Refining: ' + direction + '...';
-    document.querySelectorAll('.refine-btn').forEach(function(b) { b.disabled = true; });
 
     try {
       var refinePrompt = 'Here is the current Strudel code:\n\n' + currentCode + '\n\nModify this code to make it ' + direction + '. Keep the overall structure and concept. Change only what is needed for the requested direction. Return the complete modified code.';
-      var code;
       var refineProv = getProvider();
-      if (refineProv === 'gemini') {
-        var resp = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system_instruction: { parts: [{ text: STRUDEL_SYSTEM_PROMPT }] }, contents: [{ parts: [{ text: refinePrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
-        code = stripFences(data.candidates[0].content.parts[0].text);
-      } else if (refineProv === 'openai') {
-        var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.7, max_tokens: 2048, messages: [{ role: 'system', content: STRUDEL_SYSTEM_PROMPT }, { role: 'user', content: refinePrompt }] }) });
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
-        code = stripFences(data.choices[0].message.content);
-      } else {
-        var resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.7, system: STRUDEL_SYSTEM_PROMPT, messages: [{ role: 'user', content: refinePrompt }] }) });
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
-        code = stripFences(data.content[0].text);
-      }
-      setCodeAndPlay(code);
+      var code = stripFences(await callLLM({
+        provider: refineProv, apiKey: apiKey, system: STRUDEL_SYSTEM_PROMPT,
+        user: refinePrompt, temperature: refineProv === 'gemini' ? 1.0 : 0.7,
+        signal: operation.signal,
+      }));
+      if (!isOperationCurrent(operation) || editorPort.activeRevision !== triggeringRevision) return;
+      var liveCode = await getEditorCode();
+      if (!isOperationCurrent(operation) || liveCode !== currentCode) return;
+      await setCodeAndPlay(code, operation);
+      if (!isOperationCurrent(operation)) return;
+      updateMixerAvailability(code);
     } catch (e) {
-      statusEl.className = 'status error';
-      statusEl.textContent = 'Refine error: ' + e.message;
+      if (isOperationCurrent(operation) && !isAbortError(e)) {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Refine error: ' + e.message;
+      }
     } finally {
-      document.querySelectorAll('.refine-btn').forEach(function(b) { b.disabled = false; });
+      if (isOperationCurrent(operation)) {
+        try { updateMixerAvailability(await getEditorCode()); } catch (_) {}
+      }
     }
   });
 });
@@ -1981,18 +2946,19 @@ document.getElementById('input').addEventListener('keydown', function(e) {
 var EDIT_SYSTEM = 'You are a Strudel live-coding assistant. You receive the current program and a short instruction. Return a minimal modification that keeps the program runnable while applying the intent.\n\nRules:\n- Preserve unrelated code and comments.\n- Prefer minimal edits over full rewrites.\n- Keep formatting consistent with the original code.\n- Only change what the instruction asks for.\n- Return ONLY the updated program. No explanation, no markdown fences, no JSON wrapping.';
 
 async function doEdit() {
-  var editInput = document.getElementById('editInput');
+  var editInput = /** @type {HTMLInputElement} */ (document.getElementById('editInput'));
   var instruction = editInput.value.trim();
   if (!instruction) return;
 
-  var ed = getEditor();
-  if (!ed) return;
-  var currentCode = ed.code || '';
+  var currentCode;
+  try { currentCode = await getEditorCode(); } catch (_) { return; }
   if (!currentCode.trim()) return;
+  var operation = beginExclusiveOperation();
+  var triggeringRevision = editorPort.activeRevision;
 
   var apiKey = getApiKey();
   var statusEl = document.getElementById('status');
-  var applyBtn = document.getElementById('editApply');
+  var applyBtn = /** @type {HTMLButtonElement} */ (document.getElementById('editApply'));
 
   if (!apiKey) {
     statusEl.className = 'status error';
@@ -2001,45 +2967,34 @@ async function doEdit() {
   }
 
   applyBtn.disabled = true;
+  applyBtn.setAttribute('data-operation-epoch', String(operation.epoch));
   statusEl.className = 'status';
   statusEl.textContent = 'Editing: ' + instruction.substring(0, 50) + '...';
 
   try {
     var editPrompt = 'Current Strudel program:\n\n' + currentCode + '\n\nInstruction:\n' + instruction;
-    var code;
     var prov = getProvider();
-    if (prov === 'gemini') {
-      var resp = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=' + apiKey,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_instruction: { parts: [{ text: EDIT_SYSTEM }] }, contents: [{ parts: [{ text: editPrompt }] }], generationConfig: { temperature: 1.0, maxOutputTokens: 2048 } }) });
-      var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
-      code = stripFences(data.candidates[0].content.parts[0].text);
-    } else if (prov === 'openai') {
-      var resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({ model: 'gpt-5.4-nano', reasoning: { effort: 'none' }, temperature: 0.2, max_tokens: 2048, messages: [{ role: 'system', content: EDIT_SYSTEM }, { role: 'user', content: editPrompt }] }) });
-      var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
-      code = stripFences(data.choices[0].message.content);
-    } else {
-      var resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0.2, system: EDIT_SYSTEM, messages: [{ role: 'user', content: editPrompt }] }) });
-      var data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
-      code = stripFences(data.content[0].text);
-    }
+    var code = stripFences(await callLLM({
+      provider: prov, apiKey: apiKey, system: EDIT_SYSTEM, user: editPrompt,
+      temperature: prov === 'gemini' ? 1.0 : 0.2,
+      signal: operation.signal,
+    }));
 
     if (!code || !code.trim()) throw new Error('Empty response');
+    if (!isOperationCurrent(operation) || editorPort.activeRevision !== triggeringRevision) return;
+    var liveCode = await getEditorCode();
+    if (!isOperationCurrent(operation) || liveCode !== currentCode) return;
     editInput.value = '';
-    setCodeAndPlay(code);
+    await setCodeAndPlay(code, operation);
   } catch (e) {
-    statusEl.className = 'status error';
-    statusEl.textContent = 'Edit error: ' + e.message;
+    if (isOperationCurrent(operation) && !isAbortError(e)) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Edit error: ' + e.message;
+    }
   } finally {
-    applyBtn.disabled = false;
+    if (applyBtn.getAttribute('data-operation-epoch') === String(operation.epoch)) {
+      applyBtn.disabled = false;
+    }
   }
 }
 

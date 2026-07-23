@@ -1,242 +1,192 @@
 # text-to-strudel
 
-<img width="1362" height="212" alt="스크린샷 2026-04-09 오후 5 27 47" src="https://github.com/user-attachments/assets/26cbbed6-cc50-4469-a4fa-3882d370b053" />
+<img width="1362" height="212" alt="text-to-strudel" src="https://github.com/user-attachments/assets/26cbbed6-cc50-4469-a4fa-3882d370b053" />
 
-**Turn any text into live-coded music. No server. No install. Just a browser.**
+**Turn text into live-coded music in the browser.**
 
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[한국어](README-ko.md) · [Strudel](https://strudel.cc) · [Security architecture](docs/security-architecture.md) · [AGPL-3.0](LICENSE)
 
----
-
-**text-to-strudel** is a browser-based tool that converts arbitrary text input into playable, editable music using [Strudel](https://strudel.cc), the JavaScript port of TidalCycles. Type a word, a sentence, a feeling -- pick a genre -- and listen. The generated code appears in a live editor where you can modify it in real time.
-
-> **Two modes of operation:** Choose between a fully deterministic **Algorithmic Mode** that needs nothing but a browser, or an **AI Creative Mode** (Gemini 3.1 Flash Lite, Claude Haiku 4.5, or OpenAI GPT-5.4 Nano) that interprets your text as feeling and imagery rather than literal transcription.
-
----
-
-## Table of Contents
-
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [How It Works](#how-it-works)
-- [DJ Mixer](#dj-mixer)
-- [Natural Language Edit](#natural-language-edit)
-- [Genre Guide](#genre-guide)
-- [Architecture](#architecture)
-- [API Setup](#api-setup)
-- [Themes](#themes)
-- [Keyboard Shortcuts](#keyboard-shortcuts)
-- [License](#license)
-- [Credits](#credits)
-
----
+text-to-strudel turns a phrase into a coherent musical interpretation and editable Strudel code. Algorithmic mode is local and deterministic. An optional API key enables richer LLM-based interpretation and natural-language editing.
 
 ## Features
 
-- **9 genre modes:** EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5 subgenres), Random, Fusion
-- **Fusion toggle:** Check the Fusion box, then select multiple genres to combine. Any number of genres.
-- **Interactive Strudel editor:** Edit generated code live, press `Ctrl+Enter` to re-evaluate instantly
-- **DJ Mixer:** 13 channel strips (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6 scales) + mood (4 presets). 2-column grid. Long-press for continuous adjustment.
-- **Natural language Edit:** Type what you want to change in plain English. LLM modifies the code surgically, preserving structure. (Requires API key)
-- **Mood buttons:** dark / euphoric / dreamy / aggressive. Compound parameter shifts in algo mode; creative reinterpretation via LLM in AI mode.
-- **Regenerate:** Same input, different result. Algorithmic mode increments seed; AI mode adjusts temperature/topP.
-- **Dynamic error recovery:** If generated code has errors, the system auto-detects them, sends code + error to LLM for fix, retries up to 3 times. Falls back to algorithmic pattern-matching if no API key.
-- **Deterministic output:** In algorithmic mode, the same `text + genre + seed` always produces the exact same music.
-- **6-12 layers per generation:** drums, percussion, bass, lead, countermelody, chords, arp, texture/noise.
-- **Two themes:** Matrix (green-on-black, 2-column, JetBrains Mono) and Amber (warm dark, single-column, Outfit + Red Hat Mono).
-- **Zero friction:** No server, no npm, no build step. Open the HTML file and go.
-
----
+- EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World, Random, and multi-genre Fusion modes
+- A shared `CompositionPlan` for key, harmony, phrase, bass, groove, form, sounds, and arrangement
+- Chord-aware bass and melodies derived from one voice-led `chord(...).dict("ireal")` progression
+- Genre-specific harmony, including jazz ii–V–I turnarounds, classical cadences, and true 12-bar blues
+- 4–7 purposeful layers instead of stacking every available part
+- Focused **New melody**, **New groove**, and **New arrangement** variations, plus a full **New take**
+- Unicode- and Hangul-aware deterministic text analysis
+- Sandboxed Strudel execution separated from the parent application and API keys
+- Two interfaces that share the same engine: Matrix and Amber
 
 ## Quick Start
 
-1. Open `index.html` in any modern browser (or serve via any static HTTP server).
-2. Type anything in the text input -- a word, a phrase, a memory, a feeling.
-3. Select a genre (EDM is the default). Check **Fusion** to combine multiple genres.
-4. Click **Generate & Play**. Music starts automatically.
-5. Use the **DJ Mixer** to tweak parameters, or type a change in the **Edit** field.
-6. Click **Regen** for a different interpretation of the same input.
-7. Click **Stop** or press **Ctrl+.** to silence everything.
+Serve the project over local HTTP:
 
-> Want AI Creative Mode? Click **API**, select a provider, enter your key, press Enter. See [API Setup](#api-setup).
+```bash
+python3 -m http.server 8080
+```
 
----
+Open `http://localhost:8080`, enter text, choose a genre, and select **Generate & Play**. The iframe and CSP architecture expects an HTTP(S) origin; opening `index.html` directly with a `file:` URL is not a supported launch path.
 
-## How It Works
+The browser app has no build step. It loads the pinned `@strudel/repl@1.3.0` runtime from unpkg, so the first load requires network access.
 
-### Algorithmic Mode (no API key)
+## Music Engine
 
-The algorithmic pipeline is fully deterministic. Given the same input text, genre, and seed counter, it produces identical output every time.
+### 1. Deterministic cue and structural analysis
 
-**1. Text Analysis** -- The input is analyzed for five qualities (0-1):
+Algorithmic mode normalizes input with Unicode NFKC and processes Unicode code points. It combines:
 
-| Quality | Derived From |
+- a finite set of English and Korean affect cues for bright/dark, intense/calm, and heavy/airy qualities;
+- structural measurements such as word count, punctuation, casing, character density, average word length, and character diversity; and
+- a deterministic fingerprint of the full normalized text, genre, and variation state for seeded musical choices.
+
+This analyzer proposes a musical interpretation; it does not perform general contextual or semantic understanding. Distinct full texts can still produce different seeded choices even when their metric summaries are similar.
+
+| Metric | Current role in algorithmic output |
 |:---|:---|
-| **Energy** | Unique character density, punctuation, uppercase, word count |
-| **Brightness** | Vowel-to-consonant ratio |
-| **Weight** | Average word length |
-| **Space** | Whitespace ratio, short phrase bonus |
-| **Complexity** | Unique character ratio |
+| Energy | Tempo, phrase and bass activity, drum dynamics, optional percussion, and selected techniques |
+| Brightness | Harmony-profile matching and filter ranges |
+| Weight | Filter range and texture level |
+| Space | Room, spacing-oriented techniques, filtering movement, and optional texture |
+| Tension | Harmony-profile matching |
+| Complexity | Calculated and shown in the generated mood comment; it does not independently drive rendered music |
+| Valence | Calculated and shown in the generated mood comment; it does not independently drive rendered music |
 
-**2. Genre Resolution** -- Each genre defines tempo range, scale pool, sound sets, drum patterns, chord progressions, and layer-specific FX functions. **Random** mixes 3 genres. **Fusion** blends N selected genres (averaged tempos, concatenated scales, mixed sounds).
+AI creative mode sends the prompt directly from the browser to the selected provider for a richer semantic interpretation.
 
-**3. Code Generation** -- Motif-based melodies with call-and-response, walking bass (8 types), 6 chord voicings, genre drums, plus 12 artist-inspired techniques applied probabilistically (.off, .superimpose, .jux, .echoWith, .degradeBy, Perlin filter, etc.).
+### 2. Shared harmony and voice leading
 
-**4. Arrangement** -- Staggered layer entry via `.mask()`, periodic variation via `.every()`, filter fade-ins, breathing degradation.
+`createCompositionPlan()` selects a key, harmonic profile, form, tempo, phrase, bass pattern, sounds, and arrangement. `renderCompositionPlan()` then declares one shared harmony:
 
-### AI Creative Mode (with API key)
+```js
+const harmony = chord("<Dm7 G7 C^7 A7>").dict("ireal")
+```
 
-The tool sends the input to **Gemini 3.1 Flash Lite**, **Claude Haiku 4.5**, or **OpenAI GPT-5.4 Nano**.
+The bass follows its roots, the chord layer uses anchored voicings, and lead/accent phrases use `harmony.n(...).voicing()`. This keeps the parts harmonically related instead of giving each layer an independent note pool.
 
-- **System Prompt (~1300 tokens):** Creative process framework, music theory principles, mood parameters, 17 critical reminders.
-- **User Message (~3100 tokens):** Input text, genre context with arrangement structures, complete Strudel component reference (92 scales, 100+ instruments, 58 effects), 29 structural idioms.
-- **Error Recovery:** If the generated code has runtime errors, the system detects them via `repl.state.evalError`, sends code + error back to LLM for fix, retries up to 3 times. Falls back to algorithmic `tryFixFromError` if LLM fix fails.
+Algorithmic output is deterministic for the same normalized text, genre, and variation state.
 
----
+### 3. Purposeful layers and form
 
-## DJ Mixer
+Each take renders 4–7 roles chosen for the music: drums, bass, harmony, lead, an answering accent or arpeggio, percussion, and texture. Every role has an arrangement mask and a routing purpose:
 
-Appears after first generation. All mixer controls use **algorithmic regex modification** (instant, free, no API calls) regardless of whether an API key is set.
+| Orbit | Roles |
+|:---|:---|
+| 1 | Drums and percussion |
+| 2 | Bass |
+| 3 | Harmony |
+| 4 | Lead |
+| 5 | Countermelody or arpeggiated accent |
+| 6 | Texture and air |
 
-**Channel Strips** (2-column grid, each with [-][+]):
+Most arrangements use a 16-cycle intro/build/break/release form. Ambient gets slower fade/bloom forms. Blues preserves 12 harmonic bars inside a 24-cycle, two-chorus arrangement.
 
-| Channel | Effect | Range |
+## Variations
+
+Focused variation buttons are available in algorithmic mode:
+
+| Action | Changes | Preserves |
 |:---|:---|:---|
-| BPM | Tempo | 40 - 400 |
-| Gain | Volume | 0.05 - 1.0 |
-| Cutoff | Low-pass filter | 100 - 12000 Hz |
-| Resonance | Filter Q | 0 - 50 |
-| Highpass | High-pass filter | 20 - 8000 Hz |
-| Octave | Pitch shift | 1 - 7 |
-| Reverb | Room size | 0 - 1.0 |
-| Delay | Delay send | 0 - 1.0 |
-| Feedback | Delay feedback | 0 - 0.95 |
-| Density | Euclidean hits | 1 - N |
-| Swing | Shuffle feel | off / on |
-| Distortion | Waveshape | 0 - 1.0 |
-| Bitcrush | Bit depth | 1 - 16 |
+| **New melody** | Lead and answering phrase | Harmony, groove, sounds, form |
+| **New groove** | Drum choice, drum dynamics, groove-seeded percussion | Harmony and melody |
+| **New arrangement** | Form, sounds, optional roles, techniques, and arrangement FX | Harmony symbols, bass pattern, lead phrase |
+| **New take** | Harmony, melody, groove, and arrangement together | Input text and selected genre |
 
-**Tone:** major, minor, dorian, phrygian, lydian, pentatonic (replaces scale in all layers)
+Focused variations patch only the relevant layers in the current editor code, preserving unrelated tone, tempo, sound-polish, and manual edits. **New take** intentionally creates a new musical identity instead.
 
-**Mood:** dark, euphoric, dreamy, aggressive (compound: adjusts tempo + filter + reverb + gain simultaneously. Uses LLM when API key is available.)
+**New groove** is disabled when the composition has no drums, such as Classical or Ambient.
 
-**Long-press:** Hold any +/- button for 400ms to start continuous adjustment (150ms repeat).
+## Sound Polish
 
-**Click feedback:** Green flash = value changed. Red flash = no matching parameter in code.
+The sound-polish panel can adjust tempo, gain, cutoff, resonance, high-pass filtering, octave, reverb, delay, feedback, rhythmic density, swing, distortion, bit depth, and harmonic tone. Availability is evaluated against the current code: controls at a limit or without a matching musical target are disabled.
 
-In LLM mode, click **[mixer]** in the Edit row to show/hide the mixer.
+Tone buttons reharmonize the shared progression while preserving its form; a blues take remains 12 bars after a tone change.
 
----
+Mood buttons are distinct macros:
 
-## Natural Language Edit
+- **dark:** slower, darker, lower, minor
+- **euphoric:** faster, brighter, louder, Lydian, more reverb
+- **dreamy:** slower, darker, more reverb/delay, pentatonic
+- **aggressive:** faster, louder, denser, more resonant/distorted, Phrygian
 
-Appears in AI mode (requires API key). Type any instruction and press Enter or click Apply.
-
-```
-> remove drums and add piano          [Apply]
-> make the bass more complex
-> change everything to Japanese style
-> add a breakdown at cycle 16
-```
-
-Uses a separate edit-focused system prompt: "Preserve unrelated code and comments. Prefer minimal edits over full rewrites." Temperature 0.2 for precision. The LLM modifies the existing code surgically rather than rewriting from scratch.
-
----
+With an API key, mood buttons request an AI reinterpretation. Other sound-polish adjustments remain immediate local edits.
 
 ## Genre Guide
 
-| Genre | BPM | Layers |
-|:---|:---|:---|
-| **EDM** | 124-140 | drums, perc, bass, lead, countermelody, chords, arp, texture |
-| **Jazz** | 84-148 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Classical** | 62-116 | bass, lead, countermelody, chords, arp, texture |
-| **Blues** | 72-108 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Ambient** | 50-76 | bass, pad, lead, arp, texture |
-| **Lo-fi** | 68-86 | drums, perc, bass, lead, countermelody, chords, texture |
-| **World** | 78-126 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Random** | Varies | Mixed from 3 random genres |
-| **Fusion** | Averaged | Blended from N selected genres |
+| Genre | Harmonic/form character |
+|:---|:---|
+| EDM | Minor, Dorian, major-release, or Phrygian tension profiles |
+| Jazz | Major ii–V–I, minor turnaround, or modal bridge with extended chords |
+| Classical | Authentic, minor-lament, or deceptive cadences |
+| Blues | I7–IV7–V7 12-bar shuffle/slow-burn progression and 24-cycle form |
+| Ambient | Suspended Lydian, Dorian orbit, or spacious pentatonic movement |
+| Lo-fi | Extended seventh/ninth-chord loops with circular forms |
+| World | Modal drone, open fifths, or harmonic-minor cadence with regional sounds |
+| Random | Independently combines harmonic, timbral, and groove sources |
+| Fusion | Uses the first selected genre for harmony and combines sounds/groove across selections |
 
-**World Subgenres:** Flamenco, Japanese, Indian, Eastern European, Arabic -- each with tradition-specific scales, keys, and instruments.
+World mode includes Flamenco, Japanese, Indian, Eastern European, and Arabic sound palettes.
 
----
+## AI Creative Mode and API Keys
 
-## Architecture
+Open **API**, select Gemini, Claude, or OpenAI, and save a provider key. AI mode can generate a new interpretation and apply natural-language edits to the current Strudel code.
 
+API key storage is per provider:
+
+- **Session only (default):** the key stays in JavaScript memory for the current page and is cleared on reload or when the tab closes.
+- **Persist on this device:** after an explicit disclosure and confirmation, the key is stored as plaintext in browser `localStorage`. Use this only in a trusted browser profile.
+- Keys saved by older releases remain in `localStorage` and are marked as persisted rather than silently relabeled as session-only.
+
+This remains a browser-only application. Provider requests and API keys go directly from the browser to the selected provider; no project server secures, proxies, or hides them. Browser extensions, DevTools, malicious code in the trusted parent page, or another user of the same browser profile may access a persisted key.
+
+The focused algorithmic variation buttons are hidden in AI mode; use **New take** or the **Edit** field for creative changes.
+
+## Runtime Isolation
+
+The parent page owns UI state, API keys, provider requests, and orchestration. Strudel and evaluated patterns run in `strudel-host.html`, an iframe with `sandbox="allow-scripts"` and therefore an opaque origin. The parent transfers one `MessagePort` during initialization; subsequent editor commands use that port rather than a persistent global `message` listener.
+
+The parent CSP excludes `unsafe-eval`. Only the sandboxed host permits the evaluation required by Strudel, under a separate restrictive CSP. Because CSP `'self'` does not consistently match an opaque sandbox origin, the child CSP and local external bridge script use a matching nonce. The child retries a bootstrap ping until the parent accepts the one-time `MessagePort` initialization. The Strudel dependency is pinned to `@strudel/repl@1.3.0` and protected by SHA-384 Subresource Integrity. See [Security Architecture](docs/security-architecture.md) for the trust boundaries, invariants, and non-goals.
+
+## Project Structure and Tests
+
+```text
+index.html                     Matrix interface and parent CSP
+index.amber.html               Amber interface and parent CSP
+app.js                         Composition engine, provider calls, key storage, and iframe RPC client
+strudel-host.html              Sandboxed Strudel host, child CSP, and pinned SRI dependency
+strudel-host.js                Validated MessagePort RPC server
+package.json                   Node, TypeScript, and Playwright scripts
+test/                          Unit and static security regression tests
+e2e/                           Playwright browser tests
+docs/musicality-checklist.md   A/B listening checklist
+docs/security-architecture.md  Browser trust boundaries and threat model
+README.md / README-ko.md       English and Korean documentation
 ```
-text-to-strudel/
-  index.html          Matrix theme (green-on-black, 2-column, JetBrains Mono)
-  index.amber.html    Amber theme (warm dark, single-column, Outfit + Red Hat Mono)
-  app.js              All logic (shared by both themes)
-  LICENSE             AGPL-3.0
-  README.md
-  README-ko.md        Korean documentation
+
+Install the development tools, then run the checks:
+
+```bash
+npm install
+npm test
+npm run typecheck
+npx playwright install
+npm run e2e
 ```
 
-- **index.html** (~570 lines) -- 2-column layout: left panel (controls, mixer) is fixed, right pane (code editor) scrolls independently. Matrix green aesthetic with CRT scanline overlay. CodeMirror syntax colors overridden to all-green spectrum.
-- **index.amber.html** (274 lines) -- Single-column layout with amber accent, film grain overlay, pill-shaped buttons. Same HTML structure and IDs -- fully interchangeable with `app.js`.
-- **app.js** (~2060 lines) -- Seeded PRNG, text analysis, 7 genre definitions, melody/bass/chord/arp generators, 13 mixer channel strip handlers, 3 LLM provider integrations, dynamic error recovery loop, natural language edit, system prompt + component reference.
-
----
-
-## API Setup
-
-| Provider | Model | Key format | Docs |
-|:---|:---|:---|:---|
-| **Gemini** (default) | gemini-3.1-flash-lite-preview | `AIza...` | [aistudio.google.com](https://aistudio.google.com) |
-| **Claude** | claude-haiku-4-5-20251001 | `sk-ant-...` | [console.anthropic.com](https://console.anthropic.com) |
-| **OpenAI** | gpt-5.4-nano | `sk-...` | [platform.openai.com](https://platform.openai.com) |
-
-1. Click **API** in the app
-2. Select provider from dropdown
-3. Paste your key, press **Enter** (auto-verifies)
-4. Green checkmark = verified. Red cross = invalid.
-
-Keys are stored per-provider in `localStorage`. Switching providers loads that provider's saved key automatically. Verified status persists across sessions. Click outside the API panel to close it.
-
-**Temperature handling per provider:**
-- **Gemini:** Fixed at 1.0 (Google recommends not lowering for Gemini 3+). Variation via `topP` (0.9 -> 0.99 per regen).
-- **Claude:** 0.9 -> 1.2 per regen. Range 0.0-1.2.
-- **OpenAI:** 0.9 -> 1.2 per regen. Requires `reasoning: {effort: "none"}` for temperature support.
-
----
-
-## Themes
-
-| Theme | File | Aesthetic |
-|:---|:---|:---|
-| **Matrix** | `index.html` | Green on black, JetBrains Mono, 2-column, CRT scanlines, sharp corners |
-| **Amber** | `index.amber.html` | Warm amber on dark, Outfit + Red Hat Mono, single-column, film grain, rounded pills |
-
-Both share the same `app.js`. All features work identically. Switch by opening a different HTML file.
-
----
+`npm run e2e` starts a local HTTP server automatically and runs desktop Chromium, Firefox, WebKit, and the configured mobile browser projects. On Linux CI or a new machine, Playwright may also require system dependencies; use `npx playwright install --with-deps` when appropriate.
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |:---|:---|
-| `Enter` | Generate & Play (from text input) / Save API key / Apply edit |
-| `Shift+Enter` | New line in text input |
-| `Ctrl+Enter` | Re-evaluate code in editor |
+| `Enter` | Generate from the text field, save an API key, or apply an edit |
+| `Shift+Enter` | Insert a line break in the text field |
+| `Ctrl+Enter` | Re-evaluate the editor |
 | `Ctrl+.` | Stop playback |
-| `Ctrl+Z` | Undo in editor |
+| `Ctrl+Z` | Undo in the editor |
 
----
+## License and Credits
 
-## License
-
-**AGPL-3.0**
-
-This project is licensed under the GNU Affero General Public License v3.0 due to its dependency on `@strudel/repl`, which is AGPL-3.0 licensed. The library is loaded unmodified via CDN.
-
----
-
-## Credits
-
-- **[Strudel](https://strudel.cc)** by Alex McLean and contributors -- the live coding environment that makes this possible.
-- **Google Gemini API** -- AI creative mode via Gemini 3.1 Flash Lite.
-- **Anthropic Claude API** -- AI creative mode via Claude Haiku 4.5.
-- **OpenAI API** -- AI creative mode via GPT-5.4 Nano.
-
-No third-party code was copied into this project. All 29 code structure patterns are original structural idioms, not reproductions of existing compositions.
+Licensed under [AGPL-3.0](LICENSE). The app uses [Strudel](https://strudel.cc) by Alex McLean and contributors, loaded as the pinned `@strudel/repl@1.3.0` browser dependency.

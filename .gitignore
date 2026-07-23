@@ -28,3 +28,8 @@ CLAUDE.MD
 
 # Logs
 *.log
+
+# Test output
+test-results/
+playwright-report/
+blob-report/

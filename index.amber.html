@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';">
+<meta name="referrer" content="no-referrer">
 <title>text-to-strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Red+Hat+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -69,6 +71,33 @@
   .api-hint { font-size: .66rem; color: var(--txt-3); margin-top: .25rem; }
   .api-hint.saved { color: var(--green); }
   .api-hint.error { color: var(--red); }
+  .api-persist {
+    display: flex; align-items: center; gap: .55rem;
+    min-height: 44px; margin-top: .35rem;
+    color: var(--txt-3); font-size: .68rem;
+    cursor: pointer; user-select: none;
+  }
+  .api-persist:hover { color: var(--txt-2); }
+  .api-persist input {
+    appearance: none; width: 20px; height: 20px; flex: 0 0 20px;
+    border: 1px solid var(--border-hi); border-radius: var(--r);
+    background: var(--surface); cursor: pointer;
+  }
+  .api-persist input:checked { border-color: var(--accent); background: var(--accent); }
+  .api-persist input:checked::after {
+    content: '✓'; display: grid; place-items: center; height: 100%;
+    color: var(--bg); font-weight: 700;
+  }
+  .api-persist input:focus-visible,
+  .api-save:focus-visible, .api-row select:focus-visible, .api-row input:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .api-mode {
+    margin-top: .15rem; color: var(--txt-3); font-size: .66rem;
+    line-height: 1.45; overflow-wrap: anywhere;
+  }
+  .api-mode strong { color: var(--txt-2); }
+  .api-mode[data-mode="persist"] { color: var(--red); }
 
   /* ---- INPUT ---- */
   .mod-label { font-family: var(--mono); font-size: .6rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--txt-3); margin-bottom: .2rem; }
@@ -111,6 +140,13 @@
   .t-btn:disabled { opacity: .3; }
   .transport-spacer { flex: 1; }
 
+  /* ---- MUSICAL VARIATIONS ---- */
+  .variation-panel { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; }
+  .variation-label { font-family: var(--mono); font-size: .58rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--txt-3); margin-right: .1rem; }
+  .variation-btn { font-family: var(--mono); font-size: .6rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: var(--accent-dim); border: 1px solid rgba(232,160,64,.25); color: var(--accent); padding: .3rem .6rem; border-radius: var(--r); cursor: pointer; transition: all .12s; }
+  .variation-btn:hover { border-color: rgba(232,160,64,.5); filter: brightness(1.08); }
+  .variation-btn:disabled { opacity: .35; cursor: wait; }
+
   /* ---- MIXER ---- */
   .mixer { display: flex; flex-direction: column; gap: .15rem; margin-top: .3rem; }
   .mixer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem .4rem; }
@@ -147,13 +183,17 @@
 
   /* ---- STATUS ---- */
   .status { font-family: var(--mono); font-size: .68rem; color: var(--txt-3); margin-top: .4rem; min-height: 1em; }
+  .composition-meta { min-height: 1em; margin-top: .15rem; font-family: var(--mono); font-size: .6rem; line-height: 1.4; color: var(--accent); letter-spacing: .02em; }
   .status.playing { color: var(--green); }
   .status.error { color: var(--red); }
   @keyframes dot { 0%,100%{opacity:1} 50%{opacity:.25} }
   .status.playing::before { content: ''; display: inline-block; width: 5px; height: 5px; background: var(--green); border-radius: 50%; margin-right: 5px; box-shadow: 0 0 6px var(--green); animation: dot 1.2s ease-in-out infinite; }
 
-  /* ---- EDITOR ---- */
-  strudel-editor { display: block; min-height: 0; max-height: 540px; overflow-y: auto; }
+  /* ---- EDITOR (sandboxed) ---- */
+  #strudelFrame {
+    display: block; width: 100%; min-height: 480px; max-height: 540px;
+    border: 0; background: #020402;
+  }
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 600px) {
@@ -161,13 +201,33 @@
     body { height: 100%; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 100%; padding: 1.5rem .75rem 3rem; }
     .shell { max-width: 100%; width: 100%; overflow-x: hidden; }
     .output { max-width: 100%; width: 100%; overflow-x: hidden; }
-    strudel-editor { width: 100%; max-width: 100%; overflow-x: hidden; }
-    .cm-editor { max-width: 100% !important; width: 100% !important; }
-    .cm-editor .cm-scroller { overflow-x: auto !important; }
-    .cm-editor .cm-content,
-    .cm-editor .cm-line { white-space: pre-wrap !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
-    .btn-generate { font-size: .75rem; }
-    .genre-btn { font-size: .6rem; padding: .22rem .55rem; }
+    #strudelFrame { width: 100%; max-width: 100%; min-height: 360px; }
+    .api-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .api-row select, .api-row input, .api-save {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+    }
+    .btn-generate { min-height: 44px; font-size: .75rem; }
+    .genre-btn, .t-btn, .variation-btn,
+    .edit-apply, .mixer-toggle, .ch-tag, .ch-mood {
+      min-height: 44px;
+    }
+    .genre-btn { font-size: .6rem; padding: .35rem .65rem; }
+    .variation-panel { gap: .4rem; }
+    .variation-label { width: 100%; }
+    .mixer-grid { grid-template-columns: minmax(0, 1fr); }
+    .mixer-ch { min-height: 44px; height: 44px; }
+    .mixer-ch .ch-label { width: auto; min-width: 0; flex: 1; }
+    .ch-minus, .ch-plus, .ch-toggle { min-width: 44px; width: 44px; height: 44px; }
+    .edit-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+    }
+    .edit-row .tweak-label, .edit-row .mixer-toggle { grid-column: 1 / -1; }
+    .edit-input { min-width: 0; min-height: 44px; }
+    .mixer-toggle { width: 100%; margin-left: 0; }
   }
 </style>
 </head>
@@ -182,29 +242,36 @@
     <details class="api" id="apiSettings">
       <summary>api</summary>
       <div class="api-row">
-        <select id="apiProvider"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select>
-        <input type="password" id="apiKey" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
+        <select id="apiProvider" aria-label="API provider"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select>
+        <input type="password" id="apiKey" aria-label="API key" placeholder="sk-ant-... or AIza..." autocomplete="off" spellcheck="false">
         <button class="api-save" id="apiSave">save</button>
       </div>
       <div class="api-hint" id="apiHint">no key = algorithmic mode</div>
+      <label class="api-persist" for="apiPersist">
+        <input type="checkbox" id="apiPersist" aria-describedby="apiMode">
+        <span>Persist API key on this device</span>
+      </label>
+      <div class="api-mode" id="apiMode" data-mode="session" role="status" aria-live="polite">
+        <strong>Session only.</strong> The key stays in memory only and is cleared on reload or when this tab closes.
+      </div>
     </details>
 
     <div>
-      <div class="mod-label">input</div>
-      <textarea class="prompt-input" id="input" placeholder="A word, a phrase, a feeling..." rows="2"></textarea>
+      <label class="mod-label" for="input">input</label>
+      <textarea class="prompt-input" id="input" placeholder="Scene + motion + feeling — 여름밤 라디오, 따뜻하지만 조금 쓸쓸하게" rows="2"></textarea>
     </div>
 
     <div>
       <div class="mod-label">genre</div>
-      <div class="genres" id="genres">
-        <button class="genre-btn active" data-genre="edm">EDM</button>
-        <button class="genre-btn" data-genre="jazz">Jazz</button>
-        <button class="genre-btn" data-genre="classical">Classical</button>
-        <button class="genre-btn" data-genre="blues">Blues</button>
-        <button class="genre-btn" data-genre="ambient">Ambient</button>
-        <button class="genre-btn" data-genre="lofi">Lo-fi</button>
-        <button class="genre-btn" data-genre="world">World</button>
-        <button class="genre-btn" data-genre="random">Random</button>
+      <div class="genres" id="genres" role="group" aria-label="Genre selection">
+        <button class="genre-btn active" data-genre="edm" aria-pressed="true">EDM</button>
+        <button class="genre-btn" data-genre="jazz" aria-pressed="false">Jazz</button>
+        <button class="genre-btn" data-genre="classical" aria-pressed="false">Classical</button>
+        <button class="genre-btn" data-genre="blues" aria-pressed="false">Blues</button>
+        <button class="genre-btn" data-genre="ambient" aria-pressed="false">Ambient</button>
+        <button class="genre-btn" data-genre="lofi" aria-pressed="false">Lo-fi</button>
+        <button class="genre-btn" data-genre="world" aria-pressed="false">World</button>
+        <button class="genre-btn" data-genre="random" aria-pressed="false">Random</button>
       </div>
       <label class="fusion-toggle" id="fusionToggle">
         <input type="checkbox" id="fusionCheck">
@@ -219,29 +286,36 @@
       <button class="t-btn t-play" id="runBtn">Play</button>
       <button class="t-btn t-stop" id="stopBtn">Stop</button>
       <span class="transport-spacer"></span>
-      <button class="t-btn t-regen" id="regenBtn">Regen</button>
+      <button class="t-btn t-regen" id="regenBtn">New take</button>
     </div>
 
-    <div class="mixer" id="algoMixer" style="display:none">
-      <div class="mod-label">mixer</div>
-      <div class="mixer-grid">
-        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" data-dir="slower">-</button><button class="refine-btn ch-plus" data-dir="faster">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" data-dir="quieter">-</button><button class="refine-btn ch-plus" data-dir="louder">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" data-dir="darker">-</button><button class="refine-btn ch-plus" data-dir="brighter">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" data-dir="less resonance">-</button><button class="refine-btn ch-plus" data-dir="more resonance">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" data-dir="less highpass">-</button><button class="refine-btn ch-plus" data-dir="more highpass">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" data-dir="lower">-</button><button class="refine-btn ch-plus" data-dir="higher">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" data-dir="drier">-</button><button class="refine-btn ch-plus" data-dir="more reverb">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" data-dir="less delay">-</button><button class="refine-btn ch-plus" data-dir="more delay">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" data-dir="less feedback">-</button><button class="refine-btn ch-plus" data-dir="more feedback">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" data-dir="sparser">-</button><button class="refine-btn ch-plus" data-dir="denser">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" data-dir="straighten">off</button><button class="refine-btn ch-toggle" data-dir="add swing">on</button></div>
-        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" data-dir="less distortion">-</button><button class="refine-btn ch-plus" data-dir="more distortion">+</button></div>
-        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" data-dir="less crush">-</button><button class="refine-btn ch-plus" data-dir="more crush">+</button></div>
+    <div class="variation-panel" id="variationPanel" style="display:none" aria-label="Musical variations">
+      <span class="variation-label">Variations</span>
+      <button class="variation-btn" data-variation="melody" title="Create a new melody while keeping the rest" aria-label="Create a new melody">New melody</button>
+      <button class="variation-btn" data-variation="groove" title="Create a new groove while keeping the rest" aria-label="Create a new groove">New groove</button>
+      <button class="variation-btn" data-variation="arrangement" title="Create a new arrangement while keeping the musical idea" aria-label="Create a new arrangement">New arrangement</button>
+    </div>
+
+    <div class="mixer" id="algoMixer" style="display:none" role="group" aria-label="Sound polish controls">
+      <div class="mod-label">Sound polish</div>
+      <div class="mixer-grid" role="group" aria-label="Sound parameters">
+        <div class="mixer-ch"><span class="ch-label">bpm</span><button class="refine-btn ch-minus" aria-label="Decrease bpm" data-dir="slower">-</button><button class="refine-btn ch-plus" aria-label="Increase bpm" data-dir="faster">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">gain</span><button class="refine-btn ch-minus" aria-label="Decrease gain" data-dir="quieter">-</button><button class="refine-btn ch-plus" aria-label="Increase gain" data-dir="louder">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">cutoff</span><button class="refine-btn ch-minus" aria-label="Decrease cutoff" data-dir="darker">-</button><button class="refine-btn ch-plus" aria-label="Increase cutoff" data-dir="brighter">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">resonance</span><button class="refine-btn ch-minus" aria-label="Decrease resonance" data-dir="less resonance">-</button><button class="refine-btn ch-plus" aria-label="Increase resonance" data-dir="more resonance">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">highpass</span><button class="refine-btn ch-minus" aria-label="Decrease highpass" data-dir="less highpass">-</button><button class="refine-btn ch-plus" aria-label="Increase highpass" data-dir="more highpass">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">octave</span><button class="refine-btn ch-minus" aria-label="Decrease octave" data-dir="lower">-</button><button class="refine-btn ch-plus" aria-label="Increase octave" data-dir="higher">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">reverb</span><button class="refine-btn ch-minus" aria-label="Decrease reverb" data-dir="drier">-</button><button class="refine-btn ch-plus" aria-label="Increase reverb" data-dir="more reverb">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">delay</span><button class="refine-btn ch-minus" aria-label="Decrease delay" data-dir="less delay">-</button><button class="refine-btn ch-plus" aria-label="Increase delay" data-dir="more delay">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">feedback</span><button class="refine-btn ch-minus" aria-label="Decrease feedback" data-dir="less feedback">-</button><button class="refine-btn ch-plus" aria-label="Increase feedback" data-dir="more feedback">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">density</span><button class="refine-btn ch-minus" aria-label="Decrease density" data-dir="sparser">-</button><button class="refine-btn ch-plus" aria-label="Increase density" data-dir="denser">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">swing</span><button class="refine-btn ch-toggle" aria-label="Turn swing off" data-dir="straighten">off</button><button class="refine-btn ch-toggle" aria-label="Turn swing on" data-dir="add swing">on</button></div>
+        <div class="mixer-ch"><span class="ch-label">distort</span><button class="refine-btn ch-minus" aria-label="Decrease distort" data-dir="less distortion">-</button><button class="refine-btn ch-plus" aria-label="Increase distort" data-dir="more distortion">+</button></div>
+        <div class="mixer-ch"><span class="ch-label">crush</span><button class="refine-btn ch-minus" aria-label="Decrease crush" data-dir="less crush">-</button><button class="refine-btn ch-plus" aria-label="Increase crush" data-dir="more crush">+</button></div>
       </div>
       <div class="mixer-divider"></div>
       <div class="mod-label">tone</div>
-      <div class="mixer-tags">
+      <div class="mixer-tags" role="group" aria-label="Tone">
         <button class="refine-btn ch-tag" data-dir="scale:major">major</button>
         <button class="refine-btn ch-tag" data-dir="scale:minor">minor</button>
         <button class="refine-btn ch-tag" data-dir="scale:dorian">dorian</button>
@@ -251,7 +325,7 @@
       </div>
       <div class="mixer-divider"></div>
       <div class="mod-label">mood</div>
-      <div class="mixer-tags">
+      <div class="mixer-tags" role="group" aria-label="Mood">
         <button class="refine-btn ch-mood" data-dir="make it darker and moodier">dark</button>
         <button class="refine-btn ch-mood" data-dir="make it euphoric and uplifting">euphoric</button>
         <button class="refine-btn ch-mood" data-dir="make it dreamy and floating">dreamy</button>
@@ -261,22 +335,22 @@
 
     <div class="edit-row" id="editRow" style="display:none">
       <span class="tweak-label">edit</span>
-      <input class="edit-input" id="editInput" type="text" placeholder="Describe what to change..." autocomplete="off">
+      <input class="edit-input" id="editInput" type="text" aria-label="Natural-language edit instructions" placeholder="Describe what to change..." autocomplete="off">
       <button class="edit-apply" id="editApply">Apply</button>
-      <button class="mixer-toggle" id="mixerToggle" title="Show/hide mixer controls">mixer</button>
+      <button class="mixer-toggle" id="mixerToggle" title="Show or hide sound polish controls" aria-label="Show or hide sound polish controls">Sound polish</button>
     </div>
 
     <div id="refineRow" style="display:none"></div>
 
-    <div class="status" id="status"></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="composition-meta" id="compositionMeta" aria-live="polite"></div>
   </div>
 
   <div class="output hidden" id="editorWrap">
-    <strudel-editor id="strudelEditor"></strudel-editor>
+    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" title="Strudel editor and player"></iframe>
   </div>
 
 </div>
-<script src="https://unpkg.com/@strudel/repl@latest"></script>
 <script src="app.js"></script>
 </body>
 </html>

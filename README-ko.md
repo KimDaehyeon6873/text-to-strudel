@@ -1,242 +1,192 @@
 # text-to-strudel
 
-<img width="1362" height="212" alt="스크린샷 2026-04-09 오후 5 27 47" src="https://github.com/user-attachments/assets/94cafa96-096d-443e-85ec-9a0a35a93f12" />
+<img width="1362" height="212" alt="text-to-strudel" src="https://github.com/user-attachments/assets/94cafa96-096d-443e-85ec-9a0a35a93f12" />
 
-**아무 텍스트나 입력하면 라이브 코딩 음악이 됩니다. 서버 없이. 설치 없이. 브라우저만 있으면.**
+**텍스트를 브라우저에서 라이브 코딩 음악으로 바꿉니다.**
 
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[English](README.md) · [Strudel](https://strudel.cc) · [보안 아키텍처](docs/security-architecture.md) · [AGPL-3.0](LICENSE)
 
----
-
-**text-to-strudel**은 텍스트를 [Strudel](https://strudel.cc)(TidalCycles의 JavaScript 구현체)을 사용해 재생 가능한 음악으로 변환하는 브라우저 기반 도구입니다. 단어, 문장, 느낌을 입력하고 장르를 선택하면 음악이 시작됩니다. 생성된 코드는 라이브 에디터에 표시되어 실시간으로 수정할 수 있습니다.
-
-> **두 가지 모드:** 브라우저만으로 동작하는 완전 결정론적 **알고리즘 모드**와, 텍스트를 느낌과 이미지로 해석하는 **AI 창의 모드** (Gemini 3.1 Flash Lite, Claude Haiku 4.5, OpenAI GPT-5.4 Nano) 중 선택할 수 있습니다.
-
----
-
-## 목차
-
-- [기능](#기능)
-- [빠른 시작](#빠른-시작)
-- [작동 원리](#작동-원리)
-- [DJ 믹서](#dj-믹서)
-- [자연어 편집](#자연어-편집)
-- [장르 가이드](#장르-가이드)
-- [아키텍처](#아키텍처)
-- [API 설정](#api-설정)
-- [테마](#테마)
-- [키보드 단축키](#키보드-단축키)
-- [라이선스](#라이선스)
-- [크레딧](#크레딧)
-
----
+text-to-strudel은 문장을 일관된 음악적 해석과 편집 가능한 Strudel 코드로 바꿉니다. 알고리즘 모드는 로컬에서 결정론적으로 동작합니다. 선택적으로 API 키를 설정하면 더 풍부한 LLM 기반 해석과 자연어 편집을 사용할 수 있습니다.
 
 ## 기능
 
-- **9개 장르 모드:** EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World (5개 서브장르), Random, Fusion
-- **Fusion 토글:** Fusion 체크박스를 선택한 뒤 여러 장르를 조합. 개수 제한 없음.
-- **인터랙티브 Strudel 에디터:** 생성된 코드를 직접 편집, `Ctrl+Enter`로 즉시 반영
-- **DJ 믹서:** 13개 채널 스트립 (BPM, gain, cutoff, resonance, highpass, octave, reverb, delay, feedback, density, swing, distortion, bitcrush) + tone (6개 스케일) + mood (4개 프리셋). 2열 그리드. 길게 누르면 연속 조절.
-- **자연어 편집:** 원하는 변경사항을 자연어로 입력. LLM이 구조를 보존하면서 코드를 정밀 수정. (API 키 필요)
-- **Mood 버튼:** dark / euphoric / dreamy / aggressive. 알고리즘 모드에서는 복합 파라미터 변경, AI 모드에서는 LLM이 창의적으로 재해석.
-- **Regenerate:** 같은 입력, 다른 결과. 알고리즘 모드는 seed 증가, AI 모드는 temperature/topP 조정.
-- **동적 오류 복구:** 생성된 코드에 오류가 있으면 자동 감지 후 LLM에 코드+오류를 보내 수정, 최대 3회 재시도. API 키가 없으면 알고리즘 패턴 매칭으로 폴백.
-- **결정론적 출력:** 알고리즘 모드에서 동일한 `텍스트 + 장르 + seed`는 항상 동일한 음악을 생성.
-- **6-12개 레이어:** drums, percussion, bass, lead, countermelody, chords, arp, texture/noise.
-- **두 가지 테마:** Matrix (초록색 on 검정, 2열, JetBrains Mono)와 Amber (따뜻한 어두운 톤, 단일 열, Outfit + Red Hat Mono).
-- **제로 마찰:** 서버 없음, npm 없음, 빌드 없음. HTML 파일을 열면 끝.
-
----
+- EDM, Jazz, Classical, Blues, Ambient, Lo-fi, World, Random, 다중 장르 Fusion 모드
+- 조성, 화성, 프레이즈, 베이스, 그루브, 형식, 음색, 편곡을 공유하는 `CompositionPlan`
+- 하나의 보이스 리딩 `chord(...).dict("ireal")` 진행에서 파생되는 코드 인지형 베이스와 멜로디
+- 재즈 ii–V–I 턴어라운드, 클래식 종지, 실제 12마디 블루스 등 장르별 화성
+- 가능한 파트를 모두 쌓는 대신 목적이 분명한 4–7개 레이어
+- 전체 **New take**와 분리된 **New melody**, **New groove**, **New arrangement** 변주
+- 유니코드와 한글을 인식하는 결정론적 텍스트 분석
+- 부모 애플리케이션과 API 키에서 분리된 샌드박스 Strudel 실행
+- 같은 엔진을 공유하는 Matrix와 Amber 인터페이스
 
 ## 빠른 시작
 
-1. `index.html`을 아무 모던 브라우저에서 엽니다 (또는 정적 HTTP 서버로 제공).
-2. 텍스트 입력란에 아무거나 입력합니다 -- 단어, 문장, 기억, 느낌.
-3. 장르를 선택합니다 (기본값: EDM). **Fusion**을 체크하면 여러 장르를 조합.
-4. **Generate & Play**를 클릭합니다. 음악이 자동으로 시작됩니다.
-5. **DJ 믹서**로 파라미터를 조절하거나, **Edit** 필드에 변경사항을 입력합니다.
-6. **Regen**으로 같은 입력에서 다른 해석을 들어봅니다.
-7. **Stop** 또는 **Ctrl+.**으로 정지합니다.
+로컬 HTTP로 프로젝트를 실행합니다.
 
-> AI 창의 모드를 사용하려면? **API**를 클릭하고, 프로바이더를 선택하고, 키를 입력한 뒤 Enter를 누르세요. [API 설정](#api-설정) 참조.
+```bash
+python3 -m http.server 8080
+```
 
----
+`http://localhost:8080`을 열고 텍스트와 장르를 선택한 뒤 **Generate & Play**를 누릅니다. iframe과 CSP 아키텍처는 HTTP(S) 오리진을 전제로 하므로 `file:` URL로 `index.html`을 직접 여는 방식은 지원하지 않습니다.
 
-## 작동 원리
+브라우저 앱에는 빌드 단계가 없습니다. unpkg에서 버전이 고정된 `@strudel/repl@1.3.0` 런타임을 불러오므로 최초 로드에는 네트워크 연결이 필요합니다.
 
-### 알고리즘 모드 (API 키 없음)
+## 음악 엔진
 
-알고리즘 파이프라인은 완전히 결정론적입니다. 동일한 입력 텍스트, 장르, seed 카운터가 주어지면 항상 동일한 결과를 생성합니다.
+### 1. 결정론적 단서 및 구조 분석
 
-**1. 텍스트 분석** -- 입력을 다섯 가지 품질로 분석합니다 (0-1):
+알고리즘 모드는 입력을 Unicode NFKC로 정규화하고 유니코드 코드 포인트 단위로 처리합니다. 다음 요소를 조합합니다.
 
-| 품질 | 산출 기준 |
+- 밝음/어두움, 격렬함/차분함, 무거움/공기감에 대한 제한된 영어·한국어 정서 단서 목록
+- 단어 수, 구두점, 대문자, 문자 밀도, 평균 단어 길이, 문자 다양성과 같은 구조적 측정값
+- 전체 정규화 텍스트, 장르, 변주 상태를 사용한 시드 기반 음악 선택용 결정론적 지문
+
+이 분석기는 음악적 해석을 제안할 뿐, 일반적인 문맥 또는 의미 이해를 수행하지 않습니다. 지표 요약이 비슷해도 전체 텍스트가 다르면 시드 기반 선택이 달라질 수 있습니다.
+
+| 지표 | 현재 알고리즘 출력에서의 역할 |
 |:---|:---|
-| **에너지(Energy)** | 고유 문자 밀도, 구두점, 대문자, 단어 수 |
-| **밝기(Brightness)** | 모음 대 자음 비율 |
-| **무게(Weight)** | 평균 단어 길이 |
-| **공간(Space)** | 공백 비율, 짧은 문구 보너스 |
-| **복잡도(Complexity)** | 고유 문자 비율 |
+| 에너지(Energy) | 템포, 프레이즈와 베이스 활동량, 드럼 다이내믹, 선택 퍼커션 및 기법 |
+| 밝기(Brightness) | 화성 프로필 매칭과 필터 범위 |
+| 무게(Weight) | 필터 범위와 텍스처 레벨 |
+| 공간(Space) | 룸, 공간 관련 기법, 필터 움직임, 선택 텍스처 |
+| 긴장도(Tension) | 화성 프로필 매칭 |
+| 복잡도(Complexity) | 계산되어 생성 코드의 mood 주석에 표시되지만, 렌더링된 음악을 독립적으로 구동하지 않음 |
+| 정서가(Valence) | 계산되어 생성 코드의 mood 주석에 표시되지만, 렌더링된 음악을 독립적으로 구동하지 않음 |
 
-**2. 장르 결정** -- 각 장르는 템포 범위, 스케일 풀, 사운드 셋, 드럼 패턴, 코드 진행, 레이어별 FX 함수를 정의합니다. **Random**은 3개 장르를 혼합합니다. **Fusion**은 선택된 N개 장르를 블렌딩합니다 (템포 평균, 스케일 결합, 사운드 혼합).
+AI 창의 모드는 더 풍부한 의미 해석을 위해 브라우저에서 선택한 프로바이더로 프롬프트를 직접 전송합니다.
 
-**3. 코드 생성** -- 모티프 기반 멜로디 (콜-리스폰스), 워킹 베이스 (8종), 6가지 코드 보이싱, 장르별 드럼, 12가지 아티스트 영감 기법의 확률적 적용 (.off, .superimpose, .jux, .echoWith, .degradeBy, Perlin 필터 등).
+### 2. 공유 화성과 보이스 리딩
 
-**4. 어레인지먼트** -- `.mask()`를 이용한 레이어 단계적 진입, `.every()`를 통한 주기적 변주, 필터 페이드인, 호흡하는 디그레이드.
+`createCompositionPlan()`이 조성, 화성 프로필, 형식, 템포, 프레이즈, 베이스 패턴, 음색, 편곡을 결정합니다. `renderCompositionPlan()`은 하나의 공유 화성을 선언합니다.
 
-### AI 창의 모드 (API 키 있음)
+```js
+const harmony = chord("<Dm7 G7 C^7 A7>").dict("ireal")
+```
 
-**Gemini 3.1 Flash Lite**, **Claude Haiku 4.5**, 또는 **OpenAI GPT-5.4 Nano**에 입력을 전송합니다.
+베이스는 이 화성의 근음을 따르고, 코드 레이어는 앵커 보이싱을 사용하며, 리드와 액센트는 `harmony.n(...).voicing()`에서 파생됩니다. 레이어마다 독립적인 음 풀을 쓰지 않아 파트 사이의 화성 관계가 유지됩니다.
 
-- **시스템 프롬프트 (~1300 토큰):** 창의적 프로세스 프레임워크, 음악 이론 원칙, 무드 파라미터, 17개 핵심 주의사항.
-- **사용자 메시지 (~3100 토큰):** 입력 텍스트, 장르 컨텍스트 및 어레인지먼트 구조, 완전한 Strudel 컴포넌트 레퍼런스 (92개 스케일, 100개 이상 악기, 58개 이펙트), 29개 구조적 이디엄.
-- **오류 복구:** 생성된 코드에 런타임 오류가 있으면 `repl.state.evalError`로 감지, 코드+오류를 LLM에 재전송하여 수정, 최대 3회 재시도. LLM 수정 실패 시 알고리즘 `tryFixFromError`로 폴백.
+알고리즘 출력은 동일하게 정규화된 텍스트, 장르, 변주 상태에 대해 결정론적입니다.
 
----
+### 3. 목적이 분명한 레이어와 형식
 
-## DJ 믹서
+각 테이크는 드럼, 베이스, 화성, 리드, 응답 액센트 또는 아르페지오, 퍼커션, 텍스처 중 음악에 필요한 4–7개 역할을 렌더링합니다. 각 역할에는 편곡 마스크와 라우팅 목적이 있습니다.
 
-첫 번째 생성 후 표시됩니다. 모든 믹서 컨트롤은 API 키 설정 여부와 관계없이 **알고리즘 regex 수정** (즉시, 무료, API 호출 없음)을 사용합니다.
+| Orbit | 역할 |
+|:---|:---|
+| 1 | 드럼과 퍼커션 |
+| 2 | 베이스 |
+| 3 | 화성 |
+| 4 | 리드 |
+| 5 | 카운터멜로디 또는 아르페지오 액센트 |
+| 6 | 텍스처와 공간감 |
 
-**채널 스트립** (2열 그리드, 각각 [-][+]):
+대부분은 16사이클 인트로/빌드/브레이크/릴리스 형식을 사용합니다. Ambient에는 느린 페이드/블룸 형식이 적용됩니다. Blues는 24사이클의 두 코러스 편곡 안에서 12개의 화성 마디를 보존합니다.
 
-| 채널 | 효과 | 범위 |
+## 변주
+
+알고리즘 모드에서 다음의 집중 변주 버튼을 사용할 수 있습니다.
+
+| 동작 | 변경 | 유지 |
 |:---|:---|:---|
-| BPM | 템포 | 40 - 400 |
-| Gain | 볼륨 | 0.05 - 1.0 |
-| Cutoff | 로우패스 필터 | 100 - 12000 Hz |
-| Resonance | 필터 Q | 0 - 50 |
-| Highpass | 하이패스 필터 | 20 - 8000 Hz |
-| Octave | 피치 시프트 | 1 - 7 |
-| Reverb | 룸 크기 | 0 - 1.0 |
-| Delay | 딜레이 센드 | 0 - 1.0 |
-| Feedback | 딜레이 피드백 | 0 - 0.95 |
-| Density | 유클리드 히트 | 1 - N |
-| Swing | 셔플 필 | off / on |
-| Distortion | 웨이브셰이프 | 0 - 1.0 |
-| Bitcrush | 비트 뎁스 | 1 - 16 |
+| **New melody** | 리드와 응답 프레이즈 | 화성, 그루브, 음색, 형식 |
+| **New groove** | 드럼 선택, 드럼 다이내믹, 그루브 시드 퍼커션 | 화성과 멜로디 |
+| **New arrangement** | 형식, 음색, 선택 레이어, 기법, 편곡 FX | 화성 심벌, 베이스 패턴, 리드 프레이즈 |
+| **New take** | 화성, 멜로디, 그루브, 편곡 전체 | 입력 텍스트와 선택 장르 |
 
-**Tone:** major, minor, dorian, phrygian, lydian, pentatonic (모든 레이어의 스케일 변경)
+집중 변주는 현재 에디터 코드를 필요한 레이어에서만 패치하므로, 대상과 무관한 Tone·템포·사운드 폴리시 및 수동 편집을 유지합니다. **New take**는 반대로 완전히 새로운 음악적 정체성을 만듭니다.
 
-**Mood:** dark, euphoric, dreamy, aggressive (복합: 템포 + 필터 + 리버브 + 게인 동시 조정. API 키가 있으면 LLM 사용.)
+Classical이나 Ambient처럼 드럼이 없는 구성에서는 **New groove**가 비활성화됩니다.
 
-**길게 누르기:** +/- 버튼을 400ms 이상 누르면 연속 조절 시작 (150ms 간격 반복).
+## 사운드 폴리시
 
-**클릭 피드백:** 초록 플래시 = 값 변경됨. 빨강 플래시 = 코드에 해당 파라미터 없음.
+사운드 폴리시 패널은 템포, 게인, 컷오프, 레조넌스, 하이패스, 옥타브, 리버브, 딜레이, 피드백, 리듬 밀도, 스윙, 디스토션, 비트 뎁스, 화성 톤을 조절할 수 있습니다. 현재 코드에서 적용 가능성을 검사하며, 한계에 도달했거나 대응하는 음악 대상이 없는 컨트롤은 비활성화됩니다.
 
-LLM 모드에서는 Edit 행의 **[mixer]**를 클릭하여 믹서를 표시/숨김합니다.
+Tone 버튼은 공유 코드 진행을 재화성화하면서 형식을 유지합니다. Blues는 톤 변경 후에도 12마디 구조를 유지합니다.
 
----
+Mood 버튼은 서로 다른 매크로입니다.
 
-## 자연어 편집
+- **dark:** 느리게, 어둡게, 낮게, minor
+- **euphoric:** 빠르게, 밝게, 크게, Lydian, 리버브 증가
+- **dreamy:** 느리게, 어둡게, 리버브/딜레이 증가, pentatonic
+- **aggressive:** 빠르게, 크게, 촘촘하게, 레조넌스/디스토션 증가, Phrygian
 
-AI 모드에서 표시됩니다 (API 키 필요). 지시사항을 입력하고 Enter 또는 Apply를 클릭합니다.
-
-```
-> remove drums and add piano          [Apply]
-> make the bass more complex
-> change everything to Japanese style
-> add a breakdown at cycle 16
-```
-
-별도의 편집 전용 시스템 프롬프트를 사용합니다: "관련 없는 코드와 주석을 보존. 전체 재작성보다 최소한의 수정을 선호." Temperature 0.2로 정밀도 확보. LLM이 기존 코드를 처음부터 다시 쓰지 않고 정밀하게 수정합니다.
-
----
+API 키가 있으면 Mood 버튼은 AI 재해석을 요청합니다. 그 외 사운드 폴리시 조정은 즉시 적용되는 로컬 편집입니다.
 
 ## 장르 가이드
 
-| 장르 | BPM | 레이어 |
-|:---|:---|:---|
-| **EDM** | 124-140 | drums, perc, bass, lead, countermelody, chords, arp, texture |
-| **Jazz** | 84-148 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Classical** | 62-116 | bass, lead, countermelody, chords, arp, texture |
-| **Blues** | 72-108 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Ambient** | 50-76 | bass, pad, lead, arp, texture |
-| **Lo-fi** | 68-86 | drums, perc, bass, lead, countermelody, chords, texture |
-| **World** | 78-126 | drums, perc, bass, lead, countermelody, chords, texture |
-| **Random** | 가변 | 3개 랜덤 장르에서 혼합 |
-| **Fusion** | 평균화 | N개 선택된 장르에서 블렌딩 |
+| 장르 | 화성/형식 특성 |
+|:---|:---|
+| EDM | Minor, Dorian, 메이저 릴리스, Phrygian 긴장 프로필 |
+| Jazz | 메이저 ii–V–I, 마이너 턴어라운드, 확장 코드를 사용한 모달 브리지 |
+| Classical | 정격 종지, 마이너 라멘트, 위종지 |
+| Blues | I7–IV7–V7 기반 12마디 셔플/슬로 번 진행과 24사이클 형식 |
+| Ambient | 서스펜디드 Lydian, Dorian 오비트, 여백 있는 펜타토닉 진행 |
+| Lo-fi | 확장 7th/9th 코드 루프와 순환형 편곡 |
+| World | 모달 드론, 오픈 5도, 지역 음색을 사용한 화성단음계 종지 |
+| Random | 화성, 음색, 그루브의 출처를 독립적으로 결합 |
+| Fusion | 첫 번째 선택 장르를 화성 기준으로 사용하고 선택 장르의 음색/그루브를 결합 |
 
-**World 서브장르:** 플라멩코, 일본, 인도, 동유럽, 아랍 -- 각각 전통 스케일, 키, 악기 사용.
+World 모드에는 Flamenco, Japanese, Indian, Eastern European, Arabic 음색 팔레트가 포함됩니다.
 
----
+## AI 창의 모드와 API 키
 
-## 아키텍처
+**API**를 열어 Gemini, Claude, OpenAI 중 프로바이더를 선택하고 키를 저장합니다. AI 모드는 새로운 해석을 생성하고 현재 Strudel 코드에 자연어 편집을 적용할 수 있습니다.
 
+API 키 저장 방식은 프로바이더별로 적용됩니다.
+
+- **세션 전용(기본값):** 키는 현재 페이지의 JavaScript 메모리에만 있으며 새로고침하거나 탭을 닫으면 삭제됩니다.
+- **이 기기에 유지:** 명시적인 안내와 확인을 거친 뒤 키를 브라우저 `localStorage`에 평문으로 저장합니다. 신뢰할 수 있는 브라우저 프로필에서만 사용하십시오.
+- 이전 버전에서 저장한 키는 `localStorage`에 그대로 남고, 세션 전용으로 잘못 표시하지 않고 유지됨으로 표시됩니다.
+
+이 프로젝트는 여전히 브라우저 전용 애플리케이션입니다. 프로바이더 요청과 API 키는 브라우저에서 선택한 프로바이더로 직접 전송되며, 프로젝트 서버가 이를 보호하거나 프록시하거나 숨기지 않습니다. 브라우저 확장 프로그램, DevTools, 신뢰 경계인 부모 페이지의 악성 코드, 또는 같은 브라우저 프로필의 다른 사용자가 유지된 키에 접근할 수 있습니다.
+
+AI 모드에서는 집중 알고리즘 변주 버튼이 숨겨집니다. 창의적 변경에는 **New take** 또는 **Edit** 필드를 사용합니다.
+
+## 런타임 격리
+
+부모 페이지가 UI 상태, API 키, 프로바이더 요청, 오케스트레이션을 담당합니다. Strudel과 평가되는 패턴은 `sandbox="allow-scripts"`로 인해 불투명 오리진을 갖는 iframe인 `strudel-host.html`에서 실행됩니다. 부모는 초기화할 때 하나의 `MessagePort`를 전달하며, 이후 에디터 명령은 지속적인 전역 `message` 리스너 대신 이 포트를 사용합니다.
+
+부모 CSP에는 `unsafe-eval`이 없습니다. Strudel에 필요한 평가 기능은 별도의 제한적인 CSP 아래 샌드박스 호스트에서만 허용됩니다. CSP의 `'self'`는 불투명 샌드박스 오리진과 일관되게 일치하지 않으므로, 자식 CSP와 로컬 외부 브리지 스크립트는 서로 일치하는 nonce를 사용합니다. 자식은 부모가 일회성 `MessagePort` 초기화를 수락할 때까지 부트스트랩 ping을 재시도합니다. Strudel 의존성은 `@strudel/repl@1.3.0`으로 고정되고 SHA-384 Subresource Integrity로 보호됩니다. 신뢰 경계, 불변 조건, 비보장 범위는 [보안 아키텍처](docs/security-architecture.md)를 참고하십시오.
+
+## 프로젝트 구조와 테스트
+
+```text
+index.html                     Matrix 인터페이스와 부모 CSP
+index.amber.html               Amber 인터페이스와 부모 CSP
+app.js                         컴포지션 엔진, 프로바이더 호출, 키 저장, iframe RPC 클라이언트
+strudel-host.html              샌드박스 Strudel 호스트, 자식 CSP, 버전 고정 SRI 의존성
+strudel-host.js                검증된 MessagePort RPC 서버
+package.json                   Node, TypeScript, Playwright 스크립트
+test/                          유닛 및 정적 보안 회귀 테스트
+e2e/                           Playwright 브라우저 테스트
+docs/musicality-checklist.md   A/B 청취 체크리스트
+docs/security-architecture.md  브라우저 신뢰 경계와 위협 모델
+README.md / README-ko.md       영문 및 한국어 문서
 ```
-text-to-strudel/
-  index.html          Matrix 테마 (초록 on 검정, 2열, JetBrains Mono)
-  index.amber.html    Amber 테마 (따뜻한 어두운 톤, 단일 열, Outfit + Red Hat Mono)
-  app.js              전체 로직 (양쪽 테마 공유)
-  LICENSE             AGPL-3.0
-  README.md
-  README-ko.md        한국어 문서
+
+개발 도구를 설치한 뒤 검사를 실행합니다.
+
+```bash
+npm install
+npm test
+npm run typecheck
+npx playwright install
+npm run e2e
 ```
 
-- **index.html** (~570줄) -- 2열 레이아웃: 왼쪽 패널 (컨트롤, 믹서) 고정, 오른쪽 패널 (코드 에디터) 독립 스크롤. Matrix 초록 미학, CRT 스캔라인 오버레이. CodeMirror 구문 색상을 초록 스펙트럼으로 오버라이드.
-- **index.amber.html** (274줄) -- 단일 열 레이아웃, 앰버 액센트, 필름 그레인 오버레이, 알약형 버튼. 동일한 HTML 구조와 ID -- `app.js`와 완전 호환.
-- **app.js** (~2060줄) -- Seeded PRNG, 텍스트 분석, 7개 장르 정의, 멜로디/베이스/코드/아르페지오 생성기, 13개 믹서 채널 스트립 핸들러, 3개 LLM 프로바이더 통합, 동적 오류 복구 루프, 자연어 편집, 시스템 프롬프트 + 컴포넌트 레퍼런스.
-
----
-
-## API 설정
-
-| 프로바이더 | 모델 | 키 형식 | 문서 |
-|:---|:---|:---|:---|
-| **Gemini** (기본) | gemini-3.1-flash-lite-preview | `AIza...` | [aistudio.google.com](https://aistudio.google.com) |
-| **Claude** | claude-haiku-4-5-20251001 | `sk-ant-...` | [console.anthropic.com](https://console.anthropic.com) |
-| **OpenAI** | gpt-5.4-nano | `sk-...` | [platform.openai.com](https://platform.openai.com) |
-
-1. 앱에서 **API**를 클릭합니다.
-2. 드롭다운에서 프로바이더를 선택합니다.
-3. 키를 붙여넣고 **Enter**를 누릅니다 (자동 검증).
-4. 초록 체크마크 = 검증됨. 빨강 X = 유효하지 않음.
-
-키는 프로바이더별로 `localStorage`에 저장됩니다. 프로바이더를 전환하면 해당 프로바이더의 저장된 키가 자동으로 로드됩니다. 검증 상태는 세션 간 유지됩니다. API 패널 바깥을 클릭하면 닫힙니다.
-
-**프로바이더별 Temperature 처리:**
-- **Gemini:** 1.0 고정 (Google은 Gemini 3+ 모델에서 낮추지 않을 것을 권장). `topP`로 변주 (0.9 -> 0.99, regen마다 증가).
-- **Claude:** 0.9 -> 1.2, regen마다 증가. 범위 0.0-1.2.
-- **OpenAI:** 0.9 -> 1.2, regen마다 증가. temperature 지원을 위해 `reasoning: {effort: "none"}` 필요.
-
----
-
-## 테마
-
-| 테마 | 파일 | 미학 |
-|:---|:---|:---|
-| **Matrix** | `index.html` | 검정 바탕 초록, JetBrains Mono, 2열, CRT 스캔라인, 날카로운 모서리 |
-| **Amber** | `index.amber.html` | 따뜻한 앰버 on 다크, Outfit + Red Hat Mono, 단일 열, 필름 그레인, 둥근 알약형 |
-
-두 테마 모두 동일한 `app.js`를 공유합니다. 모든 기능이 동일하게 작동합니다. 다른 HTML 파일을 열면 테마가 전환됩니다.
-
----
+`npm run e2e`는 로컬 HTTP 서버를 자동으로 시작하고 데스크톱 Chromium, Firefox, WebKit 및 설정된 모바일 브라우저 프로젝트를 실행합니다. Linux CI나 새 환경에서는 Playwright 시스템 의존성이 추가로 필요할 수 있으며, 이때는 `npx playwright install --with-deps`를 사용하십시오.
 
 ## 키보드 단축키
 
 | 단축키 | 동작 |
 |:---|:---|
-| `Enter` | Generate & Play (텍스트 입력란) / API 키 저장 / 편집 적용 |
-| `Shift+Enter` | 텍스트 입력란에서 줄바꿈 |
-| `Ctrl+Enter` | 에디터에서 코드 재실행 |
+| `Enter` | 텍스트 필드에서 생성, API 키 저장, 편집 적용 |
+| `Shift+Enter` | 텍스트 필드에서 줄바꿈 |
+| `Ctrl+Enter` | 에디터 코드 재평가 |
 | `Ctrl+.` | 재생 정지 |
-| `Ctrl+Z` | 에디터에서 실행 취소 |
+| `Ctrl+Z` | 에디터 실행 취소 |
 
----
+## 라이선스와 크레딧
 
-## 라이선스
-
-**AGPL-3.0**
-
-이 프로젝트는 `@strudel/repl` 의존성이 AGPL-3.0 라이선스이므로 GNU Affero General Public License v3.0에 따라 라이선스가 부여됩니다. 라이브러리는 CDN을 통해 수정 없이 로드됩니다.
-
----
-
-## 크레딧
-
-- **[Strudel](https://strudel.cc)** -- Alex McLean과 기여자들이 만든 라이브 코딩 환경.
-- **Google Gemini API** -- Gemini 3.1 Flash Lite를 통한 AI 창의 모드.
-- **Anthropic Claude API** -- Claude Haiku 4.5를 통한 AI 창의 모드.
-- **OpenAI API** -- GPT-5.4 Nano를 통한 AI 창의 모드.
-
-이 프로젝트에 복사된 제3자 코드는 없습니다. 29개 코드 구조 패턴은 모두 기존 작곡물의 복제가 아닌 오리지널 구조적 이디엄입니다.
+라이선스는 [AGPL-3.0](LICENSE)입니다. 이 앱은 Alex McLean 및 기여자들이 만든 [Strudel](https://strudel.cc)을 사용하며, 브라우저 의존성은 `@strudel/repl@1.3.0`으로 고정되어 있습니다.
