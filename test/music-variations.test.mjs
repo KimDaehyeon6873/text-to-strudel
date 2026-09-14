@@ -25,7 +25,7 @@ test('groove variation changes only drums drum gains and the groove-seeded percu
   const base = plan(zero);
   const changed = plan({ ...zero, groove: 1 });
   assert.ok(
-    JSON.stringify(changed.drums) !== JSON.stringify(base.drums) || changed.drumGains !== base.drumGains,
+    JSON.stringify(changed.drums) !== JSON.stringify(base.drums) || JSON.stringify(changed.drumGains) !== JSON.stringify(base.drumGains),
     'groove must audibly change drums or drum gains',
   );
   assert.deepEqual(
@@ -156,7 +156,7 @@ test('arrangement variation preserves the current musical identity and core poli
   const harmony = code.match(/^const harmony =.*$/m)[0];
   const tempo = code.match(/^setcpm\(.*$/m)[0];
   const bassPattern = code.match(/\/\/ bass ·[\s\S]*?(?=\n\/\/ |$)/)[0].match(/\$: n\("[^"]+"\)/)[0];
-  const leadPattern = code.match(/\/\/ lead ·[\s\S]*?(?=\n\/\/ |$)/)[0].match(/\$: harmony\.n\("[^"]+"\)/)[0];
+  const leadPattern = code.match(/\/\/ lead ·[\s\S]*?(?=\n\/\/ |$)/)[0].match(/\$: n\("[^"]+"\)\.set\(harmony\)/)[0];
   const distortion = code.match(/\.shape\([^)]*\)/)[0];
 
   ctx.advanceVariation('arrangement');

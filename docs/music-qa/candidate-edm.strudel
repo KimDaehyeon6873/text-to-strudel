@@ -1,0 +1,79 @@
+// "q7X-2049 / 🪐 / 바람... 314159" -> EDM
+// identity: A minor · midnight lift · 132 BPM
+// mood: warm, steady, intricate
+// decoded: 19 symbols · 3 phrase breaks · 17% repetition · contour 2 2 3 1 1 1
+// form: hush · lift · answer · release · entry 4, return 13 (16 cycles)
+// variation: H0 M0 G0 A0
+
+setcpm(132/4)
+
+const harmony = chord("<Am F C G Am C F G>").dict("ireal")
+
+// drums · pulse and backbeat
+$: stack(
+  s("<[bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ bd ~] [bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~] [bd ~ ~ ~ bd ~ ~ ~ bd ~ bd ~ bd ~ ~ ~] [bd ~ bd ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~]>").velocity(0.68),
+  s("<[~ ~ ~ ~ cp ~ ~ ~ ~ ~ ~ ~ cp ~ ~ ~] [~ ~ ~ ~ cp ~ ~ ~ ~ ~ ~ ~ cp ~ ~ ~] [~ ~ ~ ~ cp ~ ~ ~ ~ ~ ~ ~ cp ~ ~ ~] [~ ~ ~ ~ cp ~ ~ ~ ~ ~ ~ ~ cp ~ cp ~]>").velocity(0.55),
+  s("<[hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ ~ ~] [hh ~ ~ ~ hh ~ hh ~ hh ~ ~ ~ hh ~ hh ~] [hh ~ ~ ~ hh ~ ~ ~ hh ~ hh ~ hh ~ ~ ~] [hh ~ hh ~ hh ~ ~ ~ hh ~ ~ ~ hh ~ ~ ~]>").velocity(sine.range(.12,.25).fast(4).early(1/16)),
+  s("<[~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ oh ~] [~ ~ ~ ~ ~ ~ ~ ~ ~ ~ oh ~ ~ ~ ~ ~] [~ ~ oh ~ ~ ~ oh ~ ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ ~ ~ oh ~ ~ ~ ~ ~ ~ ~ ~ ~]>").velocity(.16)
+)
+.bank("CasioRZ1")
+.gain(.8)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(1)
+.mask("<0@3 1@7 0@2 1@2 0@2>")
+
+// bass · roots that follow harmony
+$: n("<[0@2 1 2 0@2 ~ ~] [0@2 ~ ~ 0@2 0@2] [0@2 1 0@2 ~ 1@2] [0@2 ~ ~ 0@2 0@2] [0@2 ~ 0 0@2 1@2] [0@2 ~ ~ 0 1 0@2] [0@2 1@2 0@2 1@2] [0 0 1@2 ~ ~ 0@2]>")
+.set(harmony).mode("root:g1").voicing()
+.s("triangle")
+.lpf(209).lpenv(4).lpa(.01).lpd(.1).sustain(.3).gain(.55)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(2)
+.mask("<0@3 1@7 0@2 1@4>")
+
+// harmony · voice-led progression
+$: harmony.anchor("c4").voicing()
+.struct("x(5,8,6)")
+.s("square")
+.lpf(2791).decay(.1).sustain(0)
+.gain(.3).room(.1)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(3)
+.mask("<1@16>")
+
+// lead · motif, answer, resolution
+$: n("<[2 ~ 2 3 ~ ~ 1 ~] [2 2 ~ ~ 3 1 ~ ~] [2 ~ 2 3 ~ ~ 1 ~] [3@2 2@2 1@2 ~ ~] [2 ~ 3 3 ~ ~ 2 ~] [2 3 3 ~ 3 2 ~ ~] [2 ~ 3 3 ~ ~ 2 ~] [3@2 3@2 0@2 ~ ~]>").set(harmony)
+.anchor("a4").voicing()
+.s("sawtooth")
+.superimpose(x=>x.add(.09))
+.lpf(sine.range(593,4023).slow(7))
+.decay(.18).sustain(.35)
+.delay(.25).delayfeedback(.35)
+.room(0.34).gain(.38)
+.lpq(2)
+.hpf(20)
+.shape(0)
+.crush(16)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(4)
+.mask("<0@3 1@7 0@2 1@2 0 1>")
+
+// accent · answer in the lead gaps
+$: n("<[~ ~ ~ ~ ~ ~ ~ 3] [~ ~ ~ ~ ~ ~ 2@2] [~ ~ ~ ~ ~ ~ ~ 3] [~ ~ ~ ~ ~ ~ 2@2] [~ ~ ~ ~ ~ ~ ~ 3] [~ ~ ~ ~ ~ ~ 3@2] [~ ~ ~ ~ ~ ~ ~ 3] [~ ~ ~ ~ ~ ~ 3@2]>").set(harmony)
+.anchor("a5").voicing()
+.s("sine")
+.attack(.04).release(.35)
+.gain(.13).room(0.34)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(5)
+.mask("<0@3 1@5 0 1@3 0 1 0@2>")
+
+// percussion · offbeat detail
+$: s("[~ perc]*4")
+.bank("CasioRZ1")
+.gain(0.20)
+.postgain("<0.42 0.43 0.42 0.60 0.63 0.62 0.67 0.64 0.63 0.62 0.32 0.37 0.79 0.76 0.36 0.38>")
+.orbit(1)
+.mask("<0@3 1@5 0 1@3 0 1 0@2>")
+
+// --- generated arrangement end ---

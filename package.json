@@ -8,6 +8,8 @@
   "scripts": {
     "test": "node --test 'test/**/*.test.mjs'",
     "test:music": "node --test 'test/music-*.test.mjs'",
+    "qa:music": "node scripts/music-audit.mjs",
+    "qa:record": "node scripts/record-music.mjs",
     "typecheck": "tsc --noEmit --allowJs --checkJs --target ES2022 --module ES2022 --lib ES2022,DOM --skipLibCheck --strict false app.js strudel-host.js",
     "e2e": "playwright test",
     "e2e:install": "playwright install"

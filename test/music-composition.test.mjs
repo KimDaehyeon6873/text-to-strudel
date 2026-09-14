@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { loadMusicEngine, plain } from './helpers/load-app.mjs';
 
 const { api } = loadMusicEngine();
@@ -30,6 +31,11 @@ test('createCompositionPlan is deterministic for identical text genre and variat
 test('renderCompositionPlan is deterministic for an identical plan', () => {
   const plan = api.createCompositionPlan(corpus[0], 'jazz', zero);
   assert.equal(api.renderCompositionPlan(plan), api.renderCompositionPlan(plan));
+});
+
+test('jazz composition matches the reviewed phrase and groove snapshot', () => {
+  const expected = readFileSync(new URL('./fixtures/jazz-composition.strudel', import.meta.url), 'utf8').trimEnd();
+  assert.equal(api.renderCompositionPlan(api.createCompositionPlan(corpus[1], 'jazz', zero)), expected);
 });
 
 test('every base genre and corpus item renders four to seven musical layers', () => {
@@ -92,7 +98,7 @@ test('tonal layers derive notes from the shared harmony without legacy scale-deg
       } else if (role === 'harmony') {
         assert.match(body, /^\$: harmony\.anchor\(/m);
       } else {
-        assert.match(body, /^\$: harmony\.n\(/m);
+        assert.match(body, /^\$: n\("[^"\n]+"\)\.set\(harmony\)/m);
       }
       assert.doesNotMatch(body, /\.scale\(/, `${genre}/${role} must not create an independent scale`);
       assert.doesNotMatch(body, /(?:^|[^\w])n\([^\n]+\)\s*\.add\(7\)/, `${genre}/${role} must not assume a fixed +7 degree`);

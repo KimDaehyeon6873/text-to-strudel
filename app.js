@@ -31,15 +31,21 @@ function advanceVariation(focus) {
 }
 
 // ---- Seeded PRNG (deterministic from input + seed counter) ----
+function hashText(text) {
+  var h = 2166136261;
+  for (var ch of text) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 function createRNG(seed) {
-  var h = 0;
-  for (var i = 0; i < seed.length; i++) {
-    h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
-  }
-  var s = Math.abs(h) || 1;
+  var s = hashText(String(seed));
   return function () {
-    s = (s * 1664525 + 1013904223) & 0x7fffffff;
-    return s / 0x7fffffff;
+    s = (s + 0x6d2b79f5) >>> 0;
+    var t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
@@ -57,11 +63,87 @@ var TEXT_MOOD_WORDS = {
 
 function countMoodWords(text, words) {
   return words.reduce(function(total, word) {
-    return total + (text.indexOf(word) !== -1 ? 1 : 0);
+    var found = /^[a-z]+$/.test(word)
+      ? new RegExp('(^|[^\\p{L}\\p{N}])' + word + '(?=$|[^\\p{L}\\p{N}])', 'u').test(text)
+      : text.indexOf(word) !== -1;
+    return total + (found ? 1 : 0);
   }, 0);
 }
 
-function analyzeText(text) {
+// Decode arbitrary input as a small score, not merely a random seed. Every
+// glyph contributes; bounded cells keep long inputs cheap to render.
+function decodeText(text) {
+  var normalized = String(text || '').normalize('NFKC').trim();
+  var glyphs = Array.from(normalized);
+  var units = [];
+  var boundary = 0;
+  var counts = new Map();
+  var previous = null;
+  var transitions = 0;
+  var repeats = 0;
+  glyphs.forEach(function(ch) {
+    if (/\s|[.,!?;:。！？、…]/u.test(ch)) {
+      boundary = Math.max(boundary, /[.!?。！？…\n]/u.test(ch) ? 1 : .5);
+      return;
+    }
+    // Combining marks/emoji joiners affect the fingerprint, not note count.
+    if (/[\p{M}\u200d\ufe0f]/u.test(ch)) return;
+    var lower = ch.toLowerCase();
+    var cp = lower.codePointAt(0);
+    var pitch, attack;
+    if (/^[0-9]$/.test(ch)) {
+      pitch = Number(ch) / 9;
+      attack = Number(ch) % 2 ? .85 : .45;
+    } else if (cp >= 0xac00 && cp <= 0xd7a3) {
+      // Hangul vowel motion shapes contour; final consonants add attack.
+      var syllable = cp - 0xac00;
+      pitch = Math.floor(syllable / 28) % 21 / 20;
+      attack = syllable % 28 ? .8 : .35;
+    } else if (/^[a-z]$/.test(lower)) {
+      pitch = (cp - 97) / 25;
+      attack = /[aeiou]/.test(lower) ? .3 : /[ptkbdg]/.test(lower) ? .9 : .6;
+    } else {
+      var bits = hashText(lower);
+      pitch = (bits & 255) / 255;
+      attack = .3 + ((bits >>> 8) & 255) / 255 * .6;
+    }
+    var repeated = previous === lower;
+    if (previous !== null && !repeated) transitions++;
+    if (repeated) repeats++;
+    counts.set(lower, (counts.get(lower) || 0) + 1);
+    units.push({ pitch: pitch, attack: attack, rest: boundary, repeat: repeated ? 1 : 0 });
+    previous = lower;
+    boundary = 0;
+  });
+  if (!units.length) {
+    // Punctuation-only and symbol-only inputs still have a musical identity.
+    units = (glyphs.length ? glyphs : ['∅']).map(function(ch) {
+      var bits = hashText(ch);
+      return { pitch: (bits & 255) / 255, attack: /[!?]/.test(ch) ? .95 : .35, rest: .5, repeat: 0 };
+    });
+  }
+  var cells = Array.from({ length: 16 }, function(_, index) {
+    var start = units.length < 16 ? index % units.length : Math.floor(index * units.length / 16);
+    var end = units.length < 16 ? start + 1 : Math.floor((index + 1) * units.length / 16);
+    var group = units.slice(start, end);
+    var mean = function(field) { return group.reduce(function(sum, unit) { return sum + unit[field]; }, 0) / group.length; };
+    return { pitch: mean('pitch'), attack: mean('attack'), rest: group.reduce(function(max, unit) { return Math.max(max, unit.rest); }, 0), repeat: mean('repeat') };
+  });
+  var words = normalized.toLowerCase().split(/\s+/).filter(Boolean);
+  var wordRepeat = words.length > 1 ? 1 - new Set(words).size / words.length : 0;
+  var entropy = 0;
+  counts.forEach(function(count) { var p = count / units.length; entropy -= p * Math.log2(p); });
+  return {
+    version: 2, fingerprint: hashText(normalized).toString(16).padStart(8, '0'), cells: cells,
+    repetition: clamp(Math.max(wordRepeat, repeats / Math.max(1, units.length - 1))),
+    entropy: clamp(entropy / Math.log2(Math.max(2, Math.min(32, units.length)))),
+    motion: clamp(transitions / Math.max(1, units.length - 1)),
+    boundaries: glyphs.filter(function(ch) { return /[.!?。！？…\n]/u.test(ch); }).length,
+    length: units.length,
+  };
+}
+
+function analyzeText(text, decoded) {
   var normalized = (text || '').normalize('NFKC').trim();
   if (!normalized) {
     return { energy: 0.5, brightness: 0.5, weight: 0.5, space: 0.3, complexity: 0.5, valence: 0.5, tension: 0.5 };
@@ -96,13 +178,16 @@ function analyzeText(text) {
   var latinBrightness = latinLetters.length ? latinVowels.length / latinLetters.length : 0.5;
   var semanticBrightness = clamp(0.5 + brightWords * 0.18 - darkWords * 0.16);
   var density = chars.length / Math.max(1, glyphs.length);
+  var score = decoded || decodeText(normalized);
+  var attack = score.cells.reduce(function(sum, cell) { return sum + cell.attack; }, 0) / score.cells.length;
+  var pitch = score.cells.reduce(function(sum, cell) { return sum + cell.pitch; }, 0) / score.cells.length;
 
   return {
-    energy: clamp(structuralEnergy * 0.45 + semanticEnergy * 0.55),
-    brightness: clamp(latinBrightness * 0.35 + semanticBrightness * 0.65),
-    weight: clamp(avgWordLen / 9 + heavyWords * 0.15 - airyWords * 0.1),
-    space: clamp((1 - density) * 0.65 + (words.length < 4 ? 0.18 : 0) + calmWords * 0.08 + airyWords * 0.08),
-    complexity: clamp((uniqueChars / Math.max(4, chars.length)) * 0.65 + Math.min(1, words.length / 10) * 0.35),
+    energy: clamp(structuralEnergy * .3 + semanticEnergy * .5 + attack * .2),
+    brightness: clamp(latinBrightness * .2 + semanticBrightness * .65 + pitch * .15),
+    weight: clamp(avgWordLen / (avgWordLen + 5) * .6 + attack * .25 + heavyWords * .15 - airyWords * .1),
+    space: clamp((1 - density) * .65 + (words.length < 4 ? .18 : 0) + score.repetition * .15 + calmWords * .08 + airyWords * .08),
+    complexity: clamp(.15 + score.entropy * .55 + score.motion * .3 - score.repetition * .3),
     valence: clamp(0.5 + brightWords * 0.18 - darkWords * 0.16),
     tension: clamp(0.45 + intenseWords * 0.22 + punctuation * 0.04 - calmWords * 0.18),
   };
@@ -170,13 +255,13 @@ var GENRES = {
     ],
     bank: ['RolandTR808'],
     drums: [
-      { k: 'bd ~ [~ bd] ~', s: '~ cp ~ [~ cp]', h: '[hh hh hh]*2', x: '~ ~ ~ oh' },
-      { k: 'bd [~ bd] ~ bd', s: '~ cp ~ ~', h: 'hh*6', x: '[~ oh] ~ ~ ~' },
-      { k: 'bd ~ bd ~', s: '~ [~ cp] ~ cp', h: '[hh hh [~ hh]]*2', x: '~ ~ ~ [~ oh]' },
+      { k: 'bd ~ [~ bd] ~', s: '~ cp ~ [~ cp]', h: 'hh*8', x: '~ ~ ~ oh' },
+      { k: 'bd [~ bd] ~ bd', s: '~ cp ~ ~', h: '[hh [~ hh]]*4', x: '[~ oh] ~ ~ ~' },
+      { k: 'bd ~ bd ~', s: '~ [~ cp] ~ cp', h: '[hh hh [~ hh] hh]*2', x: '~ ~ ~ [~ oh]' },
     ],
     progressions: [[1,4,0,0],[0,5,1,4],[0,3,5,4],[2,5,1,4],[0,1,2,4]],
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
-    leadFx: function(rng, a, room) { return ['.decay(.25).sustain(.5)', '.room(.35).gain(.45)', '.every(2, x=>x.add('+pickFrom(rng,[2,-2,5,7])+')).degradeBy(.1)']; },
+    leadFx: function(rng, a, room) { return ['.decay(.25).sustain(.5)', '.room(.35).gain(.45)']; },
     bassFx: function() { return ['.room(.25).gain(.55)']; },
     chordFx: function(rng, a) { return ['.struct("x('+pickFrom(rng,[3,5])+',8,-'+pickFrom(rng,[1,2])+')")', '.every(2, early(1/8))', '.decay(.3).sustain(.4)', '.room(.3).gain(.3)']; },
   },
@@ -210,9 +295,9 @@ var GENRES = {
     ],
     bank: ['RolandTR808'],
     drums: [
-      { k: 'bd [~ bd] sd [~ bd]', s: null, h: '[hh hh hh]*2', x: '~ ~ ~ [~ oh]' },
-      { k: 'bd ~ sd ~', s: null, h: '[hh [~ hh] hh]*2', x: '~ ~ ~ oh' },
-      { k: 'bd [~ bd] sd bd', s: null, h: 'hh*6', x: '[~ oh] ~ ~ ~' },
+      { k: 'bd [~ bd] ~ [~ bd]', s: '~ sd ~ sd', h: 'hh*8', x: '~ ~ ~ [~ oh]' },
+      { k: 'bd ~ bd ~', s: '~ sd ~ sd', h: '[hh [~ hh]]*4', x: '~ ~ ~ oh' },
+      { k: 'bd [~ bd] ~ bd', s: '~ sd ~ sd', h: 'hh*8', x: '[~ oh] ~ ~ ~' },
     ],
     progressions: [[0,0,3,0],[0,3,4,0],[0,3,0,4],[0,0,4,3]],
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
@@ -249,13 +334,13 @@ var GENRES = {
     ],
     bank: ['RolandTR808'],
     drums: [
-      { k: 'bd ~ sd ~', s: null, h: 'hh*8', x: '~ ~ [~ oh] ~' },
-      { k: 'bd [~ bd] sd ~', s: null, h: '[~ hh]*4', x: '~ ~ ~ [~ oh]' },
-      { k: 'bd ~ sd [~ bd]', s: null, h: 'hh*8', x: '~ ~ ~ oh' },
+      { k: 'bd ~ ~ ~', s: '~ ~ sd ~', h: 'hh*8', x: '~ ~ [~ oh] ~' },
+      { k: 'bd [~ bd] ~ ~', s: '~ ~ sd ~', h: '[~ hh]*4', x: '~ ~ ~ [~ oh]' },
+      { k: 'bd ~ ~ [~ bd]', s: '~ ~ sd ~', h: 'hh*8', x: '~ ~ ~ oh' },
     ],
     progressions: [[0,3,5,4],[1,4,0,5],[0,5,3,4],[0,2,3,4]],
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'texture'],
-    leadFx: function(rng, a) { return ['.lpf('+Math.round(1500+a.brightness*2000)+')', '.decay(.2).sustain(.4)', '.room(.35).gain(.4)', '.degradeBy(.15)']; },
+    leadFx: function(rng, a) { return ['.lpf('+Math.round(1500+a.brightness*2000)+')', '.decay(.2).sustain(.4)', '.room(.35).gain(.4)']; },
     bassFx: function(rng, a) { return ['.lpf('+Math.round(150+a.brightness*150)+').decay(.1).sustain(.3).gain(.55)']; },
     chordFx: function(rng, a) { return ['.struct("[~ x]*2")', '.lpf('+Math.round(1500+a.brightness*1500)+')', '.decay(.25).sustain(.3)', '.room(.3).gain(.3)']; },
   },
@@ -324,12 +409,14 @@ function harmonyProfile(name, scale, degrees, brightness, tension, phraseBars, f
   };
 }
 
+// Use the pinned ireal dictionary's spellings: sus, o7, and 5.
+// General chord aliases such as sus2 or dim7 can silently yield no voicing.
 var HARMONY_PROFILES = {
   edm: [
     harmonyProfile('midnight lift', 'minor', [[0,'m'],[8,''],[3,''],[10,'']], .35, .55),
     harmonyProfile('dorian ascent', 'dorian', [[0,'m7'],[5,''],[10,''],[7,'m7']], .58, .42),
     harmonyProfile('open-sky release', 'major', [[0,''],[9,'m'],[5,''],[7,'7']], .82, .32),
-    harmonyProfile('neon tension', 'phrygian', [[0,'m'],[1,''],[10,''],[7,'dim7']], .22, .82),
+    harmonyProfile('neon tension', 'phrygian', [[0,'m'],[1,''],[10,''],[7,'o7']], .22, .82),
   ],
   jazz: [
     harmonyProfile('ii–V–I turnaround', 'major', [[2,'m7'],[7,'7'],[0,'^7'],[9,'7']], .68, .48),
@@ -346,9 +433,9 @@ var HARMONY_PROFILES = {
     harmonyProfile('twelve-bar slow burn', 'major:blues', [[0,'7'],[0,'7'],[0,'7'],[0,'7'],[5,'9'],[5,'9'],[0,'7'],[0,'7'],[7,'9'],[5,'9'],[0,'7'],[7,'7']], .58, .5, 12, 24),
   ],
   ambient: [
-    harmonyProfile('suspended horizon', 'lydian', [[0,'^7'],[2,''],[7,'sus2'],[5,'^7']], .8, .24, 8, 16),
-    harmonyProfile('slow orbit', 'dorian', [[0,'m9'],[5,'sus2'],[10,'^7'],[0,'m9']], .48, .32, 8, 16),
-    harmonyProfile('distant weather', 'minor:pentatonic', [[0,'m7'],[8,'^7'],[5,'sus2'],[10,'']], .3, .56, 8, 16),
+    harmonyProfile('suspended horizon', 'lydian', [[0,'^7'],[2,''],[7,'sus'],[5,'^7']], .8, .24, 8, 16),
+    harmonyProfile('slow orbit', 'dorian', [[0,'m9'],[5,'sus'],[10,'^7'],[0,'m9']], .48, .32, 8, 16),
+    harmonyProfile('distant weather', 'minor:pentatonic', [[0,'m7'],[8,'^7'],[5,'sus'],[10,'']], .3, .56, 8, 16),
   ],
   lofi: [
     harmonyProfile('worn photograph', 'minor', [[0,'m9'],[8,'^7'],[3,'^7'],[5,'m7']], .38, .42),
@@ -356,8 +443,8 @@ var HARMONY_PROFILES = {
     harmonyProfile('rainy window', 'dorian', [[0,'m7'],[5,'9'],[10,'^7'],[7,'m7']], .48, .46),
   ],
   world: [
-    harmonyProfile('modal drone', 'phrygian:dominant', [[0,'sus2'],[0,'sus2'],[1,''],[0,'sus2']], .48, .66),
-    harmonyProfile('open fifths', 'hirajoshi', [[0,'sus2'],[0,'sus2'],[5,'sus2'],[0,'sus2']], .6, .32),
+    harmonyProfile('modal drone', 'phrygian:dominant', [[0,'5'],[0,'5'],[1,''],[0,'5']], .48, .66),
+    harmonyProfile('open fifths', 'hirajoshi', [[0,'5'],[0,'5'],[5,'5'],[0,'5']], .6, .32),
     harmonyProfile('caravan cadence', 'harmonic:minor', [[0,'m'],[1,''],[7,'7'],[0,'m']], .34, .7),
   ],
 };
@@ -442,6 +529,7 @@ function buildRandomGenre(rng) {
     drums: grooveGenre.drums || scaleGenre.drums,
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
     harmonyGenre: scaleGenreName,
+    grooveGenre: grooveGenre.drums ? grooveGenreName : scaleGenreName,
   };
 }
 
@@ -483,6 +571,7 @@ function buildFusionGenre(rng, genreNames) {
     drums: drums,
     layers: ['drums', 'perc', 'bass', 'lead', 'countermelody', 'chords', 'arp', 'texture'],
     harmonyGenre: validNames[0],
+    grooveGenre: validNames.find(function(name) { return Boolean(GENRES[name].drums); }) || validNames[0],
   };
 }
 
@@ -491,7 +580,8 @@ function chooseHarmonyProfile(genreName, analysis, rng, variationIndex) {
   var bestIndex = 0;
   var bestScore = Infinity;
   profiles.forEach(function(profile, index) {
-    var score = Math.abs(profile.brightness - analysis.brightness) + Math.abs(profile.tension - analysis.tension) * .85 + rng() * .12;
+    var score = Math.abs(profile.brightness - analysis.brightness) + Math.abs(profile.tension - analysis.tension) * .85 +
+      Math.abs(profile.brightness - analysis.valence) * .35 + rng() * .12;
     if (score < bestScore) { bestScore = score; bestIndex = index; }
   });
   return profiles[(bestIndex + (variationIndex || 0)) % profiles.length];
@@ -515,12 +605,91 @@ function buildGenericHarmonyDegrees(scale, harmonicBars) {
 
 function makeBar(notes) { return '[' + notes.join(' ') + ']'; }
 
-function generateChordAwarePhrase(rng, phraseBars, analysis, variationIndex) {
-  var motifPool = [
-    [0,1,2,1], [0,2,1,2], [1,0,2,1], [0,1,3,2], [2,1,0,1],
-  ];
-  var baseMotifIndex = Math.floor(rng() * motifPool.length);
-  var motif = motifPool[(baseMotifIndex + (variationIndex || 0)) % motifPool.length].slice();
+// Eight eighth-note slots per bar. Integers address the motif; '_' sustains
+// the preceding note. Explicit rests leave room for the answering voice.
+var MELODY_RHYTHMS = {
+  edm: [[0,'_',1,2,1,'_',3,'~'], [0,1,'~',2,3,'~','~','~']],
+  jazz: [['~',0,1,'_',2,3,'~','~'], [0,'_',1,2,'~',3,'~','~']],
+  classical: [[0,'_',1,'_',2,'_',3,'_'], [0,'_',2,1,3,'_','~','~']],
+  blues: [[0,'_',0,1,2,'_','~','~'], ['~',0,1,'_',2,'~','~','~']],
+  ambient: [[0,'_','_','_','~','~',2,'_'], ['~','~',1,'_','_','_','~','~']],
+  lofi: [['~',0,'_',1,2,'_','~','~'], [0,'_','~',1,2,'~','~','~']],
+  world: [[0,'_',1,2,'_',3,'~','~'], [0,1,2,'_',3,'~','~','~']],
+};
+
+var CHORD_RHYTHMS = {
+  edm: ['x(3,8,-1)', 'x(4,8,-1)', 'x(5,8,-1)'],
+  jazz: ['<[[~ x] ~ x ~] [~ x ~ [~ x]]>', '<[x ~ [~ x] ~] [~ x ~ x]>'],
+  classical: ['x', '[x@3 x]'],
+  blues: ['[~ x]*2', '[x ~ x [~ x]]'],
+  ambient: ['x'],
+  lofi: ['[~ x]*2', '<[x ~ ~ x] [~ x ~ ~]>'],
+  world: ['x(3,8)', 'x(5,8)'],
+};
+
+function renderPhraseSlots(slots) {
+  var events = [];
+  slots.forEach(function(value) {
+    if (value === '_' && events.length) events[events.length - 1].duration++;
+    else events.push({ value: value, duration: 1 });
+  });
+  return makeBar(events.map(function(event) {
+    return String(event.value) + (event.duration > 1 ? '@' + event.duration : '');
+  }));
+}
+
+function selectSteps(rng, count, weights, required) {
+  var selected = required.slice();
+  var candidates = weights.map(function(weight, index) { return { index: index, score: weight + rng() * .9 }; });
+  candidates.sort(function(a, b) { return b.score - a.score || a.index - b.index; });
+  candidates.forEach(function(candidate) {
+    if (selected.length < count && selected.indexOf(candidate.index) === -1 && weights[candidate.index] > 0) selected.push(candidate.index);
+  });
+  return selected.sort(function(a, b) { return a - b; });
+}
+
+function createMelodyRhythm(rng, analysis, genreName, decoded, answer) {
+  var priors = (MELODY_RHYTHMS[genreName] || MELODY_RHYTHMS.edm)[answer ? 1 : 0];
+  var count = genreName === 'ambient' ? 1 + Math.round(analysis.energy * 2)
+    : 2 + Math.round(analysis.energy * 2 + analysis.complexity * 1.4 - decoded.repetition);
+  count = Math.max(2, Math.min(6, count));
+  var first = (genreName === 'jazz' || genreName === 'lofi') && rng() < .4 ? 1 : 0;
+  var weights = priors.map(function(value, step) {
+    if (step < first || step === 7) return 0;
+    var cell = decoded.cells[(step + (answer ? 8 : 0)) % 16];
+    if (cell.rest === 1) return 0;
+    return Math.max(.05, .1 + (typeof value === 'number' ? .3 : 0) + (step % 2 === 0 ? .25 : analysis.complexity * .2) + cell.attack * .3 - cell.rest * .35);
+  });
+  var onsets = selectSteps(rng, count, weights, [first]);
+  var rhythm = Array(8).fill('~');
+  onsets.forEach(function(step, index) {
+    rhythm[step] = index;
+    var gap = (onsets[index + 1] === undefined ? 7 : onsets[index + 1]) - step;
+    var sustain = genreName === 'ambient' || decoded.cells[step].repeat > .5 || rng() < .35 + analysis.space * .4;
+    var duration = sustain ? Math.min(gap, genreName === 'ambient' ? 4 : 2) : 1;
+    for (var held = 1; held < duration; held++) {
+      if (decoded.cells[(step + held + (answer ? 8 : 0)) % 16].rest >= .5) break;
+      rhythm[step + held] = '_';
+    }
+  });
+  return rhythm;
+}
+
+function generateChordAwarePhrase(rng, phraseBars, analysis, variationIndex, genreName, decoded) {
+  decoded = decoded || decodeText('a quiet city, waking up');
+  var variation = variationIndex || 0;
+  var motif = [(Math.round(decoded.cells[0].pitch * 3) + variation) % 4];
+  for (var m = 1; m < 6; m++) {
+    var cell = decoded.cells[(m + Math.floor(variation / 4)) % 16];
+    var target = Math.round(cell.pitch * 3);
+    if (variation % 2) target = 3 - target;
+    if (variation && rng() < .45) target += rng() < .5 ? -1 : 1;
+    if (cell.repeat > .5) target = motif[m - 1];
+    // Small chord-tone steps and a compact register bound free variation.
+    motif.push(Math.max(0, Math.min(3, Math.max(motif[m - 1] - 2, Math.min(motif[m - 1] + 2, target)))));
+  }
+  var statement = createMelodyRhythm(rng, analysis, genreName, decoded, false);
+  var answer = createMelodyRhythm(rng, analysis, genreName, decoded, true);
   var leadBars = [];
   var counterBars = [];
   for (var bar = 0; bar < phraseBars; bar++) {
@@ -531,53 +700,186 @@ function generateChordAwarePhrase(rng, phraseBars, analysis, variationIndex) {
     } else if (section >= 2) {
       notes = motif.slice().reverse().map(function(note) { return Math.max(0, Math.min(3, 2 - (note - 1))); });
     }
-    /** @type {Array<number|string>} */
-    var renderedNotes = notes;
-    if (bar % 2 === 1) renderedNotes = [notes[0], '~', notes[2], notes[1]];
-    if (analysis.energy < .42) renderedNotes = [notes[0] + '@2', '~', notes[2], '~'];
-    else if (analysis.energy > .7 && rng() < .5) renderedNotes = ['[' + notes[0] + ' ' + notes[1] + ']', notes[2], notes[1], notes[3]];
-    if (bar === phraseBars - 1) renderedNotes = [2, 1, '0@2'];
-    leadBars.push(makeBar(renderedNotes));
+    var rhythm = (bar % 2 ? answer : statement).slice();
+    // Ornament the answer, leaving the returning statement recognizable.
+    if (bar % 4 === 1 && analysis.energy > .5 && rng() < analysis.complexity) {
+      var ornamentSlot = rhythm.findIndex(function(step, index) { return index > 0 && index < 6 && (step === '_' || step === '~'); });
+      if (ornamentSlot !== -1) rhythm[ornamentSlot] = 1;
+    }
+    var renderedNotes = rhythm.map(function(step) { return typeof step === 'number' ? notes[step % notes.length] : step; });
+    // A chord-tone landing followed by a full beat of breathing room.
+    if (bar % 4 === 3) renderedNotes = [notes[2],'_',notes[1],'_',bar === phraseBars - 1 ? 0 : 1,'_','~','~'];
+    leadBars.push(renderPhraseSlots(renderedNotes));
 
-    /** @type {Array<number|string>} */
-    var counter = bar === phraseBars - 1
-      ? ['~', '~', 0, '~']
-      : (bar % 2 === 0 ? ['~', '~', 2, '~'] : ['~', 1 + '@2', '~']);
-    counterBars.push(makeBar(counter));
+    var counter = renderedNotes.map(function() { return '~'; });
+    // Fill only the last rest span, never a lead sustain or its next attack.
+    var gapEnd = renderedNotes.lastIndexOf('~');
+    if (gapEnd >= 0) {
+      var gapStart = gapEnd;
+      while (gapStart > 0 && renderedNotes[gapStart - 1] === '~') gapStart--;
+      counter[gapStart] = String(notes[bar % 2 ? 1 : 2]);
+      if (gapStart < gapEnd) counter[gapStart + 1] = '_';
+    }
+    counterBars.push(renderPhraseSlots(counter));
   }
   return {
     motif: motif,
     lead: '<' + leadBars.join(' ') + '>',
     counter: '<' + counterBars.join(' ') + '>',
+    arp: makeBar(Array.from({ length: 8 }, function(_, index) { return index === 7 ? '~' : motif[index % motif.length]; })),
   };
 }
 
-function generateBassPattern(rng, harmonicBars, energy) {
-  var patterns = energy > .65
-    ? [[0,0,1,0],[0,1,0,2],[0,0,2,1],[0,1,2,0]]
-    : energy < .35
-      ? [[0,'~',1,'~'],[0,'~','0@2'],[0,'~',2,'~']]
-      : [[0,0,1,'~'],[0,'~',1,0],[0,0,2,1],[0,'~',1,'~']];
+function generateBassPattern(rng, harmonicBars, energy, genreName, decoded) {
   var bars = [];
   for (var i = 0; i < harmonicBars; i++) {
-    var notes = pickFrom(rng, patterns).slice();
-    if (i === harmonicBars - 1) notes = [0, 1, '0@2'];
-    bars.push(makeBar(notes));
+    var count = genreName === 'ambient' ? 1 + (rng() < energy ? 1 : 0) : 2 + Math.round(energy * 2 + rng());
+    var weights = Array.from({ length: 8 }, function(_, step) {
+      return .1 + (step % 2 === 0 ? .7 : energy * .25) + decoded.cells[(i * 2 + step) % 16].attack * .2;
+    });
+    var onsets = selectSteps(rng, count, weights, [0]);
+    var notes = Array(8).fill('~');
+    onsets.forEach(function(step, index) {
+      notes[step] = step % 4 === 0 ? 0 : pickFrom(rng, [0, 0, 1, 2]);
+      var next = onsets[index + 1] === undefined ? 8 : onsets[index + 1];
+      var duration = genreName === 'ambient' ? next - step : Math.min(next - step, 2);
+      for (var held = 1; held < duration; held++) notes[step + held] = '_';
+    });
+    bars.push(renderPhraseSlots(notes));
   }
   return '<' + bars.join(' ') + '>';
+}
+
+function generateDrumPattern(rng, genreName, analysis, decoded, variation) {
+  var result = { k: [], s: [], h: [], x: [] };
+  for (var bar = 0; bar < 4; bar++) {
+    var kick = Array(16).fill('~'), snare = kick.slice(), hats = kick.slice(), extra = kick.slice();
+    var four = genreName === 'edm';
+    var kickAnchors = four ? [0,4,8,12] : genreName === 'world' ? [0,6,10] : [0,8];
+    var weights = decoded.cells.map(function(cell, step) { return .1 + cell.attack * .4 + (step % 2 === 0 ? .3 : 0); });
+    selectSteps(rng, kickAnchors.length + (rng() < analysis.energy ? 1 : 0), weights, kickAnchors).forEach(function(step) { kick[step] = 'bd'; });
+    var backbeat = genreName === 'lofi' && variation % 3 === 0 ? [8] : [4,12];
+    if (genreName !== 'world') backbeat.forEach(function(step) { snare[step] = genreName === 'edm' ? 'cp' : 'sd'; });
+    // Alternating eighth/sixteenth foundations ensure adjacent groove takes
+    // differ; all extra hits are generated inside the same four-beat bar.
+    var hatStride = variation % 2 === 0 ? 2 : 1;
+    for (var step = 0; step < 16; step += hatStride) {
+      if (step % 4 === 0 || rng() < .55 + analysis.energy * .35) hats[step] = 'hh';
+    }
+    // Keep an audible odd sixteenth in the denser groove family.
+    if (hatStride === 1) hats[3] = 'hh';
+    var offbeats = genreName === 'world' ? [3,6,11,14] : [2,6,10,14];
+    offbeats.forEach(function(step) {
+      if (rng() < .2 + analysis.energy * .35) {
+        extra[step] = genreName === 'world' ? 'rim' : 'oh';
+        if (genreName !== 'world') hats[step] = '~';
+      }
+    });
+    // A short, bounded fill at the end of the four-bar phrase.
+    if (bar === 3 && genreName !== 'world' && rng() < .35 + analysis.complexity * .45) {
+      snare[14] = genreName === 'edm' ? 'cp' : 'sd';
+      if (analysis.energy > .6) snare[15] = snare[14];
+    }
+    result.k.push(makeBar(kick)); result.s.push(makeBar(snare)); result.h.push(makeBar(hats)); result.x.push(makeBar(extra));
+  }
+  return { k: '<' + result.k.join(' ') + '>', s: '<' + result.s.join(' ') + '>', h: '<' + result.h.join(' ') + '>', x: '<' + result.x.join(' ') + '>' };
+}
+
+function developHarmony(profile, genreName, rng, decoded) {
+  var degrees = profile.degrees.map(function(spec) { return spec.slice(); });
+  // Preserve blues functions and cadence endpoints. Other genres can unfold
+  // over eight bars, with a related second statement instead of a tiny loop.
+  if (degrees.length === 4 && genreName !== 'world' && (rng() < .55 || decoded.boundaries > 1)) {
+    degrees = degrees.concat(profile.degrees.map(function(spec) { return spec.slice(); }));
+    if (genreName === 'edm' || genreName === 'lofi') {
+      var swap = degrees[5]; degrees[5] = degrees[6]; degrees[6] = swap;
+    }
+  }
+  if (genreName !== 'classical' && genreName !== 'world') {
+    degrees.forEach(function(spec) {
+      var palette = spec[1] === 'm7' || spec[1] === 'm9' ? ['m7','m9']
+        : ['7','9','13'].indexOf(spec[1]) !== -1 ? (genreName === 'jazz' ? ['7','9','13'] : ['7','9'])
+        : spec[1] === 'm' && genreName !== 'edm' ? ['m','m7'] : [spec[1]];
+      spec[1] = pickFrom(rng, palette);
+    });
+  }
+  return degrees;
 }
 
 function genDrumGains(rng, analysis) {
   var kick = (0.52 + analysis.energy * .28).toFixed(2);
   var snare = (0.46 + analysis.energy * .16).toFixed(2);
-  var hats = pickFrom(rng, ['[.28 .12 .2 .12]*4', '[.3 .14 .24 .12]*4', '[.25 .12]*8']);
-  return kick + ', ~ ' + snare + ' ~ ' + snare + ', ' + hats + ', [~ .16]*4';
+  var hats = pickFrom(rng, ['sine.range(.12,.28).fast(4).early(1/16)', 'sine.range(.14,.3).fast(2).early(1/8)', 'sine.range(.12,.25).fast(4).early(1/16)']);
+  return { k: kick, s: snare, h: hats, x: '.16' };
 }
 
-function chooseForm(genreName, rng, variationIndex) {
+function renderDrumStack(plan) {
+  var voices = ['k', 's', 'h', 'x'].filter(function(role) { return Boolean(plan.drums[role]); });
+  // Commas in both s(...) and gain(...) form a cross product of events.
+  // Attach dynamics to each voice before stacking; keep a shared mixer gain.
+  return '$: stack(\n' + voices.map(function(role) {
+    return '  s("' + plan.drums[role] + '").velocity(' + plan.drumGains[role] + ')';
+  }).join(',\n') + '\n)';
+}
+
+function maskFromSteps(steps) {
+  var runs = [];
+  steps.forEach(function(value) {
+    var last = runs[runs.length - 1];
+    if (last && last.value === value) last.count++;
+    else runs.push({ value: value, count: 1 });
+  });
+  return '<' + runs.map(function(run) { return run.value + (run.count > 1 ? '@' + run.count : ''); }).join(' ') + '>';
+}
+
+function chooseForm(genreName, rng, variationIndex, decoded) {
   var forms = genreName === 'blues' ? FORMS_BLUES : (genreName === 'ambient' ? FORMS_AMBIENT : FORMS_16);
-  var baseIndex = Math.floor(rng() * forms.length);
-  return forms[(baseIndex + (variationIndex || 0)) % forms.length];
+  var family = (hashText(decoded.fingerprint + genreName) + (variationIndex || 0)) % forms.length;
+  var base = forms[family];
+  var entry = genreName === 'blues' ? family + Math.floor(rng() * 2) : 1 + family * 2 + Math.floor(rng() * 2);
+  var breakStart = genreName === 'blues' ? 12 : pickFrom(rng, [8,9,10]);
+  var breakLength = 1 + Math.floor(rng() * 2);
+  var masks = { drums: [], bass: [], harmony: [], lead: [], accent: [], texture: [] };
+  var dynamics = [];
+  for (var bar = 0; bar < base.length; bar++) {
+    var intro = bar < entry;
+    var tail = bar >= base.length - 2;
+    var quiet = bar >= breakStart && bar < breakStart + breakLength;
+    var phraseEnd = bar % 4 === 3;
+    var cell = decoded.cells[bar % 16];
+    masks.drums.push(!intro && !tail && !quiet ? 1 : 0);
+    masks.bass.push(!intro && (!quiet || genreName === 'blues') ? 1 : 0);
+    // Keep a quiet harmonic thread through breaks and the loop boundary.
+    masks.harmony.push(1);
+    masks.lead.push(!intro && !quiet && (!tail || phraseEnd) && (phraseEnd || rng() > cell.rest * .2) ? 1 : 0);
+    masks.accent.push(!intro && !tail && (bar % 2 === 1 || rng() < .25) ? 1 : 0);
+    masks.texture.push(intro || tail || quiet ? 1 : 0);
+    var level = intro ? .5 : tail ? .42 : quiet ? .4 : bar > breakStart ? .94 : .76;
+    // Reserve mix headroom for chord polyphony, drum transients and FX tails.
+    dynamics.push((.82 * Math.max(.35, Math.min(1, level + (cell.attack - .5) * .1 + (rng() - .5) * .05))).toFixed(2));
+  }
+  var renderedMasks = {};
+  Object.keys(masks).forEach(function(role) { renderedMasks[role] = maskFromSteps(masks[role]); });
+  return {
+    name: base.name + ' · entry ' + (entry + 1) + ', return ' + (breakStart + breakLength + 1),
+    length: base.length, masks: renderedMasks, dynamics: '<' + dynamics.join(' ') + '>',
+  };
+}
+
+function generateChordRhythm(rng, genreName, analysis, decoded) {
+  if (genreName === 'ambient' || genreName === 'classical') return pickFrom(rng, CHORD_RHYTHMS[genreName]);
+  if (genreName === 'edm' || genreName === 'world') {
+    return 'x(' + (2 + Math.floor(rng() * 3 + analysis.energy * 2)) + ',8,' + Math.floor(rng() * 8) + ')';
+  }
+  var bars = [];
+  for (var bar = 0; bar < 2; bar++) {
+    var weights = decoded.cells.slice(bar * 8, bar * 8 + 8).map(function(cell, step) {
+      return .15 + cell.attack * .4 + (step % 2 ? .35 : .1);
+    });
+    var steps = selectSteps(rng, 2 + Math.round(rng() + analysis.energy), weights, [2]);
+    bars.push(makeBar(Array.from({ length: 8 }, function(_, step) { return steps.indexOf(step) === -1 ? '~' : 'x'; })));
+  }
+  return '<' + bars.join(' ') + '>';
 }
 
 function resolveGenrePlan(genreName, harmonyRng) {
@@ -625,41 +927,45 @@ function ensureLeadFx(fx, analysis) {
 function createCompositionPlan(text, genreName, variations) {
   var normalizedText = (text || '').normalize('NFKC').trim();
   var state = copyVariationState(variations || variationState);
-  var seedBase = normalizedText.toLowerCase() + ':' + genreName;
+  var decoded = decodeText(normalizedText);
+  var seedBase = normalizedText + ':' + genreName;
   var harmonyRng = createRNG(seedBase + ':harmony:' + state.harmony);
-  var melodyRng = createRNG(seedBase + ':melody-base');
+  var melodyRng = createRNG(seedBase + ':melody:' + state.melody);
   var grooveRng = createRNG(seedBase + ':groove:' + state.groove);
   var arrangementRng = createRNG(seedBase + ':arrangement:' + state.arrangement);
-  var analysis = analyzeText(normalizedText);
+  var analysis = analyzeText(normalizedText, decoded);
   var resolved = resolveGenrePlan(genreName, harmonyRng);
   var genre = resolved.genre;
   var harmonyGenre = genre.harmonyGenre || (resolved.resolvedName === 'random' || resolved.resolvedName === 'fusion' ? 'edm' : resolved.resolvedName);
   var identityRng = createRNG(seedBase + ':harmony-identity');
   var profiles = HARMONY_PROFILES[harmonyGenre] || HARMONY_PROFILES.edm;
   var profile = chooseHarmonyProfile(harmonyGenre, analysis, identityRng, state.harmony);
-  var keyPool = resolved.keyPool || ['C','D','E','F','G','A'];
+  var keyPool = Array.from(new Set((resolved.keyPool || []).concat(NOTE_NAMES_FLAT)));
   var baseKeyIndex = Math.floor(identityRng() * keyPool.length);
   var keyCycle = Math.floor(state.harmony / profiles.length);
   var key = keyPool[(baseKeyIndex + keyCycle) % keyPool.length];
-  var harmonyDegrees = profile.degrees.map(function(spec) { return spec.slice(); });
+  var harmonyDegrees = developHarmony(profile, harmonyGenre, harmonyRng, decoded);
   var harmonySymbols = buildHarmonySymbols(key, harmonyDegrees);
-  var tempoPosition = clamp(.12 + analysis.energy * .76 + (harmonyRng() - .5) * .12);
+  var tempoPosition = clamp(.12 + analysis.energy * .76 + (harmonyRng() - .5) * .22 + (decoded.cells[15].attack - .5) * .08);
   var tempo = Math.round(genre.tempoRange[0] + tempoPosition * (genre.tempoRange[1] - genre.tempoRange[0]));
   var bank = Array.isArray(genre.bank) ? pickFrom(arrangementRng, genre.bank) : genre.bank;
-  var sounds = Array.isArray(resolved.soundPool) ? pickFrom(arrangementRng, resolved.soundPool) : resolved.soundPool;
-  sounds = sounds || { lead: 'triangle', bass: 'sine', chord: 'gm_electric_piano_1', arp: 'sine' };
+  var sounds = {};
+  ['lead', 'bass', 'chord', 'arp'].forEach(function(role) {
+    var palette = Array.isArray(resolved.soundPool) ? pickFrom(arrangementRng, resolved.soundPool) : resolved.soundPool;
+    sounds[role] = palette && palette[role];
+  });
+  sounds.lead = sounds.lead || 'triangle';
+  sounds.bass = sounds.bass || 'sine';
+  sounds.chord = sounds.chord || 'gm_electric_piano_1';
   var formGenre = harmonyGenre === 'blues' ? 'blues' : (harmonyGenre === 'ambient' ? 'ambient' : resolved.resolvedName);
-  var form = chooseForm(formGenre, createRNG(seedBase + ':form-base'), state.arrangement);
-  var phrase = generateChordAwarePhrase(melodyRng, profile.phraseBars, analysis, state.melody);
-  var bass = generateBassPattern(createRNG(seedBase + ':bass:' + state.harmony), profile.harmonicBars, analysis.energy);
+  var form = chooseForm(formGenre, arrangementRng, state.arrangement, decoded);
+  var phrase = generateChordAwarePhrase(melodyRng, profile.phraseBars, analysis, state.melody, harmonyGenre, decoded);
+  var bass = generateBassPattern(createRNG(seedBase + ':bass:' + state.harmony), harmonyDegrees.length, analysis.energy, harmonyGenre, decoded);
   var drums = null;
   if (genre.drums && genre.drums.length) {
-    var grooveBaseRng = createRNG(seedBase + ':groove-base');
-    var drumIndex = (Math.floor(grooveBaseRng() * genre.drums.length) + state.groove) % genre.drums.length;
-    drums = genre.drums[drumIndex];
+    drums = generateDrumPattern(grooveRng, genre.grooveGenre || harmonyGenre, analysis, decoded, state.groove);
   }
-  var chordRhythms = harmonyGenre === 'ambient' ? ['x(2,8,-1)', 'x(3,8,-1)'] : ['x(3,8,-1)', 'x(4,8,-1)', 'x(5,8,-1)'];
-  var chordRhythm = pickFrom(harmonyRng, chordRhythms);
+  var chordRhythm = generateChordRhythm(arrangementRng, harmonyGenre, analysis, decoded);
   var accentChoices = harmonyGenre === 'ambient' || harmonyGenre === 'classical' || harmonyGenre === 'edm' ? ['arp','counter'] : ['counter','none'];
   var accentRole = pickFrom(arrangementRng, accentChoices);
   var includePerc = Boolean(drums && bank && analysis.energy > .48 && arrangementRng() > .28);
@@ -677,8 +983,8 @@ function createCompositionPlan(text, genreName, variations) {
   var bassFx = genreFx.bassFx(arrangementRng, analysis, room).slice();
   var chordFx = genreFx.chordFx(arrangementRng, analysis, room).filter(function(fx) { return fx.indexOf('.struct(') === -1; });
   var leadTechnique = pickFrom(arrangementRng, [
-    '', '.every(4, x=>x.rev())', '.every(8, x=>x.fast(2))',
-    analysis.space > .4 ? '.jux(rev)' : '', analysis.energy > .62 ? '.off(1/8, x=>x.gain(.18))' : '',
+    '', '.velocity("<.82 1 .9 .94>")', '.velocity("<1 .88 .94 .82>")',
+    analysis.space > .4 ? '.pan(sine.range(.35,.65).slow(8))' : '',
   ]);
   var octaves = genre.octaves || { lead: 5, bass: 2, chord: 4, arp: 6 };
   var leadRegister = Math.max(3, Math.min(7, octaves.lead || 5));
@@ -686,10 +992,11 @@ function createCompositionPlan(text, genreName, variations) {
 
   return {
     source: 'algorithmic', text: normalizedText, genreName: genreName, resolvedGenreName: resolved.resolvedName,
-    genreLabel: genre.label + resolved.subLabel, harmonyGenre: harmonyGenre, analysis: analysis, variations: state,
+    genreLabel: genre.label + resolved.subLabel, harmonyGenre: harmonyGenre, analysis: analysis, decoded: decoded, variations: state,
     key: key, scale: profile.scale, tempo: tempo, profileName: profile.name,
-    harmony: { degrees: harmonyDegrees, symbols: harmonySymbols, harmonicBars: profile.harmonicBars, phraseBars: profile.phraseBars },
+    harmony: { degrees: harmonyDegrees, symbols: harmonySymbols, harmonicBars: harmonyDegrees.length, phraseBars: profile.phraseBars },
     form: form, sounds: sounds, bank: bank, drums: drums, drumGains: genDrumGains(grooveRng, analysis),
+    swing: ['jazz', 'blues', 'lofi'].indexOf(genre.grooveGenre || harmonyGenre) !== -1,
     chordRhythm: chordRhythm, phrase: phrase, bassPattern: bass, accentRole: accentRole,
     includePerc: includePerc, includeTexture: includeTexture, room: room,
     leadFx: leadFx, bassFx: bassFx, chordFx: chordFx, leadTechnique: leadTechnique,
@@ -705,7 +1012,19 @@ function createCompositionPlan(text, genreName, variations) {
 var GENERATED_ARRANGEMENT_END = '// --- generated arrangement end ---';
 
 function scaleAnchor(key, octave) { return key.toLowerCase() + octave; }
-function safeCommentText(text) { return String(text || '').replace(/\s+/g, ' ').replace(/"/g, "'").trim(); }
+function safeCommentText(text) {
+  var clean = String(text || '').replace(/\s+/g, ' ').replace(/"/g, "'").trim();
+  return clean.length > 240 ? Array.from(clean).slice(0, 240).join('') + '…' : clean;
+}
+function describeDecoded(plan) {
+  return plan.decoded.length + ' symbols · ' + plan.decoded.boundaries + ' phrase breaks · ' +
+    Math.round(plan.decoded.repetition * 100) + '% repetition · contour ' + plan.phrase.motif.join(' ');
+}
+function swingForRole(role) {
+  // Swing delays offbeat attacks. Shorter melodic gates keep those notes
+  // from sustaining into the next voice's downbeat (FX tails may overlap).
+  return /^(?:lead|accent)(?: ·|$)/.test(role) ? '.swing(4).clip(2/3)' : '.swing(4)';
+}
 
 function renderCompositionPlan(plan) {
   var a = plan.analysis;
@@ -714,6 +1033,7 @@ function renderCompositionPlan(plan) {
   L.push('// "' + safeCommentText(plan.text) + '" -> ' + plan.genreLabel);
   L.push('// identity: ' + plan.key + ' ' + plan.scale.replace(/:/g, ' ') + ' · ' + plan.profileName + ' · ' + plan.tempo + ' BPM');
   L.push('// mood: ' + describeMood(a));
+  L.push('// decoded: ' + describeDecoded(plan));
   L.push('// form: ' + plan.form.name + ' (' + plan.form.length + ' cycles)');
   L.push('// variation: H' + plan.variations.harmony + ' M' + plan.variations.melody + ' G' + plan.variations.groove + ' A' + plan.variations.arrangement);
   L.push('');
@@ -725,16 +1045,19 @@ function renderCompositionPlan(plan) {
   function addLayer(role, lines) {
     layers.push(role);
     L.push('// ' + role);
-    lines.forEach(function(line) { if (line) L.push(line); });
+    lines.forEach(function(line) {
+      if (!line) return;
+      if (plan.swing && role.indexOf('texture') !== 0 && line.indexOf('.orbit(') === 0) L.push(swingForRole(role));
+      if (line.indexOf('.orbit(') === 0) L.push('.postgain("' + plan.form.dynamics + '")');
+      L.push(line);
+    });
     L.push('');
   }
 
   if (plan.drums && plan.bank) {
-    var drumPattern = [plan.drums.k, plan.drums.s, plan.drums.h, plan.drums.x].filter(Boolean).join(', ');
     addLayer('drums · pulse and backbeat', [
-      '$: s("' + drumPattern + '")', '.bank("' + plan.bank + '")', '.gain("' + plan.drumGains + '")',
+      renderDrumStack(plan), '.bank("' + plan.bank + '")', '.gain(.8)',
       plan.harmonyGenre === 'lofi' ? '.lpf(' + Math.round(2100 + a.brightness * 1700) + ')' : '',
-      (plan.harmonyGenre === 'jazz' || plan.harmonyGenre === 'blues' || plan.harmonyGenre === 'lofi') ? '.swing(4)' : '',
       '.orbit(1)', '.mask("' + plan.form.masks.drums + '")',
     ]);
   }
@@ -750,21 +1073,21 @@ function renderCompositionPlan(plan) {
   ].concat(plan.chordFx).concat(['.orbit(3)', '.mask("' + plan.form.masks.harmony + '")']));
 
   addLayer('lead · motif, answer, resolution', [
-    '$: harmony.n("' + plan.phrase.lead + '")', '.anchor("' + scaleAnchor(plan.key, plan.registers.lead) + '").voicing()',
+    '$: n("' + plan.phrase.lead + '").set(harmony)', '.anchor("' + scaleAnchor(plan.key, plan.registers.lead) + '").voicing()',
     '.s("' + plan.sounds.lead + '")',
   ].concat(plan.leadFx).concat([plan.leadTechnique, '.orbit(4)', '.mask("' + plan.form.masks.lead + '")']));
 
   if (plan.accentRole === 'arp') {
     addLayer('accent · harmony-derived arpeggio', [
-      '$: harmony.n("[0 1 2 1]*2")', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
+      '$: n("' + plan.phrase.arp + '").set(harmony)', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
       '.s("' + (plan.sounds.arp || plan.sounds.lead || 'sine') + '")', '.decay(.08).sustain(0)', '.delay(.18).delayfeedback(.28)',
       '.room(' + Math.min(.65, .22 + a.space * .35).toFixed(2) + ').gain(.14)', '.orbit(5)', '.mask("' + plan.form.masks.accent + '")',
     ]);
   } else if (plan.accentRole === 'counter') {
     addLayer('accent · answer in the lead gaps', [
-      '$: harmony.n("' + plan.phrase.counter + '")', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
+      '$: n("' + plan.phrase.counter + '").set(harmony)', '.anchor("' + scaleAnchor(plan.key, plan.registers.accent) + '").voicing()',
       '.s("' + (plan.sounds.arp || 'sine') + '")', '.attack(.04).release(.35)', '.gain(.13).room(' + plan.room + ')',
-      '.late(1/8)', '.orbit(5)', '.mask("' + plan.form.masks.accent + '")',
+      '.orbit(5)', '.mask("' + plan.form.masks.accent + '")',
     ]);
   }
 
@@ -874,6 +1197,7 @@ function replaceQuotedCall(block, expression, value) {
 
 function updatePlanComments(code, plan) {
   return code
+    .replace(/^\/\/ decoded:.*$/m, '// decoded: ' + describeDecoded(plan))
     .replace(/^\/\/ form:.*$/m, '// form: ' + plan.form.name + ' (' + plan.form.length + ' cycles)')
     .replace(/^\/\/ variation:.*$/m, '// variation: H' + plan.variations.harmony + ' M' + plan.variations.melody +
       ' G' + plan.variations.groove + ' A' + plan.variations.arrangement);
@@ -888,6 +1212,18 @@ function patchLayerMask(code, role, mask) {
   });
 }
 
+function addSwingToCode(code) {
+  var hasGeneratedParts = false;
+  MUSIC_LAYER_NAMES.filter(function(role) { return role !== 'texture'; }).forEach(function(role) {
+    code = transformLayerBlock(code, role, function(block) {
+      hasGeneratedParts = true;
+      return block.indexOf('.swing(') !== -1 ? block : block + '\n' + swingForRole(role);
+    });
+  });
+  if (hasGeneratedParts || code.indexOf('.swing(') !== -1) return code;
+  return code.replace(/(\.bank\s*\([^)]*\))/g, '$1\n.swing(4)');
+}
+
 function generateFocusedVariationCode(focus, currentCode) {
   if (!lastCompositionPlan || !currentCode) return currentCode;
   var currentPlan = lastCompositionPlan;
@@ -896,11 +1232,11 @@ function generateFocusedVariationCode(focus, currentCode) {
 
   if (focus === 'melody') {
     code = transformLayerBlock(code, 'lead', function(block) {
-      return replaceQuotedCall(block, /(\$: harmony\.n\(")[^"]*("\))/, candidate.phrase.lead);
+      return replaceQuotedCall(block, /(\$: n\(")[^"]*("\)\.set\(harmony\))/, candidate.phrase.lead);
     });
     code = transformLayerBlock(code, 'accent', function(block) {
-      if (block.indexOf('answer in the lead gaps') === -1) return block;
-      return replaceQuotedCall(block, /(\$: harmony\.n\(")[^"]*("\))/, candidate.phrase.counter);
+      var phrase = block.indexOf('answer in the lead gaps') !== -1 ? candidate.phrase.counter : candidate.phrase.arp;
+      return replaceQuotedCall(block, /(\$: n\(")[^"]*("\)\.set\(harmony\))/, phrase);
     });
     currentPlan.phrase = candidate.phrase;
     currentPlan.variations = candidate.variations;
@@ -909,10 +1245,8 @@ function generateFocusedVariationCode(focus, currentCode) {
 
   if (focus === 'groove') {
     if (candidate.drums) {
-      var drumPattern = [candidate.drums.k, candidate.drums.s, candidate.drums.h, candidate.drums.x].filter(Boolean).join(', ');
       code = transformLayerBlock(code, 'drums', function(block) {
-        block = replaceQuotedCall(block, /(\$: s\(")[^"]*("\))/, drumPattern);
-        return replaceQuotedCall(block, /(\.gain\(")[^"]*("\))/, candidate.drumGains);
+        return block.replace(/\$: stack\(\n[\s\S]*?\n\)/, function() { return renderDrumStack(candidate); });
       });
       var candidateCode = renderCompositionPlan(candidate);
       var candidatePerc = getLayerBlock(candidateCode, 'percussion');
@@ -933,7 +1267,7 @@ function generateFocusedVariationCode(focus, currentCode) {
 
   if (focus === 'arrangement') {
     var currentBaselineCode = renderCompositionPlan(currentPlan);
-    var preserved = ['analysis', 'key', 'scale', 'tempo', 'profileName', 'harmony', 'phrase', 'bassPattern', 'drums', 'drumGains', 'registers', 'room'];
+    var preserved = ['analysis', 'key', 'scale', 'tempo', 'profileName', 'harmony', 'phrase', 'bassPattern', 'drums', 'drumGains', 'swing', 'registers', 'room'];
     preserved.forEach(function(field) { candidate[field] = currentPlan[field]; });
     var candidateCode = renderCompositionPlan(candidate);
 
@@ -972,6 +1306,9 @@ function generateFocusedVariationCode(focus, currentCode) {
     MUSIC_LAYER_NAMES.forEach(function(role) {
       var maskRole = role === 'percussion' ? 'accent' : role;
       if (candidate.form.masks[maskRole]) code = patchLayerMask(code, role, candidate.form.masks[maskRole]);
+      code = transformLayerBlock(code, role, function(block) {
+        return block.replace('.postgain("' + currentPlan.form.dynamics + '")', '.postgain("' + candidate.form.dynamics + '")');
+      });
     });
     lastCompositionPlan = candidate;
     return updatePlanComments(code, candidate);
@@ -1008,7 +1345,7 @@ function shiftPlanRegisters(code, delta) {
   return code
     .replace(/anchor\("c\d"\)/, 'anchor("c' + registers.harmony + '")')
     .replace(/mode\("root:g\d"\)/, 'mode("root:g' + registers.bass + '")')
-    .replace(/(\$: harmony\.n\("[^"]+"\)\n\.anchor\(")([a-g](?:#|b)?)\d("\)\.voicing\(\))/g, function(match, before, note, after) {
+    .replace(/(\$: n\("[^"]+"\)\.set\(harmony\)\n\.anchor\(")([a-g](?:#|b)?)\d("\)\.voicing\(\))/g, function(match, before, note, after) {
       var octave = melodicAnchorIndex++ === 0 ? registers.lead : registers.accent;
       return before + note + octave + after;
     });
@@ -1018,6 +1355,7 @@ function shiftPlanRegisters(code, delta) {
 if (typeof globalThis !== 'undefined') {
   globalThis.__TTS_MUSIC_TEST__ = {
     analyzeText: analyzeText,
+    decodeText: decodeText,
     describeMood: describeMood,
     createCompositionPlan: createCompositionPlan,
     renderCompositionPlan: renderCompositionPlan,
@@ -1040,7 +1378,8 @@ var STRUDEL_SYSTEM_PROMPT = `You generate Strudel live-coding music. Strudel is 
 
 ## YOUR CREATIVE PROCESS
 
-When given a word or phrase, DO NOT map letters to notes or translate literally.
+When given a word or phrase, develop a coherent musical reading rather than a literal one-letter/one-note substitution.
+Use meaning where it is recognizable. For opaque IDs, numbers, symbols, or emoji, decode contour, repetition and boundaries into a motif and groove; do not claim to know an external story behind the input.
 Instead, close your eyes and ask:
 - What does this FEEL like? (temperature, weight, texture, speed)
 - What does this LOOK like? (color, light, space, movement)
@@ -1071,7 +1410,10 @@ EXAMPLE of creative reasoning (DO NOT output this — only output code):
   Advanced technique (use when it fits, not required):
   - Shared harmonic context is REQUIRED for tonal music: const harmony = chord("...").dict("ireal")
     Chords use harmony.voicing(), bass uses .set(harmony).mode("root:g2").voicing(),
-    and melodic chord tones use harmony.n(...).anchor(...).voicing().
+    and melodic chord tones use n(...).set(harmony).anchor(...).voicing().
+    Put the melodic rhythm first: harmony.n(...) inherits chord onsets and can suppress later melody attacks.
+    For the ireal dictionary, use sus (suspended fourth), o7 (diminished seventh), and 5 (open fifth).
+    Avoid unsupported dictionary spellings such as sus2, sus4, or dim7; they may produce silent chords.
   - Shared FX: const fx = x => x.s('saw').cutoff(1200); then .apply(fx) on multiple layers
   - .layer() from one source: melody.layer(x=>x.scaleTranspose(0), x=>x.scaleTranspose(2).early(1/8))
   Do what serves the music. 5 well-crafted layers beat 12 empty ones.
@@ -1092,6 +1434,10 @@ Anchor points: in a 12-step melody, align with chord tones at steps 1, 4, 7, 10.
 Tension-release: dissonance (7ths, suspensions, altered tones) → resolution (root, 3rd, 5th).
 Call and response: 2-bar phrase (call), 2-bar answer (response). The answer can vary, transpose, or invert.
 Rhythmic counterpoint: when melody is busy, accompaniment is sparse. When melody rests, accompaniment fills.
+Keep a shared swing subdivision across drums, bass, comping, and melody. Preserve deliberate phrase rests.
+For combined drums, use stack(s("bd*4").velocity(.8), s("hh*8").velocity(".3 .15")) with one overall .gain().
+Never pair comma-separated sound voices with comma-separated gains: this duplicates events instead of matching gains to instruments.
+Keep pitch choices inside the shared harmony before .voicing(); avoid arbitrary semitone transposition of the voiced melody.
 Dynamic arc: intro (sparse, quiet) → build (add layers, open filters) → peak (full, loud) → release (strip layers).
 
 ## MOOD PARAMETERS
@@ -1581,6 +1927,12 @@ function buildUserMessage(text, genre) {
 
   // 1. The creative input
   parts.push('"' + text + '"');
+  var decoded = decodeText(text);
+  parts.push('\nINPUT SCORE (structural cues, not a claim of semantic understanding): ' +
+    decoded.length + ' symbols, repetition ' + decoded.repetition.toFixed(2) + ', ' + decoded.boundaries + ' phrase boundaries. ' +
+    'Contour: ' + decoded.cells.slice(0, 8).map(function(cell) { return Math.round(cell.pitch * 3); }).join(' ') + '. ' +
+    'Let repetitions become returning motifs, punctuation become breaths, and number/letter motion inform melodic direction. ' +
+    'For opaque strings, IDs, symbols, or emoji, find a musical reading of their structure instead of inventing a literal story.');
 
   // 2. Genre context — a starting point, not a cage
   if (genre.indexOf('fusion:') === 0) {
@@ -2279,7 +2631,8 @@ function updateCompositionMeta(plan, mode) {
   updateVariationAvailability(plan);
   var focus = lastVariationFocus === 'base' ? 'original' : lastVariationFocus.replace('all', 'new take');
   meta.textContent = 'Take ' + (seedCounter + 1) + ' · ' + plan.key + ' ' + plan.scale.replace(/:/g, ' ') +
-    ' · ' + plan.tempo + ' BPM · ' + plan.profileName + ' · ' + focus;
+    ' · ' + plan.tempo + ' BPM · ' + plan.harmony.harmonicBars + '-bar harmony · ' + focus;
+  meta.title = 'Input decoded into music: ' + describeDecoded(plan);
 }
 
 function updateVariationAvailability(plan) {
@@ -2769,10 +3122,12 @@ function algoRefine(code, direction) {
         return '.crush(' + Math.min(16, parseInt(c) + 1) + ')';  // higher = less crushed
       });
     case 'add swing':
-      if (code.indexOf('.swing(') !== -1 || code.indexOf('.bank(') === -1) return code;
-      return code.replace(/(\.bank\s*\([^)]*\))/g, '$1\n.swing(4)');
+      var swung = addSwingToCode(code);
+      if (lastCompositionPlan && swung !== code) lastCompositionPlan.swing = true;
+      return swung;
     case 'straighten':
-      return code.replace(/\.swing\s*\([^)]*\)/g, '');
+      if (lastCompositionPlan) lastCompositionPlan.swing = false;
+      return code.replace(/\.swing\s*\([^)]*\)(?:\.clip\(2\/3\))?/g, '');
     default:
       return code;
   }
@@ -2793,7 +3148,7 @@ function canRefineDirection(code, direction) {
     var target = direction.replace('scale:', '').replace('pentatonic', 'minor:pentatonic');
     return lastCompositionPlan.scale !== target || lastCompositionPlan.profileName.indexOf('reharmonization') === -1;
   }
-  if (direction === 'add swing') return code.indexOf('.bank(') !== -1 && code.indexOf('.swing(') === -1;
+  if (direction === 'add swing') return addSwingToCode(code) !== code;
   if (direction === 'straighten') return code.indexOf('.swing(') !== -1;
   if (direction.indexOf('make it') === 0) {
     var moodSteps = [];
