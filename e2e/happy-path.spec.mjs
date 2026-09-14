@@ -21,6 +21,12 @@ for (const path of ['/index.html', '/index.amber.html']) {
     await expect(status).toHaveClass(/playing/, { timeout: 45_000 });
     await expect(status).toContainText(/^Playing/);
     await expect(status).not.toHaveClass(/error/);
+    // The REPL mounts a sibling editor; checking code data alone misses an
+    // offscreen editor pushed below the source custom element.
+    const firstLine = page.frameLocator('#strudelFrame').locator('.cm-line').first();
+    await expect(firstLine).toContainText('warm summer rain over a quiet city');
+    await page.locator('#strudelFrame').scrollIntoViewIfNeeded();
+    await expect(firstLine).toBeInViewport();
     await page.waitForTimeout(500);
     await expect(status).toHaveClass(/playing/);
     expect(cspErrors).toEqual([]);
