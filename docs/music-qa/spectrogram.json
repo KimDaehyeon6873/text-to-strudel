@@ -1,0 +1,34 @@
+[
+  {
+    "recording": "baseline-ambient",
+    "durationSeconds": 61.11,
+    "peakDbFS": -8.98,
+    "rmsDbFS": -22.01,
+    "samplesAboveFullScale": 0,
+    "maxAbsoluteDC": 2.4e-05
+  },
+  {
+    "recording": "baseline-edm",
+    "durationSeconds": 30.65,
+    "peakDbFS": 1.16,
+    "rmsDbFS": -19.01,
+    "samplesAboveFullScale": 12,
+    "maxAbsoluteDC": 0.001024
+  },
+  {
+    "recording": "candidate-ambient",
+    "durationSeconds": 60.19,
+    "peakDbFS": -16.5,
+    "rmsDbFS": -30.09,
+    "samplesAboveFullScale": 0,
+    "maxAbsoluteDC": 1.7e-05
+  },
+  {
+    "recording": "candidate-edm",
+    "durationSeconds": 31.11,
+    "peakDbFS": -2.45,
+    "rmsDbFS": -25.4,
+    "samplesAboveFullScale": 0,
+    "maxAbsoluteDC": 0.0008
+  }
+]

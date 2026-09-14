@@ -1,0 +1,175 @@
+{
+  "takes": 64,
+  "corpus": [
+    "q7X-2049 / 🪐 / 바람... 314159",
+    "0123456789",
+    "loop loop loop / 東京의 비"
+  ],
+  "measurement": "Minimum distinct musical outputs across the three inputs; comments and labels excluded. Groove 0 means no drums.",
+  "candidate": [
+    {
+      "genre": "edm",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 63,
+        "harmonies": 54
+      }
+    },
+    {
+      "genre": "jazz",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 63,
+        "harmonies": 59
+      }
+    },
+    {
+      "genre": "classical",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 0,
+        "arrangements": 64,
+        "harmonies": 36
+      }
+    },
+    {
+      "genre": "blues",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 64,
+        "harmonies": 64
+      }
+    },
+    {
+      "genre": "ambient",
+      "minimumDistinct": {
+        "melodies": 59,
+        "grooves": 0,
+        "arrangements": 64,
+        "harmonies": 51
+      }
+    },
+    {
+      "genre": "lofi",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 64,
+        "harmonies": 62
+      }
+    },
+    {
+      "genre": "world",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 55,
+        "harmonies": 31
+      }
+    },
+    {
+      "genre": "random",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 63,
+        "harmonies": 61
+      }
+    },
+    {
+      "genre": "fusion:jazz+edm",
+      "minimumDistinct": {
+        "melodies": 64,
+        "grooves": 64,
+        "arrangements": 58,
+        "harmonies": 63
+      }
+    }
+  ],
+  "baseline": [
+    {
+      "genre": "edm",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 4,
+        "arrangements": 6,
+        "harmonies": 28
+      }
+    },
+    {
+      "genre": "jazz",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 8,
+        "harmonies": 21
+      }
+    },
+    {
+      "genre": "classical",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 0,
+        "arrangements": 4,
+        "harmonies": 21
+      }
+    },
+    {
+      "genre": "blues",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 6,
+        "harmonies": 12
+      }
+    },
+    {
+      "genre": "ambient",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 0,
+        "arrangements": 4,
+        "harmonies": 18
+      }
+    },
+    {
+      "genre": "lofi",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 6,
+        "harmonies": 18
+      }
+    },
+    {
+      "genre": "world",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 2,
+        "harmonies": 12
+      }
+    },
+    {
+      "genre": "random",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 6,
+        "harmonies": 26
+      }
+    },
+    {
+      "genre": "fusion:jazz+edm",
+      "minimumDistinct": {
+        "melodies": 5,
+        "grooves": 3,
+        "arrangements": 2,
+        "harmonies": 21
+      }
+    }
+  ]
+}
