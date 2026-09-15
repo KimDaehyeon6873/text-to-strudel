@@ -405,3 +405,64 @@ test('rapid focused variations serialize the complete read replace evaluate tran
 
   await context.focusedActionQueue;
 });
+
+test('EditorPort dispatches only well-formed audioState events for the active revision', async () => {
+  const { context, hostPort } = makeEditorContext();
+  await nextTask();
+  const received = [];
+  context.editorPort.audioStateHandler = (detail) => received.push(detail);
+  const revision = context.editorPort.activeRevision;
+  const send = async (message) => { hostPort.postMessage(message); await nextTask(); };
+
+  await send({ type: 'event', name: 'audioState', revision: revision + 1, detail: { state: 'suspended' } });
+  await send({ type: 'event', name: 'audioState', revision, detail: { state: 'muted' } });
+  await send({ type: 'event', name: 'audioState', revision, detail: { state: 'suspended', extra: true } });
+  await send({ type: 'event', name: 'audioState', revision, detail: { state: 'suspended' }, more: 1 });
+  await send({ type: 'event', name: 'audioState', revision, detail: { state: 42 } });
+  assert.deepEqual(received, []);
+
+  await send({ type: 'event', name: 'audioState', revision, detail: { state: 'suspended' } });
+  assert.deepEqual(received, [{ state: 'suspended' }]);
+});
+
+test('a suspended audio context shows an actionable status until the context runs', () => {
+  const { context } = makeEditorContext();
+  const status = context.document.getElementById('status');
+  context.playbackStopped = false;
+  status.className = 'status playing';
+  status.textContent = 'Playing';
+
+  context.editorPort.audioStateHandler({ state: 'suspended' });
+  assert.equal(status.className, 'status audio-blocked');
+  assert.match(status.textContent, /click inside the code editor/i);
+
+  context.editorPort.audioStateHandler({ state: 'running' });
+  assert.equal(status.className, 'status playing');
+  assert.equal(status.textContent, 'Playing');
+});
+
+test('audio state reports never override stopped, failed, or unknown playback states', () => {
+  const { context } = makeEditorContext();
+  const status = context.document.getElementById('status');
+
+  context.playbackStopped = true;
+  status.className = 'status';
+  status.textContent = 'Stopped';
+  context.editorPort.audioStateHandler({ state: 'suspended' });
+  assert.equal(status.textContent, 'Stopped');
+
+  context.playbackStopped = false;
+  status.className = 'status error';
+  status.textContent = 'Error: boom';
+  context.editorPort.audioStateHandler({ state: 'suspended' });
+  assert.equal(status.className, 'status error');
+
+  status.className = 'status playing';
+  status.textContent = 'Playing';
+  for (const state of ['unavailable', 'interrupted', 'closed']) {
+    context.editorPort.audioStateHandler({ state });
+    assert.equal(status.className, 'status playing', `${state} is not an autoplay block`);
+  }
+  context.editorPort.audioStateHandler({ state: 'running' });
+  assert.equal(status.textContent, 'Playing');
+});

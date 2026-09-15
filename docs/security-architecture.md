@@ -29,7 +29,9 @@ The parent sends generated or edited Strudel source to the iframe. That source c
 
 `strudel-host.html` is loaded with `sandbox="allow-scripts"` and without `allow-same-origin`. The browser therefore assigns the document an opaque origin. Strudel and evaluated patterns cannot use the parent origin's `localStorage` or access the parent DOM through same-origin APIs.
 
-The host has its own restrictive CSP. It starts with `default-src 'none'`, permits `unsafe-eval` only inside this sandbox, and allowlists the script, media, connection, image, style, and worker sources needed by Strudel. Because `'self'` does not consistently match an opaque sandbox origin, a matching CSP/script nonce authorizes the local external bridge. The policy blocks objects, forms, and base-URL changes and sends no referrer.
+The host has its own restrictive CSP. It starts with `default-src 'none'`, permits `unsafe-eval` only inside this sandbox, and allowlists the script, media, connection, image, style, and worker sources needed by Strudel. Because `'self'` does not consistently match an opaque sandbox origin, a matching CSP/script nonce authorizes the local external bridge. The child `script-src` also includes `data:` because the pinned bundle registers its AudioWorklet effects with `audioWorklet.addModule('data:...')`; worklet modules are governed by `script-src`, and without it every event that uses `coarse`, `crush`, or `shape` fails. This only widens what the already `unsafe-eval` sandbox may execute, not what it may reach. The policy blocks objects, forms, and base-URL changes and sends no referrer.
+
+The iframe declares `allow="autoplay"`. User activation from a parent-page click does not propagate into a cross-origin frame, and the opaque sandbox origin is cross-origin by definition, so without this permissions-policy delegation Chrome keeps the editor's `AudioContext` suspended after Play. Strudel itself only initializes audio on a `mousedown` inside its own document; the host bridge therefore performs that initialization when it receives `evaluate`, then reports the resulting `AudioContext` state to the parent as an `audioState` event (after each evaluation and on every later `statechange`). The delegation grants no DOM, storage, or network access.
 
 ### External services
 
@@ -66,14 +68,14 @@ Persistence is a usability option, not encrypted secret storage. Use it only on 
 
 Changes must preserve these invariants:
 
-1. The editor iframe uses `sandbox="allow-scripts"` and never adds `allow-same-origin`.
+1. The editor iframe uses `sandbox="allow-scripts"` and never adds `allow-same-origin`. Its `allow` attribute delegates exactly `autoplay`, which is required for playback started from the parent page.
 2. The parent CSP does not include `unsafe-eval` and restricts `frame-src` to `'self'`.
-3. The child CSP keeps `default-src 'none'`; only the child `script-src` permits `unsafe-eval`.
+3. The child CSP keeps `default-src 'none'`; only the child `script-src` permits `unsafe-eval` and `data:` (the latter for the bundle's embedded AudioWorklet module).
 4. The local external bridge script carries the same nonce declared by the child `script-src`; do not rely on `'self'` alone inside the opaque-origin iframe.
 5. The Strudel URL remains pinned to `@strudel/repl@1.3.0` with the reviewed SHA-384 SRI value unless both are deliberately updated together.
 6. The child retries its bootstrap ping until the parent accepts initialization; it then accepts exactly one parent-originated `strudel:init` message with exactly one transferred port, stops retrying, and removes the global listener.
 7. The long-lived capability is the transferred `MessagePort`; API keys are never sent through it.
-8. RPC accepts only `setCode`, `getCode`, `evaluate`, and `stop`, with exact schemas, bounded payloads, valid IDs/revisions, ordered execution, and matching responses.
+8. RPC accepts only `setCode`, `getCode`, `evaluate`, and `stop`, with exact schemas, bounded payloads, valid IDs/revisions, ordered execution, and matching responses. Host-to-parent events are limited to `evalError` (bounded message string) and `audioState` (one of `running`, `suspended`, `closed`, `interrupted`, `unavailable`), and the parent drops events whose revision is not the active one.
 
 ## Non-goals
 

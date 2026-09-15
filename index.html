@@ -414,6 +414,7 @@
   }
   .status.playing { color: var(--g); }
   .status.error { color: var(--red); }
+  .status.audio-blocked { color: var(--red); }
   @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
   .status.playing::before {
     content: '\25B6';
@@ -588,7 +589,7 @@
   </div>
 
   <div class="output hidden" id="editorWrap">
-    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" title="Strudel editor and player"></iframe>
+    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" allow="autoplay" title="Strudel editor and player"></iframe>
   </div>
 
 </div>

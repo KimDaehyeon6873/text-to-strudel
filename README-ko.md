@@ -168,6 +168,8 @@ AI 모드에서는 집중 알고리즘 변주 버튼이 숨겨집니다. 창의�
 
 부모 CSP에는 `unsafe-eval`이 없습니다. Strudel에 필요한 평가 기능은 별도의 제한적인 CSP 아래 샌드박스 호스트에서만 허용됩니다. CSP의 `'self'`는 불투명 샌드박스 오리진과 일관되게 일치하지 않으므로, 자식 CSP와 로컬 외부 브리지 스크립트는 서로 일치하는 nonce를 사용합니다. 자식은 부모가 일회성 `MessagePort` 초기화를 수락할 때까지 부트스트랩 ping을 재시도합니다. Strudel 의존성은 `@strudel/repl@1.3.0`으로 고정되고 SHA-384 Subresource Integrity로 보호됩니다. 신뢰 경계, 불변 조건, 비보장 범위는 [보안 아키텍처](docs/security-architecture.md)를 참고하십시오.
 
+오디오에는 샌드박스 특유의 요구 사항이 두 가지 있습니다. 부모 페이지의 클릭은 교차 오리진 iframe을 활성화하지 못하므로, iframe에 `allow="autoplay"`(샌드박스 플래그가 아닌 permissions-policy 위임)를 두고 호스트 브리지가 부모의 재생 요청 시 Strudel의 오디오 초기화를 직접 실행합니다. 둘 중 하나라도 없으면 Chrome은 상태 표시가 "Playing"인데도 에디터의 `AudioContext`를 suspended 상태로 둡니다. 또한 고정된 번들이 `coarse`/`crush`/`shape` AudioWorklet 효과를 내장 `data:` URL에서 불러오므로 자식 `script-src`는 `data:`를 허용합니다. 호스트는 평가가 끝날 때마다 오디오 상태를 보고하며, 브라우저가 여전히 차단하면 상태 표시가 코드 에디터 안을 한 번 클릭하라고 안내합니다. 이것이 샌드박스가 인식할 수 있는 유일한 사용자 제스처입니다.
+
 ## 프로젝트 구조와 테스트
 
 ```text

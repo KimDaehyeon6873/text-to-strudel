@@ -1,6 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const desktopTests = /^(?!.*mobile).*\.spec\.mjs$/;
+const desktopTests = /^(?!.*(?:mobile|audio-unlock)).*\.spec\.mjs$/;
+
+// Playwright launches Chromium with --autoplay-policy=no-user-gesture-required,
+// which hides autoplay blocking inside the sandboxed editor iframe. This project
+// restores Chrome's real desktop policy for the audio-unlock spec only.
+const chromeAutoplayPolicy = {
+  ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'],
+  args: ['--autoplay-policy=document-user-activation-required'],
+};
 
 export default defineConfig({
   testDir: './e2e',
@@ -28,6 +36,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', testMatch: desktopTests, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium-autoplay-policy',
+      testMatch: /audio-unlock\.spec\.mjs$/,
+      use: { ...devices['Desktop Chrome'], launchOptions: chromeAutoplayPolicy },
+    },
     { name: 'firefox', testMatch: desktopTests, use: { ...devices['Desktop Firefox'] } },
     { name: 'webkit', testMatch: desktopTests, use: { ...devices['Desktop Safari'] } },
     {

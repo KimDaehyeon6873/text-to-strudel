@@ -186,6 +186,7 @@
   .composition-meta { min-height: 1em; margin-top: .15rem; font-family: var(--mono); font-size: .6rem; line-height: 1.4; color: var(--accent); letter-spacing: .02em; }
   .status.playing { color: var(--green); }
   .status.error { color: var(--red); }
+  .status.audio-blocked { color: var(--red); }
   @keyframes dot { 0%,100%{opacity:1} 50%{opacity:.25} }
   .status.playing::before { content: ''; display: inline-block; width: 5px; height: 5px; background: var(--green); border-radius: 50%; margin-right: 5px; box-shadow: 0 0 6px var(--green); animation: dot 1.2s ease-in-out infinite; }
 
@@ -347,7 +348,7 @@
   </div>
 
   <div class="output hidden" id="editorWrap">
-    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" title="Strudel editor and player"></iframe>
+    <iframe id="strudelFrame" src="strudel-host.html" sandbox="allow-scripts" allow="autoplay" title="Strudel editor and player"></iframe>
   </div>
 
 </div>
