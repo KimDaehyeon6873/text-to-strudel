@@ -434,7 +434,7 @@ test('a suspended audio context shows an actionable status until the context run
 
   context.editorPort.audioStateHandler({ state: 'suspended' });
   assert.equal(status.className, 'status audio-blocked');
-  assert.match(status.textContent, /click inside the code editor/i);
+  assert.match(status.textContent, /enable sound/i);
 
   context.editorPort.audioStateHandler({ state: 'running' });
   assert.equal(status.className, 'status playing');

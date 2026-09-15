@@ -42,7 +42,16 @@ function makeHost({ fakeTimers = false, audio = null } = {}) {
   const responses = [];
   const bootstrapMessages = [];
   const intervals = new Map();
+  const timeouts = new Map();
   let intervalId = 0;
+  let timeoutId = 0;
+  let now = 0;
+  const unlockButton = {
+    hidden: true,
+    listeners: new Map(),
+    addEventListener(type, listener) { this.listeners.set(type, listener); },
+    click() { this.listeners.get('click')?.(); },
+  };
   const editor = {
     code: '',
     setCode(code) { this.code = code; },
@@ -69,13 +78,19 @@ function makeHost({ fakeTimers = false, audio = null } = {}) {
   const context = {
     window,
     document: {
-      getElementById() {
-        return { editor };
+      getElementById(id) {
+        return id === 'audioUnlock' ? unlockButton : { editor };
       },
     },
     TextEncoder,
-    setTimeout,
-    clearTimeout,
+    setTimeout: fakeTimers
+      ? (callback, delay = 0) => {
+          const id = ++timeoutId;
+          timeouts.set(id, { callback, at: now + delay });
+          return id;
+        }
+      : setTimeout,
+    clearTimeout: fakeTimers ? (id) => timeouts.delete(id) : clearTimeout,
     setInterval: fakeTimers
       ? (callback) => {
           const id = ++intervalId;
@@ -114,15 +129,43 @@ function makeHost({ fakeTimers = false, audio = null } = {}) {
   function runIntervals() {
     for (const callback of [...intervals.values()]) callback();
   }
+  async function advance(ms) {
+    // Fire due timers in order, moving the clock to each one so that timers
+    // scheduled by a callback are placed relative to that moment.
+    const target = now + ms;
+    for (;;) {
+      const due = [...timeouts.entries()]
+        .filter(([, entry]) => entry.at <= target)
+        .sort((a, b) => a[1].at - b[1].at)[0];
+      if (!due) break;
+      const [id, entry] = due;
+      timeouts.delete(id);
+      now = Math.max(now, entry.at);
+      entry.callback();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    now = target;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  async function readyWithFakeTimers() {
+    initialize();
+    runIntervals();
+    await new Promise((resolve) => setImmediate(resolve));
+    if (!responses.some((message) => message.type === 'ready')) throw new Error('host did not become ready');
+  }
   return {
     editor,
+    unlockButton,
     initialize,
     waitForReady,
+    readyWithFakeTimers,
     port,
     responses,
     command,
     bootstrapMessages,
     runIntervals,
+    advance,
+    audioEvents: () => responses.filter((message) => message.type === 'event' && message.name === 'audioState').map(plain),
   };
 }
 
@@ -249,70 +292,126 @@ test('host rejects unknown commands without executing editor methods', async () 
   assert.match(host.responses.at(-1).error, /unknown command/i);
 });
 
-test('host initializes audio before evaluating and reports the context state', async () => {
-  const audio = makeAudio({ state: 'suspended' });
+test('host resumes and initializes audio before evaluating', async () => {
+  const audio = makeAudio({ state: 'running' });
   const host = makeHost({ audio });
   await host.waitForReady();
   const order = [];
+  audio.ctx.resume = async () => { order.push('resume'); };
   audio.initAudio = async () => { order.push('initAudio'); };
   host.editor.evaluate = async () => { order.push('evaluate'); };
 
   await host.command({ type: 'command', id: 'request-5', command: 'evaluate', revision: 3, payload: null });
   await waitFor(() => host.responses.some((message) => message.type === 'result' && message.id === 'request-5'));
 
-  assert.deepEqual(order, ['initAudio', 'evaluate']);
+  assert.deepEqual(order, ['resume', 'initAudio', 'evaluate']);
   assert.deepEqual(plain(host.responses.find((message) => message.id === 'request-5')), {
     type: 'result', id: 'request-5', command: 'evaluate', revision: 3, ok: true,
   });
-  await waitFor(() => host.responses.some((message) => message.type === 'event' && message.name === 'audioState'));
-  assert.deepEqual(plain(host.responses.at(-1)), {
-    type: 'event', name: 'audioState', revision: 3, detail: { state: 'suspended' },
-  });
+  await waitFor(() => host.audioEvents().length > 0);
+  assert.deepEqual(host.audioEvents(), [{ type: 'event', name: 'audioState', revision: 3, detail: { state: 'running' } }]);
+  assert.equal(host.unlockButton.hidden, true);
 });
 
-test('host relays later audio state changes with the last evaluate revision', async () => {
+test('host reports a running context right away but gives a suspended one a grace period', async () => {
   const audio = makeAudio({ state: 'suspended' });
-  const host = makeHost({ audio });
-  await host.waitForReady();
+  const host = makeHost({ fakeTimers: true, audio });
+  await host.readyWithFakeTimers();
 
   await host.command({ type: 'command', id: 'request-6', command: 'evaluate', revision: 4, payload: null });
-  await waitFor(() => host.responses.some((message) => message.id === 'request-6'));
+  await host.advance(400);
+  assert.deepEqual(host.audioEvents(), [], 'no verdict yet while the output device may still be starting');
+  assert.equal(host.unlockButton.hidden, true);
+
+  await host.advance(2999);
+  assert.deepEqual(host.audioEvents(), []);
+  await host.advance(1);
+  assert.deepEqual(host.audioEvents(), [{ type: 'event', name: 'audioState', revision: 4, detail: { state: 'suspended' } }]);
+  assert.equal(host.unlockButton.hidden, false, 'unlock button appears once the context is called blocked');
+});
+
+test('a context that starts during the grace period is reported as running and never as blocked', async () => {
+  const audio = makeAudio({ state: 'suspended' });
+  const host = makeHost({ fakeTimers: true, audio });
+  await host.readyWithFakeTimers();
+
   await host.command({ type: 'command', id: 'request-7', command: 'evaluate', revision: 5, payload: null });
-  await waitFor(() => host.responses.some((message) => message.id === 'request-7'));
-  assert.equal(audio.statechangeListeners, 1, 'one statechange listener across evaluations');
-
+  await host.advance(400);
+  assert.equal(audio.statechangeListeners, 1);
   audio.setState('running');
-  await new Promise((resolve) => setImmediate(resolve));
+  await host.advance(0);
+  assert.deepEqual(host.audioEvents(), [{ type: 'event', name: 'audioState', revision: 5, detail: { state: 'running' } }]);
 
-  const events = host.responses.filter((message) => message.type === 'event');
-  assert.deepEqual(plain(events.at(-1)), {
-    type: 'event', name: 'audioState', revision: 5, detail: { state: 'running' },
-  });
+  await host.advance(5000);
+  assert.deepEqual(host.audioEvents().length, 1, 'the cancelled grace report must not fire');
+  assert.equal(host.unlockButton.hidden, true);
+
+  await host.command({ type: 'command', id: 'request-8', command: 'evaluate', revision: 6, payload: null });
+  await host.advance(400);
+  assert.equal(audio.statechangeListeners, 1, 'one statechange listener across evaluations');
+  assert.deepEqual(host.audioEvents().at(-1), { type: 'event', name: 'audioState', revision: 6, detail: { state: 'running' } });
+});
+
+test('the unlock button resumes the context inside the sandbox and reports the result', async () => {
+  const audio = makeAudio({ state: 'suspended' });
+  const host = makeHost({ fakeTimers: true, audio });
+  await host.readyWithFakeTimers();
+  await host.command({ type: 'command', id: 'request-9', command: 'evaluate', revision: 7, payload: null });
+  await host.advance(3400);
+  assert.equal(host.unlockButton.hidden, false);
+  const calls = audio.calls.length;
+
+  // The real button click is the user gesture; the fake context "starts" as a result.
+  audio.ctx.resume = async () => { audio.calls.push('resume'); audio.setState('running'); };
+  host.unlockButton.click();
+  await host.advance(0);
+
+  assert.equal(audio.calls[calls], 'resume', 'resume() is the first call inside the gesture');
+  assert.deepEqual(host.audioEvents().at(-1), { type: 'event', name: 'audioState', revision: 7, detail: { state: 'running' } });
+  assert.equal(host.unlockButton.hidden, true);
+});
+
+test('stop hides the unlock button and cancels a pending blocked report', async () => {
+  const audio = makeAudio({ state: 'suspended' });
+  const host = makeHost({ fakeTimers: true, audio });
+  await host.readyWithFakeTimers();
+  await host.command({ type: 'command', id: 'request-10', command: 'evaluate', revision: 8, payload: null });
+  await host.advance(3400);
+  assert.equal(host.unlockButton.hidden, false);
+
+  await host.command({ type: 'command', id: 'request-11', command: 'evaluate', revision: 9, payload: null });
+  await host.advance(400);
+  await host.command({ type: 'command', id: 'request-12', command: 'stop', revision: 9, payload: null });
+  await host.advance(0);
+  assert.equal(host.unlockButton.hidden, true);
+  const before = host.audioEvents().length;
+  await host.advance(5000);
+  assert.equal(host.audioEvents().length, before, 'no blocked report after stop');
 });
 
 test('host still evaluates when audio initialization never settles', async () => {
   const audio = makeAudio({ state: 'suspended' });
   audio.initAudio = () => new Promise(() => {});
+  audio.ctx.resume = () => new Promise(() => {});
   const host = makeHost({ audio });
   await host.waitForReady();
   let evaluated = false;
   host.editor.evaluate = async () => { evaluated = true; };
 
-  await host.command({ type: 'command', id: 'request-8', command: 'evaluate', revision: 6, payload: null });
-  await waitFor(() => host.responses.some((message) => message.id === 'request-8'), { timeout: 4000 });
+  await host.command({ type: 'command', id: 'request-13', command: 'evaluate', revision: 10, payload: null });
+  await waitFor(() => host.responses.some((message) => message.id === 'request-13'), { timeout: 4000 });
 
   assert.equal(evaluated, true);
-  assert.equal(host.responses.find((message) => message.id === 'request-8').ok, true);
+  assert.equal(host.responses.find((message) => message.id === 'request-13').ok, true);
 });
 
 test('host reports audio as unavailable when the runtime exposes no audio context', async () => {
   const host = makeHost();
   await host.waitForReady();
 
-  await host.command({ type: 'command', id: 'request-9', command: 'evaluate', revision: 7, payload: null });
-  await waitFor(() => host.responses.some((message) => message.type === 'event' && message.name === 'audioState'));
+  await host.command({ type: 'command', id: 'request-14', command: 'evaluate', revision: 11, payload: null });
+  await waitFor(() => host.audioEvents().length > 0);
 
-  assert.deepEqual(plain(host.responses.at(-1)), {
-    type: 'event', name: 'audioState', revision: 7, detail: { state: 'unavailable' },
-  });
+  assert.deepEqual(host.audioEvents(), [{ type: 'event', name: 'audioState', revision: 11, detail: { state: 'unavailable' } }]);
+  assert.equal(host.unlockButton.hidden, true);
 });

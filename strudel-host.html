@@ -37,6 +37,15 @@
   .cm-editor [style*="#00CA28"] { background-color: rgba(0,224,96,.15) !important; }
   .cm-editor [style*="outline"] { outline-color: var(--green) !important; }
   .cm-editor .cm-strudel-highlight { background: rgba(0,224,96,.06) !important; }
+  /* Shown only when the browser keeps the AudioContext suspended: a click inside
+     this document is the user gesture that the sandboxed frame can see. */
+  #audioUnlock {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 10;
+    padding: .55rem 1.1rem; font: 600 .82rem var(--mono); letter-spacing: .04em;
+    color: var(--bg); background: var(--green); border: 0; border-radius: 4px; cursor: pointer;
+    box-shadow: 0 0 14px rgba(0,224,96,.55);
+  }
+  #audioUnlock[hidden] { display: none; }
   @media (max-width: 900px) {
     .cm-editor .cm-content, .cm-editor .cm-line { white-space: pre-wrap !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
   }
@@ -45,6 +54,7 @@
 </head>
 <body>
 <strudel-editor id="strudelEditor">@hush</strudel-editor>
+<button id="audioUnlock" type="button" hidden>&#9654; Enable sound</button>
 <script src="strudel-host.js" nonce="strudel-host-bridge"></script>
 </body>
 </html>

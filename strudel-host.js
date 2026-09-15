@@ -21,6 +21,10 @@
   var MAX_BOOTSTRAP_ATTEMPTS = Math.ceil(READY_TIMEOUT_MS / BOOTSTRAP_INTERVAL_MS);
   var EVAL_ERROR_DELAY_MS = 400;
   var AUDIO_UNLOCK_TIMEOUT_MS = 1500;
+  // Output devices (Bluetooth in particular) can take a while to start, and the
+  // context stays "suspended" until they do. Only after this grace period is a
+  // still-suspended context reported as blocked.
+  var AUDIO_BLOCK_GRACE_MS = 3000;
   var AUDIO_STATES = ['running', 'suspended', 'closed', 'interrupted'];
   var HOST_SESSION = createSessionId();
   var initialized = false;
@@ -30,7 +34,9 @@
   var commandQueue = Promise.resolve();
   var lastEvaluateRevision = /** @type {number | null} */ (null);
   var audioStateWatched = false;
+  var audioGraceTimer = null;
   var editorEl = /** @type {StrudelEditorElement | null} */ (document.getElementById('strudelEditor'));
+  var unlockButton = /** @type {HTMLButtonElement | null} */ (document.getElementById('audioUnlock'));
   // Strudel's evalScope publishes its runtime (initAudio, getAudioContext, ...) as globals.
   var strudelGlobals = /** @type {Record<string, any>} */ (/** @type {unknown} */ (window));
 
@@ -97,28 +103,57 @@
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
 
-  // Strudel only initializes audio (context resume + AudioWorklet effects) on a
-  // mousedown inside its own document. Parent-page clicks never reach this
-  // sandbox, so the bridge runs the same initialization when playback is
-  // requested. Whether the context may actually start is decided by the
-  // browser's autoplay policy; the parent delegates it with allow="autoplay".
+  // Strudel only initializes audio (AudioWorklet effects, polyphony) on a
+  // mousedown inside its own document, and superdough 1.3.0 never actually
+  // calls resume() there (`!ctx instanceof OfflineAudioContext` is always
+  // false). Parent-page clicks never reach this sandbox either, so the bridge
+  // resumes the context itself and runs Strudel's initialization whenever
+  // playback is requested or the unlock button is pressed. Whether the context
+  // may start is decided by the browser's autoplay policy; the parent delegates
+  // it with allow="autoplay", and a click on the unlock button is a gesture of
+  // this document. resume() is called first and synchronously so that it stays
+  // inside the gesture in browsers that require that.
   function unlockAudio() {
-    var attempt;
+    var attempts = [];
+    var ctx = audioContext();
     try {
-      if (typeof strudelGlobals.initAudio === 'function') {
-        attempt = strudelGlobals.initAudio();
-      } else {
-        var ctx = audioContext();
-        if (ctx && typeof ctx.resume === 'function') attempt = ctx.resume();
-      }
+      if (ctx && typeof ctx.resume === 'function') attempts.push(ctx.resume());
     } catch (_) {}
-    var settled = Promise.resolve(attempt).then(function () {}, function () {});
+    try {
+      if (typeof strudelGlobals.initAudio === 'function') attempts.push(strudelGlobals.initAudio());
+    } catch (_) {}
+    var settled = Promise.all(attempts.map(function (attempt) {
+      return Promise.resolve(attempt).then(function () {}, function () {});
+    }));
     return Promise.race([settled, wait(AUDIO_UNLOCK_TIMEOUT_MS)]);
   }
 
-  function reportAudioState() {
+  function setUnlockVisible(visible) {
+    if (unlockButton) unlockButton.hidden = !visible;
+  }
+
+  function publishAudioState() {
+    if (audioGraceTimer !== null) {
+      clearTimeout(audioGraceTimer);
+      audioGraceTimer = null;
+    }
+    var state = audioState();
+    setUnlockVisible(state === 'suspended');
     if (lastEvaluateRevision === null) return;
-    send({ type: 'event', name: 'audioState', revision: lastEvaluateRevision, detail: { state: audioState() } });
+    send({ type: 'event', name: 'audioState', revision: lastEvaluateRevision, detail: { state: state } });
+  }
+
+  // Report a running context right away; give a still-suspended one the grace
+  // period before calling it blocked. A statechange in the meantime reports
+  // immediately and cancels the pending grace report.
+  function scheduleAudioReport() {
+    if (audioGraceTimer !== null) clearTimeout(audioGraceTimer);
+    audioGraceTimer = null;
+    if (audioState() !== 'suspended') {
+      publishAudioState();
+      return;
+    }
+    audioGraceTimer = setTimeout(publishAudioState, AUDIO_BLOCK_GRACE_MS);
   }
 
   function watchAudioState() {
@@ -126,7 +161,15 @@
     var ctx = audioContext();
     if (!ctx || typeof ctx.addEventListener !== 'function') return;
     audioStateWatched = true;
-    ctx.addEventListener('statechange', reportAudioState);
+    ctx.addEventListener('statechange', publishAudioState);
+  }
+
+  if (unlockButton) {
+    unlockButton.addEventListener('click', function () {
+      unlockAudio();
+      watchAudioState();
+      scheduleAudioReport();
+    });
   }
 
   function validId(id) {
@@ -184,6 +227,11 @@
     }
     if (command === 'getCode') return typeof api.code === 'string' ? api.code : '';
     if (command === 'stop') {
+      if (audioGraceTimer !== null) {
+        clearTimeout(audioGraceTimer);
+        audioGraceTimer = null;
+      }
+      setUnlockVisible(false);
       await api.stop();
       return true;
     }
@@ -194,7 +242,7 @@
     setTimeout(function () {
       var error = replError();
       if (error) send({ type: 'event', name: 'evalError', revision: message.revision, detail: { message: error } });
-      reportAudioState();
+      scheduleAudioReport();
     }, EVAL_ERROR_DELAY_MS);
     return true;
   }
