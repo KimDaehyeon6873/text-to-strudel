@@ -25,6 +25,17 @@ for (const file of parentFiles) {
     assert.doesNotMatch(iframe, /allow-same-origin/i);
   });
 
+  test(`${file} delegates only autoplay to the opaque-origin host so a parent Play click can start audio`, () => {
+    const html = read(file);
+    const iframe = html.match(/<iframe\b[^>]*\bid=["']strudelFrame["'][^>]*>/i)?.[0] || '';
+    const allow = iframe.match(/\ballow=["']([^"']*)["']/i)?.[1];
+
+    // Without this delegation Chrome keeps the sandboxed AudioContext suspended
+    // (the parent's click never reaches the cross-origin frame) while the status
+    // still reports playback. It is a permissions-policy grant, not a sandbox flag.
+    assert.equal(allow, 'autoplay');
+  });
+
   test(`${file} parent CSP excludes unsafe evaluation and allows only same-site frames`, () => {
     const html = read(file);
     const csp = contentSecurityPolicy(html);
@@ -44,6 +55,18 @@ test('Strudel host keeps unsafe evaluation isolated behind a restrictive CSP', (
   assert.match(csp, /\bscript-src\b[^;]*'unsafe-eval'/);
   assert.doesNotMatch(csp, /\bconnect-src\b[^;]*(?:^|\s)\*(?:\s|;)/);
   assert.doesNotMatch(csp, /\bframe-src\b/);
+});
+
+test('Strudel host CSP allows the AudioWorklet module that the pinned bundle embeds as a data: URL', () => {
+  const html = read('strudel-host.html');
+  const csp = contentSecurityPolicy(html);
+  const scriptSrc = csp.match(/\bscript-src\s+([^;]*)/)?.[1] || '';
+
+  // superdough loads its coarse/crush/shape effects with audioWorklet.addModule('data:...').
+  // Worklet modules are governed by script-src; without data: every event using
+  // those effects fails with "AudioWorkletNode cannot be created".
+  assert.ok(scriptSrc.split(/\s+/).includes('data:'), 'child script-src must allow data: worklet modules');
+  assert.doesNotMatch(csp, /\bscript-src\b[^;]*(?:^|\s)blob:(?:\s|;)/);
 });
 
 test('Strudel dependency is version-pinned and protected with SRI', () => {

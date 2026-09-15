@@ -168,6 +168,8 @@ The parent page owns UI state, API keys, provider requests, and orchestration. S
 
 The parent CSP excludes `unsafe-eval`. Only the sandboxed host permits the evaluation required by Strudel, under a separate restrictive CSP. Because CSP `'self'` does not consistently match an opaque sandbox origin, the child CSP and local external bridge script use a matching nonce. The child retries a bootstrap ping until the parent accepts the one-time `MessagePort` initialization. The Strudel dependency is pinned to `@strudel/repl@1.3.0` and protected by SHA-384 Subresource Integrity. See [Security Architecture](docs/security-architecture.md) for the trust boundaries, invariants, and non-goals.
 
+Audio has two sandbox-specific requirements. A click on the parent page never activates the cross-origin iframe, so the iframe carries `allow="autoplay"` (a permissions-policy delegation, not a sandbox flag) and the host bridge runs Strudel's audio initialization when the parent requests playback; without both, Chrome keeps the editor's `AudioContext` suspended while the status still reads "Playing". The child `script-src` also allows `data:` because the pinned bundle loads its `coarse`/`crush`/`shape` AudioWorklet effects from an embedded `data:` URL. After each evaluation the host reports the audio state; if the browser still blocks it, the status asks for one click inside the code editor, which is the only remaining user gesture the sandbox can see.
+
 ## Project Structure and Tests
 
 ```text

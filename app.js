@@ -2086,6 +2086,7 @@ function stripFences(code) {
 var EDITOR_RPC_TIMEOUT_MS = 5000;
 var EDITOR_READY_TIMEOUT_MS = 20000;
 var EDITOR_MAX_PAYLOAD_BYTES = 256 * 1024;
+var EDITOR_AUDIO_STATES = ['running', 'suspended', 'closed', 'interrupted', 'unavailable'];
 /** @type {HTMLIFrameElement|null} */
 var editorFrame = /** @type {HTMLIFrameElement|null} */ (document.getElementById('strudelFrame'));
 
@@ -2104,6 +2105,7 @@ function EditorPort(frame) {
   this.readyWaiters = [];
   this.queue = Promise.resolve();
   this.evalErrorHandler = null;
+  this.audioStateHandler = null;
 }
 
 function editorMessageBytes(value) {
@@ -2192,11 +2194,21 @@ EditorPort.prototype._onPortMessage = function(message) {
   }
   if (message && message.type === 'event') {
     if (!hasExactKeys(message, ['type', 'name', 'revision', 'detail']) ||
-        message.name !== 'evalError' || !Number.isSafeInteger(message.revision) ||
-        !hasExactKeys(message.detail, ['message']) || typeof message.detail.message !== 'string' ||
-        editorTextBytes(message.detail.message) > 4096) return;
-    if (message.revision !== this.activeRevision) return;
-    if (this.evalErrorHandler) this.evalErrorHandler(message.detail);
+        !Number.isSafeInteger(message.revision)) return;
+    if (message.name === 'evalError') {
+      if (!hasExactKeys(message.detail, ['message']) || typeof message.detail.message !== 'string' ||
+          editorTextBytes(message.detail.message) > 4096) return;
+      if (message.revision !== this.activeRevision) return;
+      if (this.evalErrorHandler) this.evalErrorHandler(message.detail);
+      return;
+    }
+    if (message.name === 'audioState') {
+      if (!hasExactKeys(message.detail, ['state']) ||
+          EDITOR_AUDIO_STATES.indexOf(message.detail.state) === -1) return;
+      if (message.revision !== this.activeRevision) return;
+      if (this.audioStateHandler) this.audioStateHandler(message.detail);
+      return;
+    }
     return;
   }
   if (!message || message.type !== 'result') return;
@@ -2517,6 +2529,29 @@ editorPort.evalErrorHandler = async function(detail) {
   } catch (error) {
     setEditorStatus('status error', 'Editor error: ' + error.message.substring(0, 100));
   }
+};
+
+// The sandboxed editor cannot receive the parent's click, so the browser may
+// keep its AudioContext suspended while the scheduler is already running. The
+// host reports the context state after each evaluate and on every change.
+var AUDIO_BLOCKED_MESSAGE = 'Audio blocked by the browser: click inside the code editor once to enable sound';
+
+function statusHasClass(name) {
+  var status = document.getElementById('status');
+  return Boolean(status && status.className.split(/\s+/).indexOf(name) !== -1);
+}
+
+editorPort.audioStateHandler = function(detail) {
+  if (detail.state === 'running') {
+    if (!playbackStopped && statusHasClass('audio-blocked')) setEditorStatus('status playing', 'Playing');
+    return;
+  }
+  // Only a suspended context is an autoplay block that one gesture can lift.
+  // 'interrupted' (WebKit audio-session interruption), 'closed', and
+  // 'unavailable' are not something a click inside the editor would fix.
+  if (detail.state !== 'suspended') return;
+  if (playbackStopped || statusHasClass('error')) return;
+  setEditorStatus('status audio-blocked', AUDIO_BLOCKED_MESSAGE);
 };
 
 // ---- LLM error fix: send code + error → get fixed code ----

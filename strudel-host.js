@@ -20,13 +20,19 @@
   var BOOTSTRAP_INTERVAL_MS = 100;
   var MAX_BOOTSTRAP_ATTEMPTS = Math.ceil(READY_TIMEOUT_MS / BOOTSTRAP_INTERVAL_MS);
   var EVAL_ERROR_DELAY_MS = 400;
+  var AUDIO_UNLOCK_TIMEOUT_MS = 1500;
+  var AUDIO_STATES = ['running', 'suspended', 'closed', 'interrupted'];
   var HOST_SESSION = createSessionId();
   var initialized = false;
   var bootstrapAttempts = 0;
   var bootstrapTimer = null;
   var port = null;
   var commandQueue = Promise.resolve();
+  var lastEvaluateRevision = /** @type {number | null} */ (null);
+  var audioStateWatched = false;
   var editorEl = /** @type {StrudelEditorElement | null} */ (document.getElementById('strudelEditor'));
+  // Strudel's evalScope publishes its runtime (initAudio, getAudioContext, ...) as globals.
+  var strudelGlobals = /** @type {Record<string, any>} */ (/** @type {unknown} */ (window));
 
   function createSessionId() {
     var bytes = new Uint8Array(16);
@@ -69,6 +75,58 @@
     var state = repl && repl.state;
     var error = state && (state.evalError || state.error);
     return error ? safeError(error) : '';
+  }
+
+  function audioContext() {
+    try {
+      if (typeof strudelGlobals.getAudioContext !== 'function') return null;
+      var ctx = strudelGlobals.getAudioContext();
+      return ctx && typeof ctx.state === 'string' ? ctx : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function audioState() {
+    var ctx = audioContext();
+    if (!ctx || AUDIO_STATES.indexOf(ctx.state) === -1) return 'unavailable';
+    return ctx.state;
+  }
+
+  function wait(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  // Strudel only initializes audio (context resume + AudioWorklet effects) on a
+  // mousedown inside its own document. Parent-page clicks never reach this
+  // sandbox, so the bridge runs the same initialization when playback is
+  // requested. Whether the context may actually start is decided by the
+  // browser's autoplay policy; the parent delegates it with allow="autoplay".
+  function unlockAudio() {
+    var attempt;
+    try {
+      if (typeof strudelGlobals.initAudio === 'function') {
+        attempt = strudelGlobals.initAudio();
+      } else {
+        var ctx = audioContext();
+        if (ctx && typeof ctx.resume === 'function') attempt = ctx.resume();
+      }
+    } catch (_) {}
+    var settled = Promise.resolve(attempt).then(function () {}, function () {});
+    return Promise.race([settled, wait(AUDIO_UNLOCK_TIMEOUT_MS)]);
+  }
+
+  function reportAudioState() {
+    if (lastEvaluateRevision === null) return;
+    send({ type: 'event', name: 'audioState', revision: lastEvaluateRevision, detail: { state: audioState() } });
+  }
+
+  function watchAudioState() {
+    if (audioStateWatched) return;
+    var ctx = audioContext();
+    if (!ctx || typeof ctx.addEventListener !== 'function') return;
+    audioStateWatched = true;
+    ctx.addEventListener('statechange', reportAudioState);
   }
 
   function validId(id) {
@@ -129,10 +187,14 @@
       await api.stop();
       return true;
     }
+    lastEvaluateRevision = message.revision;
+    await unlockAudio();
+    watchAudioState();
     await api.evaluate(true);
     setTimeout(function () {
       var error = replError();
       if (error) send({ type: 'event', name: 'evalError', revision: message.revision, detail: { message: error } });
+      reportAudioState();
     }, EVAL_ERROR_DELAY_MS);
     return true;
   }
