@@ -2533,8 +2533,10 @@ editorPort.evalErrorHandler = async function(detail) {
 
 // The sandboxed editor cannot receive the parent's click, so the browser may
 // keep its AudioContext suspended while the scheduler is already running. The
-// host reports the context state after each evaluate and on every change.
-var AUDIO_BLOCKED_MESSAGE = 'Audio blocked by the browser: click inside the code editor once to enable sound';
+// host reports the context state after each evaluate (after a grace period for
+// slow output devices) and on every change, and shows its own "Enable sound"
+// button, whose click is a user gesture inside the sandbox.
+var AUDIO_BLOCKED_MESSAGE = 'Audio blocked by the browser: press "Enable sound" in the editor';
 
 function statusHasClass(name) {
   var status = document.getElementById('status');
@@ -2548,7 +2550,7 @@ editorPort.audioStateHandler = function(detail) {
   }
   // Only a suspended context is an autoplay block that one gesture can lift.
   // 'interrupted' (WebKit audio-session interruption), 'closed', and
-  // 'unavailable' are not something a click inside the editor would fix.
+  // 'unavailable' are not something the unlock button would fix.
   if (detail.state !== 'suspended') return;
   if (playbackStopped || statusHasClass('error')) return;
   setEditorStatus('status audio-blocked', AUDIO_BLOCKED_MESSAGE);

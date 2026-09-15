@@ -47,3 +47,54 @@ for (const path of ['/index.html', '/index.amber.html']) {
     expect(audioProblems).toEqual([]);
   });
 }
+
+// A browser that does not honor the autoplay delegation (or a stale index.html
+// without it) leaves the context suspended. The host must not call that
+// "blocked" before its grace period, must then show its own Enable sound
+// button, and a click on that button (a gesture inside the sandbox) must start
+// audio and clear the parent status.
+test('/index.html recovers from a blocked context through the in-editor Enable sound button', async ({ page }) => {
+  await page.route('**/index.html', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.text()).replace(' allow="autoplay"', '');
+    await route.fulfill({ response, body, headers: { ...response.headers(), 'content-type': 'text/html; charset=utf-8' } });
+  });
+  const states = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (text.startsWith('AUDIO_STATE ')) states.push(text.slice('AUDIO_STATE '.length));
+  });
+  await page.addInitScript(() => {
+    const Native = window.AudioContext;
+    if (!Native) return;
+    window.AudioContext = class extends Native {
+      constructor(...args) {
+        super(...args);
+        console.log('AUDIO_STATE ' + this.state);
+        this.addEventListener('statechange', () => console.log('AUDIO_STATE ' + this.state));
+      }
+    };
+  });
+
+  await page.goto('/index.html');
+  await expect(page.locator('#strudelFrame')).not.toHaveAttribute('allow', 'autoplay');
+  await page.locator('#input').fill('warm summer rain over a quiet city');
+  await page.locator('#playBtn').click();
+
+  const status = page.locator('#status');
+  await expect(status).toHaveClass(/playing/, { timeout: 45_000 });
+  await page.waitForTimeout(1500);
+  await expect(status, 'no blocked verdict before the grace period').not.toHaveClass(/audio-blocked/);
+  await expect(status).toHaveClass(/audio-blocked/, { timeout: 10_000 });
+  await expect(status).toContainText('Enable sound');
+  expect(states.at(-1)).toBe('suspended');
+
+  const unlock = page.frameLocator('#strudelFrame').locator('#audioUnlock');
+  await expect(unlock).toBeVisible();
+  await unlock.click();
+
+  await expect(status).toHaveClass(/playing/, { timeout: 10_000 });
+  await expect(status).toHaveText('Playing');
+  await expect(unlock).toBeHidden();
+  expect(states.at(-1)).toBe('running');
+});
